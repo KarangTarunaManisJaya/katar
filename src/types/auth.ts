@@ -177,6 +177,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     allowedMenus: [
       'beranda',
       'ringkasan',
+      'surat',
       'proposal',
       'laporan',
       'jadwal',
@@ -233,6 +234,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     allowedMenus: [
       'beranda',
       'ringkasan',
+      'surat',
       'proposal',
       'laporan',
       'aset',
@@ -259,6 +261,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     allowedMenus: [
       'beranda',
       'ringkasan',
+      'surat',
       'jadwal',
       'berita',
       'galeri',
@@ -284,6 +287,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     allowedMenus: [
       'beranda',
       'ringkasan',
+      'surat',
       'jadwal',
       'berita',
       'aset',

@@ -92,9 +92,25 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["key"]
+    },
+    "SyncState": {
+      "title": "SyncState",
+      "description": "State sinkronisasi real-time organisasi Karang Taruna Manis Jaya",
+      "type": "object",
+      "properties": {
+        "data": { "type": "object" },
+        "lastUpdatedISO": { "type": "string" },
+        "updatedBy": { "type": "string" },
+        "reason": { "type": "string" },
+        "deviceId": { "type": "string" }
+      }
     }
   },
   "firestore": {
+    "/organizations/manisjaya/live/{stateId}": {
+      "schema": "SyncState",
+      "description": "Dokumen sinkronisasi real-time lintas perangkat Karang Taruna Manis Jaya"
+    },
     "/organizations/manisjaya/assets/{assetId}": {
       "schema": "Asset",
       "description": "Aset inventaris Karang Taruna Kelurahan Manis Jaya"

@@ -1327,7 +1327,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400 text-[11px]">Hak Akses:</span>
                   <span className="font-bold text-blue-600 text-[11px]">
-                    {selectedMember.isSuperAdmin ? 'Akses Penuh (14)' : `${selectedMember.allowedMenus.length} Menu`}
+                    {selectedMember.isSuperAdmin ? 'Akses Penuh (14)' : `${(selectedMember.allowedMenus || []).length} Menu`}
                   </span>
                 </div>
               </div>

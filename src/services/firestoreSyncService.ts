@@ -51,8 +51,12 @@ export const SYNC_KEYS = [
   'kt_asset_dokumen_v1',
   'kt_members_v3',
   'kt_agenda_v1',
+  'kt_proposals_v2',
   'kt_laporan_kegiatan_v1',
   'kt_surat_items_v2',
+  'kt_surat_masuk_v1',
+  'kt_surat_disposisi_v1',
+  'kt_surat_numbering_cfg_v1',
   'kt_kas_entries_v2',
   'kt_users_list_v3',
   'kt_org_name',
@@ -116,8 +120,8 @@ export const pushLocalDataToCloud = async (
       { merge: true }
     );
   } catch (err: any) {
-    console.error('Failed to push to Cloud Firestore:', err);
-    throw err;
+    console.warn('Notice pushing to Cloud Firestore (operating locally):', err?.message || err);
+    // Do not crash local UX if cloud permissions or network have transient limits
   }
 };
 

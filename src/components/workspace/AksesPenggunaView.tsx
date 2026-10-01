@@ -425,7 +425,7 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
                           @{member.username}
                         </span>
                         <span className="font-semibold text-blue-600">
-                          {member.allowedMenus.length} / {ALL_MENU_DEFINITIONS.length} Menu Terbuka
+                          {(member.allowedMenus || []).length} / {ALL_MENU_DEFINITIONS.length} Menu Terbuka
                         </span>
                       </div>
 
@@ -530,13 +530,13 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
                   Ceklis Daftar Menu & Aplikasi yang Terbuka
                 </h3>
                 <span className="text-xs font-bold text-slate-600">
-                  {selectedUser.allowedMenus.length} dari {ALL_MENU_DEFINITIONS.length} menu aktif
+                  {(selectedUser.allowedMenus || []).length} dari {ALL_MENU_DEFINITIONS.length} menu aktif
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {ALL_MENU_DEFINITIONS.map((menu) => {
-                  const isAllowed = selectedUser.allowedMenus.includes(menu.id);
+                  const isAllowed = (selectedUser.allowedMenus || []).includes(menu.id);
 
                   return (
                     <div
@@ -813,7 +813,7 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
                             }}
                             className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-1"
                           >
-                            <span>{member.allowedMenus.length} dari {ALL_MENU_DEFINITIONS.length} Menu</span>
+                            <span>{(member.allowedMenus || []).length} dari {ALL_MENU_DEFINITIONS.length} Menu</span>
                             <span className="text-[10px] text-slate-400">✎ Ceklis</span>
                           </button>
                         </td>

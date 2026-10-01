@@ -120,7 +120,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     username: 'fajar',
     password: 'karangtaruna',
     isSuperAdmin: false,
-    allowedMenus: ['beranda', 'ringkasan', 'proposal', 'laporan', 'jadwal', 'berita', 'tambah_berita', 'galeri'],
+    allowedMenus: ['beranda', 'ringkasan', 'surat', 'proposal', 'laporan', 'jadwal', 'berita', 'tambah_berita', 'galeri'],
     lastLogin: 'Kemarin, 16:40 WIB',
     historyJabatan: [
       { role: 'Wakil Ketua', period: '2024 - Sekarang', desc: 'Membantu ketua dalam koordinasi internal sub-unit RW' },
@@ -194,7 +194,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     username: 'bendahara',
     password: 'karangtaruna',
     isSuperAdmin: false,
-    allowedMenus: ['beranda', 'ringkasan', 'proposal', 'laporan', 'aset', 'berita'],
+    allowedMenus: ['beranda', 'ringkasan', 'surat', 'proposal', 'laporan', 'aset', 'berita'],
     lastLogin: '2 hari lalu',
     historyJabatan: [
       { role: 'Bendahara Umum', period: '2024 - Sekarang', desc: 'Laporan pertanggungjawaban kas dan akuntabilitas dana' },
@@ -231,7 +231,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     username: 'ahmad',
     password: 'karangtaruna',
     isSuperAdmin: false,
-    allowedMenus: ['beranda', 'ringkasan', 'jadwal', 'berita', 'galeri'],
+    allowedMenus: ['beranda', 'ringkasan', 'surat', 'jadwal', 'berita', 'galeri'],
     lastLogin: '3 hari lalu',
     historyJabatan: [
       { role: 'Koordinator Seksi Olahraga', period: '2024 - Sekarang', desc: 'Penyelenggara Turnamen Futsal Pemuda' },
@@ -268,7 +268,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     username: 'humas',
     password: 'karangtaruna',
     isSuperAdmin: false,
-    allowedMenus: ['beranda', 'ringkasan', 'jadwal', 'berita', 'aset', 'galeri', 'tambah_berita', 'kategori'],
+    allowedMenus: ['beranda', 'ringkasan', 'surat', 'jadwal', 'berita', 'aset', 'galeri', 'tambah_berita', 'kategori'],
     lastLogin: '4 hari lalu',
     historyJabatan: [
       { role: 'Staf Humas & Media', period: '2024 - Sekarang', desc: 'Pengelola portal berita dan media sosial resmi' },

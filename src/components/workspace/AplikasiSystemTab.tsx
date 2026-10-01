@@ -343,7 +343,14 @@ export const AplikasiSystemTab: React.FC<AplikasiSystemTabProps> = ({
         type,
         data: {
           organization: localStorage.getItem('kt_org_name') || 'Karang Taruna Manis Jaya',
-          membersCount: localStorage.getItem('kt_members_v3') ? JSON.parse(localStorage.getItem('kt_members_v3')!).length : 6,
+          membersCount: (() => {
+            try {
+              const m = localStorage.getItem('kt_members_v3');
+              return m && Array.isArray(JSON.parse(m)) ? JSON.parse(m).length : 6;
+            } catch {
+              return 6;
+            }
+          })(),
           timestamp: Date.now(),
         },
       };

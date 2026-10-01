@@ -17,10 +17,8 @@ import { AnggotaView } from './components/workspace/AnggotaView';
 import { ActivityDetailModal } from './components/workspace/ActivityDetailModal';
 import { AddNewsModal } from './components/workspace/AddNewsModal';
 import { FloatingChat } from './components/workspace/FloatingChat';
-import {
-  ProposalsView,
-  AssetsView,
-} from './components/workspace/Views';
+import { ProposalsView } from './components/workspace/ProposalsView';
+import { AssetsView } from './components/workspace/Views';
 import { NotificationToast } from './components/NotificationToast';
 import { AksesPenggunaView } from './components/workspace/AksesPenggunaView';
 import { TambahBeritaView } from './components/workspace/TambahBeritaView';
@@ -69,11 +67,26 @@ function AppContent() {
     message: 'Menghubungkan ke Cloud Firestore...',
   });
 
+  const sanitizeUser = (user: any): UserAccount => {
+    if (!user) return DEFAULT_USERS[0];
+    const defaultUser = DEFAULT_USERS.find((u) => u.id === user.id || u.username === user.username) || DEFAULT_USERS[0];
+    return {
+      ...defaultUser,
+      ...user,
+      allowedMenus: Array.isArray(user.allowedMenus) ? user.allowedMenus : defaultUser.allowedMenus,
+    };
+  };
+
   // Authentication & Access Control state (Local persistence)
   const [usersList, setUsersList] = useState<UserAccount[]>(() => {
     try {
       const saved = localStorage.getItem('kt_users_list_v3');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((u) => sanitizeUser(u));
+        }
+      }
     } catch (e) {}
     try {
       localStorage.setItem('kt_users_list_v3', JSON.stringify(DEFAULT_USERS));
@@ -85,7 +98,7 @@ function AppContent() {
     try {
       const savedAuth = localStorage.getItem('kt_auth_user_v3');
       if (savedAuth) {
-        return JSON.parse(savedAuth);
+        return sanitizeUser(JSON.parse(savedAuth));
       }
     } catch (e) {}
     try {
@@ -101,9 +114,10 @@ function AppContent() {
   };
 
   const handleUpdateUsers = (updated: UserAccount[]) => {
-    setUsersList(updated);
+    const sanitizedList = updated.map((u) => sanitizeUser(u));
+    setUsersList(sanitizedList);
     try {
-      localStorage.setItem('kt_users_list_v3', JSON.stringify(updated));
+      localStorage.setItem('kt_users_list_v3', JSON.stringify(sanitizedList));
     } catch (e) {}
 
     // Synchronize members list in localStorage as well
@@ -112,7 +126,7 @@ function AppContent() {
       if (savedMembers) {
         const membersList = JSON.parse(savedMembers);
         const syncedMembers = membersList.map((m: any) => {
-          const matchedUser = updated.find((u) => u.id === m.id || u.username === m.username);
+          const matchedUser = sanitizedList.find((u) => u.id === m.id || u.username === m.username);
           if (matchedUser) {
             return {
               ...m,
@@ -131,7 +145,7 @@ function AppContent() {
     } catch (e) {}
 
     // Synchronize active user if edited in list
-    const foundCurrent = updated.find((u) => u.id === currentUser.id || u.username === currentUser.username);
+    const foundCurrent = sanitizedList.find((u) => u.id === currentUser.id || u.username === currentUser.username);
     if (foundCurrent) {
       setCurrentUser(foundCurrent);
       try {
@@ -141,12 +155,13 @@ function AppContent() {
   };
 
   const handleLoginUser = (user: UserAccount) => {
-    setCurrentUser(user);
+    const sanitized = sanitizeUser(user);
+    setCurrentUser(sanitized);
     setShowLoginModal(false);
     try {
-      localStorage.setItem('kt_auth_user_v3', JSON.stringify(user));
+      localStorage.setItem('kt_auth_user_v3', JSON.stringify(sanitized));
     } catch (e) {}
-    showToast(`Berhasil masuk sebagai ${user.name} (${user.role})`);
+    showToast(`Berhasil masuk sebagai ${sanitized.name} (${sanitized.role})`);
   };
 
   const handleLogout = () => {
@@ -252,9 +267,10 @@ function AppContent() {
         <div className="hidden lg:block">
           <Sidebar
             currentTab={currentTab}
-            allowedMenus={currentUser.isSuperAdmin ? undefined : currentUser.allowedMenus}
+            allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
             onSelectTab={(tab) => {
-              if (tab === 'beranda' || currentUser.isSuperAdmin || currentUser.allowedMenus.includes(tab)) {
+              const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
+              if (isAllowed) {
                 setCurrentTab(tab);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
@@ -274,9 +290,10 @@ function AppContent() {
             <div className="relative z-10 w-64 bg-white h-full shadow-2xl flex flex-col animate-slideInLeft">
               <Sidebar
                 currentTab={currentTab}
-                allowedMenus={currentUser.isSuperAdmin ? undefined : currentUser.allowedMenus}
+                allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
                 onSelectTab={(tab) => {
-                  if (tab === 'beranda' || currentUser.isSuperAdmin || currentUser.allowedMenus.includes(tab)) {
+                  const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
+                  if (isAllowed) {
                     setCurrentTab(tab);
                     setMobileMenuOpen(false);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -292,7 +309,7 @@ function AppContent() {
         {/* Center / Right Main Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
           {/* Permission Guard: Check if current tab is allowed for current user */}
-          {currentTab !== 'beranda' && !currentUser.isSuperAdmin && !currentUser.allowedMenus.includes(currentTab) ? (
+          {currentTab !== 'beranda' && currentTab !== 'surat' && !currentUser.isSuperAdmin && !(currentUser.allowedMenus || []).includes(currentTab) ? (
             <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 max-w-xl mx-auto mt-8 animate-fadeIn">
               <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-inner">
                 <Lock className="w-8 h-8" />
@@ -313,7 +330,7 @@ function AppContent() {
                 <p className="font-semibold text-slate-800">Status Wewenang Anggota:</p>
                 <p>• Peran: <span className="font-bold text-blue-600">{currentUser.role}</span></p>
                 <p>• Wilayah: <span className="font-bold text-slate-700">{currentUser.rw}</span></p>
-                <p>• Total Menu Terbuka: <span className="font-bold text-emerald-600">{currentUser.allowedMenus.length} Menu</span></p>
+                <p>• Total Menu Terbuka: <span className="font-bold text-emerald-600">{(currentUser.allowedMenus || []).length} Menu</span></p>
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
