@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "Asset": {
+      "title": "Asset",
+      "description": "Inventaris aset organisasi Karang Taruna Manis Jaya",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "condition": { "type": "string" },
+        "location": { "type": "string" },
+        "acquisitionDate": { "type": "string" },
+        "estimatedValue": { "type": "number" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "category", "quantity"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Data anggota dan pengurus Karang Taruna",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "status": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "role"]
+    },
+    "Agenda": {
+      "title": "Agenda",
+      "description": "Agenda kegiatan dan rapat Karang Taruna",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "date"]
+    },
+    "Letter": {
+      "title": "Letter",
+      "description": "Surat masuk dan keluar organisasi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "number": { "type": "string" },
+        "subject": { "type": "string" },
+        "sender": { "type": "string" },
+        "recipient": { "type": "string" },
+        "type": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["number", "subject"]
+    },
+    "Kas": {
+      "title": "Kas",
+      "description": "Transaksi kas dan keuangan Karang Taruna",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "date": { "type": "string" },
+        "recordedBy": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["type", "amount", "description"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Pengaturan umum organisasi",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "value": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["key"]
+    }
+  },
+  "firestore": {
+    "/organizations/manisjaya/assets/{assetId}": {
+      "schema": "Asset",
+      "description": "Aset inventaris Karang Taruna Kelurahan Manis Jaya"
+    },
+    "/organizations/manisjaya/members/{memberId}": {
+      "schema": "Member",
+      "description": "Daftar anggota Karang Taruna Manis Jaya"
+    },
+    "/organizations/manisjaya/agenda/{agendaId}": {
+      "schema": "Agenda",
+      "description": "Daftar agenda kegiatan Karang Taruna Manis Jaya"
+    },
+    "/organizations/manisjaya/letters/{letterId}": {
+      "schema": "Letter",
+      "description": "Arsip surat menyurat Karang Taruna Manis Jaya"
+    },
+    "/organizations/manisjaya/kas/{kasId}": {
+      "schema": "Kas",
+      "description": "Catatan kas keuangan Karang Taruna Manis Jaya"
+    },
+    "/organizations/manisjaya/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Pengaturan sistem Karang Taruna Manis Jaya"
+    }
+  }
+}
