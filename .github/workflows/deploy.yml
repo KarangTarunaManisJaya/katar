@@ -34,7 +34,9 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          npm install --legacy-peer-deps
+          npm install --legacy-peer-deps react-is
 
       - name: Build Production Assets
         run: npm run build
