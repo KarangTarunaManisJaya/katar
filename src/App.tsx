@@ -300,6 +300,7 @@ function AppContent() {
               <Sidebar
                 currentTab={currentTab}
                 allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
+                onClose={() => setMobileMenuOpen(false)}
                 onSelectTab={(tab) => {
                   const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
                   if (isAllowed) {

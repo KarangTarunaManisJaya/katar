@@ -4,9 +4,10 @@ import { useBranding } from '../../context/BrandingContext';
 interface BrandLogoProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  onClick?: () => void;
 }
 
-export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md' }) => {
+export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md', onClick }) => {
   const { logoUrl } = useBranding();
 
   const dimensions = {
@@ -16,9 +17,14 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md
     xl: 'w-24 h-24',
   }[size];
 
+  const clickableClass = onClick ? 'cursor-pointer select-none' : '';
+
   if (logoUrl) {
     return (
-      <div className={`${dimensions} rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${className}`}>
+      <div
+        onClick={onClick}
+        className={`${dimensions} rounded-xl overflow-hidden flex items-center justify-center shrink-0 ${clickableClass} ${className}`}
+      >
         <img
           src={logoUrl}
           alt="Logo Karang Taruna Manis Jaya"
@@ -30,7 +36,10 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md
 
   // Official Karang Taruna emblem matching the uploaded screenshot!
   return (
-    <div className={`${dimensions} shrink-0 flex items-center justify-center ${className}`}>
+    <div
+      onClick={onClick}
+      className={`${dimensions} shrink-0 flex items-center justify-center ${clickableClass} ${className}`}
+    >
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-sm">
         <circle cx="50" cy="50" r="47" fill="#1e3a8a" stroke="#facc15" strokeWidth="2.5" />
         <circle cx="50" cy="50" r="39" fill="#1d4ed8" stroke="#facc15" strokeWidth="1.8" strokeDasharray="3,1" />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, User, LogOut, KeyRound, Cloud, RefreshCw, CheckCircle2, WifiOff } from 'lucide-react';
+import { Bell, ChevronDown, User, LogOut, KeyRound, Cloud, RefreshCw, CheckCircle2, WifiOff, Menu } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { UserAccount } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
@@ -29,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   syncStatus,
   onManualSync,
   onOpenFirebaseConfig,
+  onToggleMobileMenu,
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -43,17 +44,47 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between transition-all">
       {/* Left: Brand Identity matching the uploaded screenshot */}
-      <div className="flex items-center gap-3 shrink-0">
-        <BrandLogo size="md" />
+      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+        {/* Karang Taruna Logo - Klik pada tampilan ponsel untuk memunculkan aside menu */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onToggleMobileMenu) {
+              onToggleMobileMenu();
+            }
+          }}
+          className="relative group flex items-center justify-center p-1 -m-1 rounded-2xl cursor-pointer lg:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-95 transition-all"
+          title="Klik logo Karang Taruna untuk membuka menu navigasi samping (Aside)"
+          aria-label="Logo Karang Taruna - Klik untuk memunculkan Aside"
+        >
+          <BrandLogo size="md" className="group-hover:scale-105 transition-transform" />
+          {/* Badge indikator menu khusus tampilan ponsel */}
+          <span
+            className="lg:hidden absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs text-[9px] border-2 border-white group-hover:bg-blue-700 transition-colors"
+            title="Buka menu aside"
+          >
+            <Menu className="w-2.5 h-2.5" />
+          </span>
+        </button>
 
-        <div className="flex flex-col">
-          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 leading-tight">
+        {/* Brand Text - Klik di ponsel juga memunculkan aside */}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1024 && onToggleMobileMenu) {
+              onToggleMobileMenu();
+            }
+          }}
+          className="flex flex-col text-left focus:outline-none cursor-pointer lg:cursor-default select-none"
+          title="Karang Taruna Manis Jaya"
+        >
+          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 leading-tight hover:text-blue-600 transition-colors">
             Karang Taruna Manis Jaya
           </span>
           <span className="text-[11px] text-slate-500 font-medium leading-tight">
             Bersama Pemuda, Membangun Masa Depan
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Right: Cloud Sync Status, Notification with red badge 3 & Administrator profile pill */}

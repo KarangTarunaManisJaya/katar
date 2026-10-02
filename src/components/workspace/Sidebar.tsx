@@ -15,6 +15,7 @@ import {
   Lock,
   PlusSquare,
   Database,
+  X,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
@@ -41,6 +42,7 @@ interface SidebarProps {
   onSelectTab: (tab: WorkspaceTab) => void;
   unreadLettersCount?: number;
   allowedMenus?: WorkspaceTab[];
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -48,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   unreadLettersCount = 3,
   allowedMenus,
+  onClose,
 }) => {
   const { theme } = useTheme();
 
@@ -158,33 +161,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`${widthClass} shrink-0 ${colorClass} min-h-[calc(100vh-4.5rem)] p-3 sm:p-4 flex flex-col justify-between select-none transition-all duration-300`}
+      className={`${widthClass} shrink-0 ${colorClass} min-h-[calc(100vh-4.5rem)] h-full overflow-y-auto p-3 sm:p-4 flex flex-col justify-between select-none transition-all duration-300`}
     >
       <div className="space-y-4">
         {/* Brand Logo in Sidebar Header */}
         <div
-          className={`flex items-center gap-3 px-2 pt-1 pb-3 ${
+          className={`flex items-center justify-between px-2 pt-1 pb-3 ${
             isLight ? 'border-b border-slate-200' : 'border-b border-slate-800/80'
           }`}
         >
-          <BrandLogo size={isCollapsed ? 'sm' : 'md'} />
-          {!isCollapsed && (
-            <div className="flex flex-col min-w-0">
-              <span
-                className={`text-base font-extrabold tracking-tight truncate leading-tight ${
-                  isLight ? 'text-slate-900' : 'text-white'
-                }`}
-              >
-                Manis Jaya
-              </span>
-              <span
-                className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-0.5 ${
-                  isLight ? 'text-slate-500' : 'text-slate-400'
-                }`}
-              >
-                Karang Taruna
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
+            <BrandLogo size={isCollapsed ? 'sm' : 'md'} />
+            {!isCollapsed && (
+              <div className="flex flex-col min-w-0">
+                <span
+                  className={`text-base font-extrabold tracking-tight truncate leading-tight ${
+                    isLight ? 'text-slate-900' : 'text-white'
+                  }`}
+                >
+                  Manis Jaya
+                </span>
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-[0.2em] mt-0.5 ${
+                    isLight ? 'text-slate-500' : 'text-slate-400'
+                  }`}
+                >
+                  Karang Taruna
+                </span>
+              </div>
+            )}
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                isLight
+                  ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'
+                  : 'text-slate-400 hover:bg-white/10 hover:text-white'
+              }`}
+              title="Tutup Menu Navigasi"
+              aria-label="Tutup Menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           )}
         </div>
 
