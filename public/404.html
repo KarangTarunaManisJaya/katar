@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <title>Manis Jaya — Workspace Karang Taruna</title>
+    <script>
+      // Single Page Application redirect for GitHub Pages
+      // Redirects 404s back to root index.html preserving URL parameters
+      (function() {
+        var path = window.location.pathname;
+        var repoName = '/katar/';
+        if (path.startsWith(repoName)) {
+          var subPath = path.slice(repoName.length);
+          window.location.replace(repoName + (subPath ? '#' + subPath : '') + window.location.search);
+        } else {
+          window.location.replace('/katar/');
+        }
+      })();
+    </script>
+  </head>
+  <body style="font-family: system-ui, sans-serif; text-align: center; padding: 40px; background: #f8fafc; color: #334155;">
+    <h2>Memuat Halaman Karang Taruna Manis Jaya...</h2>
+    <p>Jika halaman tidak berpindah otomatis, <a href="/katar/" style="color: #2563eb; font-weight: bold;">klik di sini untuk membuka aplikasi</a>.</p>
+  </body>
+</html>

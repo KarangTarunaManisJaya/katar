@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, User, LogOut, KeyRound, Cloud, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Bell, ChevronDown, User, LogOut, KeyRound, Cloud, RefreshCw, CheckCircle2, WifiOff } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { UserAccount } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
@@ -18,6 +18,7 @@ interface HeaderProps {
   searchPlaceholder?: string;
   syncStatus?: CloudSyncStatus;
   onManualSync?: () => void;
+  onOpenFirebaseConfig?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -27,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
   onNavigateToTab,
   syncStatus,
   onManualSync,
+  onOpenFirebaseConfig,
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -59,36 +61,44 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Real-time Cloud Firestore Sync Badge */}
         {syncStatus && (
           <div
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+            onClick={onOpenFirebaseConfig}
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer hover:shadow-xs ${
               syncStatus.state === 'connected'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs hover:bg-emerald-100/80'
                 : syncStatus.state === 'syncing'
-                ? 'bg-blue-50 text-blue-800 border-blue-200'
-                : 'bg-amber-50 text-amber-800 border-amber-200'
+                ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100/80'
+                : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100/80'
             }`}
-            title={syncStatus.message || 'Sinkronisasi real-time Cloud Firestore aktif'}
+            title="Kelola Akun & Ganti Database Firebase (Klik untuk membuka)"
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                syncStatus.state === 'connected'
-                  ? 'bg-emerald-500 animate-pulse'
-                  : syncStatus.state === 'syncing'
-                  ? 'bg-blue-500 animate-spin'
-                  : 'bg-amber-500'
-              }`}
-            />
+            {syncStatus.state === 'offline' ? (
+              <WifiOff className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            ) : (
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  syncStatus.state === 'connected'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : 'bg-blue-500 animate-spin'
+                }`}
+              />
+            )}
             <span className="hidden md:inline">
               {syncStatus.state === 'connected'
-                ? 'Cloud Sync Aktif'
+                ? 'Cloud Firestore Real-Time'
                 : syncStatus.state === 'syncing'
-                ? 'Menyinkronkan...'
-                : 'Offline'}
+                ? 'Menyimpan ke Cloud...'
+                : syncStatus.pendingOfflineCount > 0
+                ? `Offline (${syncStatus.pendingOfflineCount} perubahan)`
+                : 'Mode Offline Aktif'}
             </span>
             {onManualSync && (
               <button
-                onClick={onManualSync}
-                className="hover:text-emerald-950 p-0.5 rounded cursor-pointer"
-                title="Sinkronkan data ke Cloud sekarang"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onManualSync();
+                }}
+                className="hover:text-emerald-950 p-0.5 rounded cursor-pointer ml-0.5"
+                title="Sinkronkan data ke Cloud Firestore sekarang"
               >
                 <RefreshCw className={`w-3 h-3 ${syncStatus.state === 'syncing' ? 'animate-spin' : ''}`} />
               </button>
@@ -182,6 +192,19 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </div>
               </div>
+
+              {onOpenFirebaseConfig && (
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    onOpenFirebaseConfig();
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-medium text-emerald-800 hover:bg-emerald-50 rounded-xl flex items-center gap-2 transition-colors"
+                >
+                  <Cloud className="w-4 h-4 text-emerald-600" />
+                  <span>Akun & Database Firebase</span>
+                </button>
+              )}
 
               {onNavigateToTab && (
                 <button

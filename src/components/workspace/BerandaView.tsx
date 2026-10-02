@@ -416,7 +416,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredButtons.map((btn) => {
             const Icon = btn.icon;
-            const isAllowed = !allowedMenus || allowedMenus.includes(btn.id);
+            const isAllowed = btn.id === 'beranda' || btn.id === 'surat' || !allowedMenus || (Array.isArray(allowedMenus) && allowedMenus.includes(btn.id));
 
             return (
               <button

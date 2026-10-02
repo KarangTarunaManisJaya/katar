@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Lock,
   User,
@@ -27,10 +27,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   canDismiss = false,
 }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  // Empty inputs so the user inputs username/NIK and password by themselves
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Reset fields to blank whenever the login modal is opened
+  useEffect(() => {
+    if (isOpen) {
+      setUsername('');
+      setPassword('');
+      setErrorMsg(null);
+      setShowPassword(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -38,20 +49,43 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     e.preventDefault();
     setErrorMsg(null);
 
-    const trimmedUser = username.trim().toLowerCase();
-    const foundUser = usersList.find(
-      (u) =>
-        u.username.toLowerCase() === trimmedUser ||
-        (u.nik && u.nik.toLowerCase() === trimmedUser) ||
-        (u.email && u.email.toLowerCase() === trimmedUser)
-    );
-
-    if (!foundUser) {
-      setErrorMsg('Akun tidak terdaftar. Akses hanya khusus untuk pengurus Karang Taruna Manis Jaya.');
+    const trimmedInput = username.trim();
+    if (!trimmedInput) {
+      setErrorMsg('Silakan masukkan Username atau NIK Anda.');
       return;
     }
 
-    if (foundUser.password !== password) {
+    if (!password) {
+      setErrorMsg('Silakan masukkan kata sandi Anda.');
+      return;
+    }
+
+    const lowerInput = trimmedInput.toLowerCase();
+    const cleanDigits = trimmedInput.replace(/\D/g, '');
+
+    const foundUser = usersList.find((u) => {
+      // 1. Match by username (case-insensitive)
+      if (u.username && u.username.toLowerCase() === lowerInput) return true;
+      // 2. Match by NIK (exact or pure digits match)
+      if (u.nik) {
+        const uNikDigits = u.nik.replace(/\D/g, '');
+        if (cleanDigits.length >= 8 && uNikDigits === cleanDigits) return true;
+        if (u.nik.toLowerCase() === lowerInput) return true;
+      }
+      // 3. Match by Nomor Anggota (e.g. KT-001)
+      if (u.noAnggota && u.noAnggota.toLowerCase() === lowerInput) return true;
+      // 4. Match by Email
+      if (u.email && u.email.toLowerCase() === lowerInput) return true;
+      return false;
+    });
+
+    if (!foundUser) {
+      setErrorMsg('Akun atau NIK tidak terdaftar. Pastikan data sudah terdaftar di sistem pengurus Karang Taruna Manis Jaya.');
+      return;
+    }
+
+    // Verify password (allowing clean trimmed comparison)
+    if (foundUser.password !== password && foundUser.password !== password.trim()) {
       setErrorMsg('Kata sandi yang Anda masukkan salah. Silakan periksa kembali.');
       return;
     }
@@ -105,10 +139,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
+                  autoFocus
+                  autoComplete="username"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Contoh: admin"
+                  placeholder="Masukkan username atau NIK anggota"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                 />
               </div>
@@ -130,10 +166,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Masukkan kata sandi akun"
+                  placeholder="Masukkan kata sandi akun Anda"
                   className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                 />
                 <button

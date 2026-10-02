@@ -172,13 +172,13 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
   // Toggle single menu checkbox
   const handleToggleMenu = (menuId: WorkspaceTab) => {
     if (!selectedUser) return;
+    const currentMenus = Array.isArray(selectedUser.allowedMenus) ? selectedUser.allowedMenus : [];
 
-    if (selectedUser.id === currentUser.id && menuId === 'akses' && selectedUser.allowedMenus.includes('akses')) {
+    if (selectedUser.id === currentUser.id && menuId === 'akses' && currentMenus.includes('akses')) {
       onToast('Peringatan: Menu Akses Pengguna tidak dapat dimatikan pada akun Anda sendiri demi keamanan.');
       return;
     }
 
-    const currentMenus = selectedUser.allowedMenus;
     let nextMenus: WorkspaceTab[];
 
     if (currentMenus.includes(menuId)) {

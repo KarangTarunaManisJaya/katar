@@ -5,8 +5,12 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   const port = parseInt(process.env.PORT || '3000', 10);
+  // Auto-detect GitHub Pages deployment under /katar/ repository
+  const isGitHub = process.env.GITHUB_ACTIONS === 'true' || process.env.GITHUB_PAGES === 'true';
+  const base = process.env.VITE_BASE || (isGitHub ? '/katar/' : './');
+
   return {
-    base: './',
+    base,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

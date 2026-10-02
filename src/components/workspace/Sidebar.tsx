@@ -79,6 +79,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isMenuAllowed = (id: WorkspaceTab) => {
     if (!allowedMenus) return true;
+    if (id === 'beranda' || id === 'surat') return true;
+    if (!Array.isArray(allowedMenus)) return false;
     if (id === 'tambah_berita' || id === 'kategori' || id === 'galeri') {
       return allowedMenus.includes('berita') || allowedMenus.includes(id);
     }

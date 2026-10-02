@@ -29,6 +29,7 @@ import {
   Check,
   X,
   Lock,
+  Key,
   Code,
   Copy,
   HelpCircle,
@@ -60,7 +61,15 @@ import {
   deleteLocalBackupRecord,
   downloadJsonFile,
 } from '../../services/googleDriveService';
-import { pushLocalDataToCloud, db } from '../../services/firestoreSyncService';
+import {
+  pushLocalDataToCloud,
+  db,
+  getActiveFirebaseConfig,
+  isUsingCustomFirebase,
+  getCurrentFirebaseUser,
+  onFirebaseAuthChange,
+} from '../../services/firestoreSyncService';
+import { FirebaseConfigModal } from './FirebaseConfigModal';
 import { doc, getDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 
@@ -78,6 +87,19 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+
+  // Firebase Database & Google Account Management
+  const [showFirebaseModal, setShowFirebaseModal] = useState(false);
+  const [firebaseAuthUser, setFirebaseAuthUser] = useState<User | null>(getCurrentFirebaseUser());
+  const activeFirebaseConfig = getActiveFirebaseConfig();
+  const isCustomDb = isUsingCustomFirebase();
+
+  useEffect(() => {
+    const unsub = onFirebaseAuthChange((user) => {
+      setFirebaseAuthUser(user);
+    });
+    return () => unsub();
+  }, []);
 
   // Drive Folder Configuration (with persistent address input)
   const [driveFolderInput, setDriveFolderInput] = useState(() => {
@@ -784,46 +806,76 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
       )}
 
       {/* REAL-TIME CLOUD FIRESTORE STATUS & CONTROLS */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-lg border border-emerald-700/40 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-lg border border-emerald-700/40 relative overflow-hidden space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shrink-0 shadow-inner">
-              <Cloud className="w-6 h-6" />
+              <Cloud className="w-6 h-6 text-amber-400" />
             </div>
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-white">
-                  Database Online Real-Time (Cloud Firestore)
+                  Database Resmi Firebase Google Cloud (firebase.google.com)
                 </h3>
                 <span className="px-2.5 py-0.5 bg-emerald-500/30 border border-emerald-400/40 rounded-full text-[10px] font-extrabold text-emerald-200 tracking-wide uppercase flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Aktif & 100% Gratis Selamanya
+                  Koneksi Real-Time Aktif
                 </span>
+                {isCustomDb && (
+                  <span className="px-2 py-0.5 bg-blue-500/40 border border-blue-400/50 rounded-full text-[10px] font-extrabold text-blue-200 tracking-wide uppercase">
+                    Database Kustom
+                  </span>
+                )}
               </div>
               <p className="text-xs text-emerald-100/90 leading-relaxed max-w-2xl">
-                Setiap kali Anda menambah, mengedit, atau menghapus data (Aset, Anggota, Kas, Agenda, Surat), data otomatis tersinkronisasi detik itu juga ke semua komputer, laptop, dan HP pengurus lain.
+                Aplikasi terhubung langsung ke <strong>Google Firebase Firestore</strong> (<code className="bg-black/30 px-1 py-0.5 rounded text-emerald-200">firebase.google.com</code>). Anda dapat masuk ke akun Google Anda terlebih dahulu dan mengganti/merubah database ke proyek Firebase milik Anda sendiri.
               </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-emerald-200/80">
+                <span>• Project ID: <strong className="text-white font-mono">{activeFirebaseConfig.projectId}</strong></span>
+                <span>• Database ID: <strong className="text-white font-mono">{activeFirebaseConfig.firestoreDatabaseId || '(default)'}</strong></span>
+                <span>• Status Akun: <span className={firebaseAuthUser ? 'text-emerald-300 font-bold' : 'text-amber-200'}>
+                  {firebaseAuthUser ? `Masuk: ${firebaseAuthUser.displayName || firebaseAuthUser.email}` : 'Belum Masuk Akun Google'}
+                </span></span>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowFirebaseModal(true)}
+              className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Masuk ke akun Google atau ganti/ubah database Firebase ke proyek Anda sendiri"
+            >
+              <Key className="w-3.5 h-3.5 text-slate-950" />
+              <span>Kelola Akun / Ganti DB</span>
+            </button>
+            <a
+              href="https://firebase.google.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5 transition-all"
+              title="Buka situs resmi Google Firebase di tab baru"
+            >
+              <span>firebase.google.com</span>
+              <ExternalLink className="w-3 h-3 text-amber-300" />
+            </a>
             <button
               onClick={handleSyncToCloud}
               disabled={isSyncingCloud}
-              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+              className="px-3 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               title="Kirim seluruh data lokal saat ini ke Cloud Firestore"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
-              <span>Kirim Data ke Cloud</span>
+              <span>Kirim Data</span>
             </button>
             <button
               onClick={handlePullFromCloud}
               disabled={isSyncingCloud}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+              className="px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               title="Tarik data terbaru yang ada di Cloud Firestore ke laptop/perangkat ini"
             >
               <CloudDownload className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Tarik dari Cloud</span>
+              <span>Tarik Data</span>
             </button>
           </div>
         </div>
@@ -1538,6 +1590,12 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
           </div>
         </div>
       )}
+      {/* Firebase Account & Custom Database Modal */}
+      <FirebaseConfigModal
+        isOpen={showFirebaseModal}
+        onClose={() => setShowFirebaseModal(false)}
+        onToast={onToast}
+      />
     </div>
   );
 };

@@ -26,6 +26,7 @@ import { LaporanKegiatanView } from './components/workspace/LaporanKegiatanView'
 import { JadwalKegiatanView } from './components/workspace/JadwalKegiatanView';
 import { AsetOrganisasiView } from './components/workspace/AsetOrganisasiView';
 import { DatabaseGoogleDriveView } from './components/workspace/DatabaseGoogleDriveView';
+import { FirebaseConfigModal } from './components/workspace/FirebaseConfigModal';
 import { LoginModal } from './components/auth/LoginModal';
 import { DEFAULT_USERS, UserAccount } from './types/auth';
 import { Lock, ArrowLeft } from 'lucide-react';
@@ -58,22 +59,28 @@ function AppContent() {
   }, [activities]);
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
   const [showAddNews, setShowAddNews] = useState(false);
+  const [showFirebaseModal, setShowFirebaseModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>({
-    state: 'syncing',
+    state: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'syncing',
     lastSyncedAt: null,
     message: 'Menghubungkan ke Cloud Firestore...',
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    pendingOfflineCount: 0,
   });
 
   const sanitizeUser = (user: any): UserAccount => {
     if (!user) return DEFAULT_USERS[0];
     const defaultUser = DEFAULT_USERS.find((u) => u.id === user.id || u.username === user.username) || DEFAULT_USERS[0];
+    const rawMenus = Array.isArray(user.allowedMenus) ? user.allowedMenus : (defaultUser.allowedMenus || []);
+    // Ensure core tabs like 'beranda' and 'surat' are always accessible to users
+    const allowedMenus = Array.from(new Set([...rawMenus, 'beranda', 'surat']));
     return {
       ...defaultUser,
       ...user,
-      allowedMenus: Array.isArray(user.allowedMenus) ? user.allowedMenus : defaultUser.allowedMenus,
+      allowedMenus,
     };
   };
 
@@ -238,8 +245,10 @@ function AppContent() {
         onLogout={handleLogout}
         syncStatus={cloudSyncStatus}
         onManualSync={handleManualCloudSync}
+        onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
         onNavigateToTab={(tab) => {
-          if (tab === 'beranda' || currentUser.allowedMenus.includes(tab)) {
+          const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (Array.isArray(currentUser.allowedMenus) && currentUser.allowedMenus.includes(tab));
+          if (isAllowed) {
             setCurrentTab(tab);
           } else {
             showToast(`Akses Dibatasi: Menu tersebut belum dicentang pada izin akun Anda.`);
@@ -382,14 +391,15 @@ function AppContent() {
               {currentTab === 'beranda' && (
                 <BerandaView
                   onNavigate={(tab) => {
-                    if (tab === 'beranda' || currentUser.allowedMenus.includes(tab)) {
+                    const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
+                    if (isAllowed) {
                       setCurrentTab(tab);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     } else {
                       showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun ${currentUser.name}.`);
                     }
                   }}
-                  allowedMenus={currentUser.allowedMenus}
+                  allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
                   onAddNews={() => {
                     setCurrentTab('tambah_berita');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -707,6 +717,13 @@ function AppContent() {
         usersList={usersList}
         onClose={() => setShowLoginModal(false)}
         canDismiss={true}
+      />
+
+      {/* Modal: Kelola Akun & Ganti Database Firebase (firebase.google.com) */}
+      <FirebaseConfigModal
+        isOpen={showFirebaseModal}
+        onClose={() => setShowFirebaseModal(false)}
+        onToast={showToast}
       />
     </div>
   );
