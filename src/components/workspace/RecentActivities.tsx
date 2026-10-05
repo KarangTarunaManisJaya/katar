@@ -71,9 +71,18 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
         </button>
       </div>
 
-      {/* 4 Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {activities.map((item) => (
+      {/* Cards Grid or Empty State */}
+      {activities.length === 0 ? (
+        <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+          <ImageIcon className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+          <p className="text-sm font-bold text-slate-700">Belum Ada Berita & Dokumentasi</p>
+          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            Seluruh liputan kegiatan dan rilis pers pemuda yang ditambahkan akan muncul di sini dan tersinkron otomatis ke semua ponsel.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {activities.map((item) => (
           <div
             key={item.id}
             className="group bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between"
@@ -143,7 +152,8 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

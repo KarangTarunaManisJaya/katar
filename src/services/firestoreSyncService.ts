@@ -8,6 +8,7 @@ import {
   getDoc,
   getDocFromServer,
   setDoc,
+  deleteDoc,
   collection,
   onSnapshot,
   Firestore,
@@ -23,6 +24,7 @@ import {
   User as FirebaseUser,
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
+import { ActivityItem, ACTIVITIES_DATA } from '../data/workspaceData';
 
 export interface FirebaseConfig {
   projectId: string;
@@ -263,6 +265,7 @@ export const SYNC_KEYS = [
   'kt_asset_dokumen_v1',
   'kt_members_v3',
   'kt_agenda_v1',
+  'kt_agendas_v1',
   'kt_proposals_v2',
   'kt_laporan_kegiatan_v1',
   'kt_surat_items_v2',
@@ -272,6 +275,7 @@ export const SYNC_KEYS = [
   'kt_kas_entries_v2',
   'kt_users_list_v3',
   'kt_news_v1',
+  'kt_activities_v1',
   'kt_categories_v1',
   'kt_org_name',
   'kt_org_address',
@@ -331,7 +335,15 @@ export const collectLocalSyncData = (): Record<string, any> => {
     const val = localStorage.getItem(key);
     if (val !== null) {
       try {
-        data[key] = JSON.parse(val);
+        const parsed = JSON.parse(val);
+        if ((key === 'kt_news_v1' || key === 'kt_activities_v1') && Array.isArray(parsed)) {
+          data[key] = parsed.map((item: any) => ({
+            ...item,
+            photos: Array.isArray(item.photos) ? item.photos.slice(0, 4) : [],
+          }));
+        } else {
+          data[key] = parsed;
+        }
       } catch {
         data[key] = val;
       }
@@ -406,9 +418,52 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
         }
       }
     }
+
+    // Sync News & Dokumentasi Kegiatan
+    const newsList = localData['kt_news_v1'] || localData['kt_activities_v1'];
+    if (Array.isArray(newsList) && newsList.length > 0) {
+      for (const n of newsList.slice(0, 50)) {
+        if (n?.id) {
+          const docRef = doc(collection(orgDoc, 'news'), String(n.id));
+          await setDoc(docRef, { ...n, updatedAt: new Date().toISOString() }, { merge: true });
+        }
+      }
+    }
   } catch (err) {
     // Non-blocking for offline / permissions
     console.debug('Granular subcollections sync handled:', err);
+  }
+};
+
+/**
+ * Direct real-time save of a single news or activity item to Firestore collection
+ */
+export const saveNewsToFirestore = async (item: ActivityItem): Promise<void> => {
+  try {
+    const docRef = doc(db, 'organizations', 'manisjaya', 'news', String(item.id));
+    await setDoc(
+      docRef,
+      {
+        ...item,
+        updatedAt: new Date().toISOString(),
+        deviceId: DEVICE_ID,
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('saveNewsToFirestore notice:', err);
+  }
+};
+
+/**
+ * Direct deletion of a news or activity item from Firestore collection
+ */
+export const deleteNewsFromFirestore = async (itemId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'organizations', 'manisjaya', 'news', String(itemId));
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('deleteNewsFromFirestore notice:', err);
   }
 };
 
@@ -628,6 +683,57 @@ export const startRealtimeSync = (
     }
   );
 
+  // Dedicated real-time listener for News & Dokumentasi Kegiatan collection
+  const newsColRef = collection(db, 'organizations', 'manisjaya', 'news');
+  const unsubscribeNews = onSnapshot(
+    newsColRef,
+    (snapshot) => {
+      if (snapshot.empty) {
+        // If Firestore news collection is empty, seed with local or default items
+        const localSaved = localStorage.getItem('kt_news_v1') || localStorage.getItem('kt_activities_v1');
+        const itemsToSeed = localSaved ? JSON.parse(localSaved) : ACTIVITIES_DATA;
+        if (Array.isArray(itemsToSeed) && itemsToSeed.length > 0) {
+          itemsToSeed.forEach((item) => {
+            saveNewsToFirestore(item).catch(() => {});
+          });
+        }
+        return;
+      }
+
+      const newsList: ActivityItem[] = [];
+      snapshot.forEach((d) => {
+        const item = d.data() as ActivityItem;
+        if (item && item.id) {
+          newsList.push(item);
+        }
+      });
+
+      // Sort by date / updatedAt newest first
+      newsList.sort((a, b) => {
+        const timeA = (a as any).updatedAt || a.date;
+        const timeB = (b as any).updatedAt || b.date;
+        return String(timeB).localeCompare(String(timeA));
+      });
+
+      const currentStr = localStorage.getItem('kt_news_v1');
+      const newStr = JSON.stringify(newsList);
+      if (currentStr !== newStr) {
+        localStorage.setItem('kt_news_v1', newStr);
+        localStorage.setItem('kt_activities_v1', newStr);
+        window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: newsList } }));
+        window.dispatchEvent(
+          new CustomEvent('kt_cloud_sync_update', {
+            detail: { modifiedKeys: ['kt_news_v1', 'kt_activities_v1'] },
+          })
+        );
+        onRemoteUpdateReceived?.(['kt_news_v1', 'kt_activities_v1']);
+      }
+    },
+    (err) => {
+      console.warn('Firestore news listener notice:', err.message);
+    }
+  );
+
   // Network Online / Offline handlers
   const handleOnline = () => {
     if (Date.now() < quotaExhaustedUntil) {
@@ -658,6 +764,7 @@ export const startRealtimeSync = (
 
   return () => {
     unsubscribeFirestore();
+    unsubscribeNews();
     window.removeEventListener('online', handleOnline);
     window.removeEventListener('offline', handleOffline);
   };

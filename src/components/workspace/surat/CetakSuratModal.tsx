@@ -13,6 +13,8 @@ import {
   SuratKeluarItem,
   DisposisiItem,
 } from '../../../types/surat';
+import { OfficialKopSurat } from './OfficialKopSurat';
+import { OfficialSignatureBlock } from './OfficialSignatureBlock';
 
 interface CetakSuratModalProps {
   isOpen: boolean;
@@ -55,7 +57,7 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
                 {suratKeluar ? `Pratinjau Cetak Surat: ${suratKeluar.nomorSurat}` : `Lembar Disposisi Resmi: ${lembarDisposisi?.nomorDisposisi}`}
               </h2>
               <p className="text-[11px] text-slate-400">
-                Format baku A4 siap cetak dengan kepala surat resmi dan stempel organisasi
+                Format baku A4 siap cetak dengan kepala surat resmi dan tanda tangan resmi
               </p>
             </div>
           </div>
@@ -92,125 +94,75 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
           {suratKeluar && (
             <div className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[760px] min-h-[960px] p-8 sm:p-12 font-serif text-xs leading-relaxed flex flex-col justify-between">
               <div>
-                {/* OFFICIAL KOP SURAT */}
-                <div className="border-b-[3px] border-double border-slate-900 pb-3 mb-6">
-                  <div className="flex items-center justify-between gap-4 font-sans">
-                    {/* Left Logo */}
-                    <div className="w-16 h-16 rounded-full border-2 border-blue-600 flex flex-col items-center justify-center p-1 text-center font-bold text-blue-700 text-[9px] shrink-0 bg-blue-50/50">
-                      <span>KARANG</span>
-                      <span>TARUNA</span>
-                    </div>
+                {/* 100% SAMA SEPERTI GAMBAR: OFFICIAL KOP SURAT */}
+                <OfficialKopSurat />
 
-                    {/* Middle Text */}
-                    <div className="text-center flex-1">
-                      <h4 className="text-xs uppercase font-bold tracking-wider text-slate-700">
-                        PENGURUS KARANG TARUNA KELURAHAN MANIS JAYA
-                      </h4>
-                      <h2 className="text-sm sm:text-base font-black uppercase tracking-tight text-slate-900 mt-0.5">
-                        KECAMATAN JATIUWUNG - KOTA TANGERANG
-                      </h2>
-                      <p className="text-[10px] text-slate-600 font-medium mt-1">
-                        Sekretariat: Jl. Manis Jaya Raya No. 12, Kel. Manis Jaya, Kec. Jatiuwung, Kota Tangerang 15136
-                      </p>
-                      <p className="text-[10px] text-slate-500">
-                        Telp/WA: 0812 8912 3450 | Email: sekretariat@karangtarunamanisjaya.id | Laman: manisjaya.id
-                      </p>
-                    </div>
-
-                    {/* Right Logo */}
-                    <div className="w-16 h-16 rounded-full border-2 border-emerald-600 flex flex-col items-center justify-center p-1 text-center font-bold text-emerald-700 text-[9px] shrink-0 bg-emerald-50/50">
-                      <span>KOTA</span>
-                      <span>TANGERANG</span>
-                    </div>
-                  </div>
+                {/* Tanggal Surat di Kanan Atas */}
+                <div className="text-right text-xs mb-3 font-serif" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                  Manis Jaya, {suratKeluar.tanggalSurat}
                 </div>
 
-                {/* Surat Metadata */}
-                <div className="flex justify-between items-start mb-6 font-sans text-xs">
-                  <table className="text-left space-y-1">
+                {/* Surat Metadata (Kiri: Nomor, Lamp, Perihal) dan Tujuan (Kanan: Kepada Yth) */}
+                <div className="grid grid-cols-2 gap-4 items-start mb-6 font-serif text-xs text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                  {/* Kolom Kiri: Nomor, Lamp, Perihal */}
+                  <table className="text-left w-full border-collapse">
                     <tbody>
                       <tr>
-                        <td className="pr-2 font-semibold">Nomor</td>
-                        <td className="pr-2">:</td>
-                        <td className="font-mono font-bold">{suratKeluar.nomorSurat}</td>
+                        <td className="w-14 py-0.5 font-medium align-top">Nomor</td>
+                        <td className="w-4 py-0.5 align-top">:</td>
+                        <td className="py-0.5 font-bold font-mono align-top">{suratKeluar.nomorSurat}</td>
                       </tr>
                       <tr>
-                        <td className="pr-2 font-semibold">Sifat</td>
-                        <td className="pr-2">:</td>
-                        <td>{suratKeluar.sifatSurat}</td>
+                        <td className="py-0.5 font-medium align-top">Lamp</td>
+                        <td className="py-0.5 align-top">:</td>
+                        <td className="py-0.5 align-top">
+                          {suratKeluar.lampiran && suratKeluar.lampiran.length > 0
+                            ? `${suratKeluar.lampiran.length} Berkas`
+                            : '-'}
+                        </td>
                       </tr>
                       <tr>
-                        <td className="pr-2 font-semibold">Lampiran</td>
-                        <td className="pr-2">:</td>
-                        <td>{suratKeluar.lampiran && suratKeluar.lampiran.length > 0 ? `${suratKeluar.lampiran.length} Berkas` : '-'}</td>
-                      </tr>
-                      <tr>
-                        <td className="pr-2 font-semibold align-top">Perihal</td>
-                        <td className="pr-2 align-top">:</td>
-                        <td className="font-bold">{suratKeluar.perihal}</td>
+                        <td className="py-0.5 font-medium align-top">Perihal</td>
+                        <td className="py-0.5 align-top">:</td>
+                        <td className="py-0.5 font-bold align-top leading-snug">
+                          {suratKeluar.perihal}
+                        </td>
                       </tr>
                     </tbody>
                   </table>
 
-                  <div className="text-right">
-                    <div>Manis Jaya, {suratKeluar.tanggalSurat}</div>
+                  {/* Kolom Kanan: Kepada Yth */}
+                  <div className="text-left font-serif text-xs leading-snug pl-2">
+                    <p className="font-semibold">Kepada Yth : Bapak/Ibu</p>
+                    <p className="font-bold text-black">{suratKeluar.tujuan || 'Pimpinan Perusahaan'}</p>
+                    {suratKeluar.instansi && <p className="font-bold text-black">{suratKeluar.instansi}</p>}
+                    <p className="mt-1">Di –</p>
+                    <p className="pl-6">{suratKeluar.alamat || 'Tempat'}</p>
                   </div>
                 </div>
 
-                {/* Recipient */}
-                <div className="mb-6 font-sans text-xs">
-                  <div>Kepada Yth.</div>
-                  <div className="font-bold text-slate-900">{suratKeluar.tujuan}</div>
-                  {suratKeluar.instansi && <div>{suratKeluar.instansi}</div>}
-                  {suratKeluar.alamat && <div>di {suratKeluar.alamat}</div>}
+                {/* Salam Pembuka */}
+                <div className="mb-3 font-serif text-xs text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                  <p className="font-semibold">Dengan Hormat</p>
                 </div>
 
-                {/* Body Content */}
-                <div className="mb-8 whitespace-pre-line text-justify leading-relaxed font-sans text-xs text-slate-800">
+                {/* Batang Tubuh Isi Surat */}
+                <div
+                  className="mb-8 whitespace-pre-line text-justify leading-relaxed font-serif text-xs text-black"
+                  style={{ fontFamily: '"Times New Roman", Times, serif' }}
+                >
                   {suratKeluar.isiSurat}
                 </div>
               </div>
 
-              {/* Signatures & Stamp */}
+              {/* TANDA TANGAN SESUAI JUMLAH PENANDATANGAN SURAT (TANPA STEMPEL) */}
               <div>
-                <div className="flex justify-end mt-10 font-sans">
-                  <div className="text-center min-w-[260px]">
-                    <div className="text-xs text-slate-700">Pengurus Karang Taruna Kelurahan Manis Jaya</div>
-                    
-                    <div className="h-24 flex items-center justify-center relative my-1">
-                      {suratKeluar.stempelOrganisasi && (
-                        <div className="w-24 h-24 rounded-full border-2 border-dashed border-indigo-700/80 text-indigo-800 font-bold text-[9px] flex flex-col items-center justify-center text-center rotate-[-12deg] absolute bg-indigo-50/20 shadow-xs pointer-events-none">
-                          <span className="text-[7px]">PENGURUS</span>
-                          <span className="font-black text-[9px] uppercase tracking-wide">KARANG TARUNA</span>
-                          <span className="text-[7px]">KELURAHAN MANIS JAYA</span>
-                        </div>
-                      )}
-                      <div className="font-serif italic text-slate-300 text-xs">(Tanda Tangan Elektronik Sah)</div>
-                    </div>
-
-                    <div className="space-y-2">
-                      {suratKeluar.penandatangan.map((ttd, i) => (
-                        <div key={i} className="text-xs">
-                          <div className="font-bold underline uppercase text-slate-900">{ttd.nama}</div>
-                          <div className="text-slate-600">{ttd.jabatan}</div>
-                          {ttd.ktaNo && <div className="text-[10px] text-slate-400 font-mono">KTA: {ttd.ktaNo}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tembusan */}
-                {suratKeluar.tembusan && suratKeluar.tembusan.length > 0 && (
-                  <div className="mt-8 pt-4 border-t border-slate-200 font-sans text-[11px] text-slate-600">
-                    <div className="font-bold mb-1">Tembusan:</div>
-                    <ol className="list-decimal list-inside space-y-0.5">
-                      {suratKeluar.tembusan.map((t, idx) => (
-                        <li key={idx}>{t}</li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
+                <OfficialSignatureBlock
+                  signatories={suratKeluar.penandatangan}
+                  withStamp={false}
+                  showTembusan={Boolean(suratKeluar.tembusan && suratKeluar.tembusan.length > 0)}
+                  tembusanList={suratKeluar.tembusan || []}
+                />
               </div>
             </div>
           )}

@@ -27,6 +27,7 @@ import {
   getInitialSuratKeluarData,
   getInitialDisposisiData,
 } from '../../data/suratInitialData';
+import { addNotification } from '../../services/notificationService';
 
 import { SuratDashboard } from './surat/SuratDashboard';
 import { SuratMasukTab } from './surat/SuratMasukTab';
@@ -284,9 +285,23 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
     if (isEdit) {
       setSuratMasuk(suratMasuk.map((s) => (s.id === item.id ? item : s)));
       onToast(`Surat Masuk "${item.nomorSurat}" berhasil diperbarui.`);
+      addNotification({
+        title: 'Surat Masuk Diperbarui',
+        message: `${item.nomorSurat} dari ${item.instansi} (${item.perihal})`,
+        type: 'surat',
+        linkTab: 'surat',
+        actionLabel: 'Buka Surat',
+      });
     } else {
       setSuratMasuk([item, ...suratMasuk]);
       onToast(`Surat Masuk dari "${item.instansi}" berhasil dicatat.`);
+      addNotification({
+        title: 'Surat Masuk Baru',
+        message: `${item.nomorSurat} dari ${item.instansi} (${item.perihal})`,
+        type: 'surat',
+        linkTab: 'surat',
+        actionLabel: 'Buka Surat',
+      });
 
       if (autoCreateDisposisi) {
         setDisposisiTargetSurat(item);
@@ -317,9 +332,23 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
     if (isEdit) {
       setSuratKeluar(suratKeluar.map((s) => (s.id === item.id ? item : s)));
       onToast(`Surat Keluar "${item.nomorSurat}" berhasil diperbarui.`);
+      addNotification({
+        title: 'Surat Keluar Diperbarui',
+        message: `${item.nomorSurat} untuk ${item.tujuan} (${item.perihal})`,
+        type: 'surat',
+        linkTab: 'surat',
+        actionLabel: 'Buka Surat',
+      });
     } else {
       setSuratKeluar([item, ...suratKeluar]);
       onToast(`Surat Keluar "${item.nomorSurat}" berhasil diterbitkan!`);
+      addNotification({
+        title: 'Surat Keluar Diterbitkan',
+        message: `${item.nomorSurat} untuk ${item.tujuan} (${item.perihal})`,
+        type: 'surat',
+        linkTab: 'surat',
+        actionLabel: 'Buka Surat',
+      });
     }
   };
 
@@ -353,6 +382,13 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
         )
       );
       onToast(`Lembar Disposisi "${item.nomorDisposisi}" berhasil diterbitkan.`);
+      addNotification({
+        title: 'Disposisi Diterbitkan',
+        message: `Disposisi ${item.nomorDisposisi} diteruskan kepada ${item.kepada}`,
+        type: 'surat',
+        linkTab: 'surat',
+        actionLabel: 'Buka Disposisi',
+      });
     }
   };
 

@@ -25,6 +25,8 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
+import { OfficialKopSurat } from './surat/OfficialKopSurat';
+import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
 
 export interface LaporanKegiatanItem {
   id: string;
@@ -332,6 +334,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Selected Detail Item (Defaults to Item #1 from image)
   const [selectedItem, setSelectedItem] = useState<LaporanKegiatanItem>(() => laporanList[0] || INITIAL_LAPORAN_DATA[0]);
@@ -408,14 +411,12 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
 
   // Export handlers
   const handlePrint = () => {
-    window.print();
+    setShowPrintModal(true);
   };
 
   const handleExportPDF = () => {
-    onToast('Menyiapkan dokumen PDF Laporan Kegiatan Karang Taruna...');
-    setTimeout(() => {
-      window.print();
-    }, 500);
+    setShowPrintModal(true);
+    onToast('Membuka pratinjau cetak resmi Laporan Kegiatan...');
   };
 
   const handleExportExcel = () => {
@@ -1237,6 +1238,126 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------------- */}
+      {/* MODAL PRATINJAU CETAK RESMI LAPORAN KEGIATAN 100% PERSIS GAMBAR */}
+      {/* ----------------------------------------------------------------------- */}
+      {showPrintModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-300 flex flex-col max-h-[94vh]">
+            {/* Header Modal Bar */}
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white rounded-t-2xl print:hidden">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-blue-400" />
+                <h3 className="font-bold text-sm sm:text-base">Pratinjau Dokumen Cetak Laporan Kegiatan</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Cetak Sekarang
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors ml-1 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Paper Document Container (100% Sama Seperti Gambar) */}
+            <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-100 flex justify-center">
+              <div
+                className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[780px] p-8 sm:p-12 font-serif text-xs leading-relaxed flex flex-col justify-between"
+                style={{ fontFamily: '"Times New Roman", Times, serif' }}
+              >
+                <div>
+                  {/* KOP SURAT RESMI 100% PERSIS GAMBAR */}
+                  <OfficialKopSurat />
+
+                  {/* Tanggal & Tempat */}
+                  <div className="text-right text-xs mb-4 text-black">
+                    Manis Jaya,{' '}
+                    {new Date().toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </div>
+
+                  {/* Judul Laporan */}
+                  <div className="text-center my-4 font-sans">
+                    <h2 className="text-base sm:text-lg font-black uppercase text-black tracking-wide">
+                      LAPORAN REKAPITULASI DOKUMENTASI & KEGIATAN
+                    </h2>
+                    <h3 className="text-xs sm:text-sm font-bold uppercase text-slate-700 mt-0.5">
+                      PENGURUS KARANG TARUNA KELURAHAN MANIS JAYA
+                    </h3>
+                    <p className="text-[11px] text-slate-600 mt-1 font-serif italic">
+                      Periode: {startDate} s/d {endDate} | Kategori: {selectedKategori}
+                    </p>
+                  </div>
+
+                  {/* Tabel Data Rekapitulasi Kegiatan */}
+                  <div className="my-5 overflow-x-auto">
+                    <table className="w-full border-collapse border border-black text-[11px]">
+                      <thead>
+                        <tr className="bg-slate-100 text-black">
+                          <th className="border border-black px-2 py-1.5 text-center w-8">No</th>
+                          <th className="border border-black px-2 py-1.5 text-center w-20">Tanggal</th>
+                          <th className="border border-black px-3 py-1.5 text-left">Nama / Agenda Kegiatan</th>
+                          <th className="border border-black px-2 py-1.5 text-center w-24">Kategori</th>
+                          <th className="border border-black px-2 py-1.5 text-left w-28">Lokasi</th>
+                          <th className="border border-black px-2 py-1.5 text-center w-20">Peserta</th>
+                          <th className="border border-black px-2 py-1.5 text-center w-20">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredList.slice(0, 15).map((item, idx) => (
+                          <tr key={item.id} className="text-black">
+                            <td className="border border-black px-2 py-1 text-center font-mono">{idx + 1}</td>
+                            <td className="border border-black px-2 py-1 text-center">{item.tanggal}</td>
+                            <td className="border border-black px-3 py-1 font-semibold">{item.judul}</td>
+                            <td className="border border-black px-2 py-1 text-center">{item.kategori}</td>
+                            <td className="border border-black px-2 py-1">{item.lokasi}</td>
+                            <td className="border border-black px-2 py-1 text-center">{item.peserta}</td>
+                            <td className="border border-black px-2 py-1 text-center font-medium">{item.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Keterangan & Catatan Pelaksanaan */}
+                  <div className="my-4 text-xs text-black leading-relaxed">
+                    <p className="indent-6">
+                      Demikian laporan rekapitulasi kegiatan ini disusun sebagai wujud pertanggungjawaban
+                      serta dokumentasi resmi program kerja Karang Taruna Kelurahan Manis Jaya. Seluruh kegiatan
+                      telah terlaksana dengan mengedepankan koordinasi bersama warga, pembina, serta pihak kelurahan.
+                    </p>
+                  </div>
+                </div>
+
+                {/* POSISI TANDA TANGAN LAPORAN (TANPA STEMPEL SESUAI INSTRUKSI RESMI) */}
+                <div className="mt-8">
+                  <OfficialSignatureBlock
+                    ketuaTitle="Ketua Umum"
+                    ketuaName="Muhammad Ryan Pratama, S.Kom."
+                    sekretarisTitle="Sekretaris Umum"
+                    sekretarisName="Dinda Kirana S., S.AP."
+                    withStamp={false}
+                    showTembusan={false}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

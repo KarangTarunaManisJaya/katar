@@ -1,6 +1,8 @@
 import React from 'react';
 import { Printer, ArrowLeft, Download, ShieldCheck } from 'lucide-react';
 import { ProposalItem } from '../../../types/proposal';
+import { OfficialKopSurat } from '../surat/OfficialKopSurat';
+import { OfficialSignatureBlock } from '../surat/OfficialSignatureBlock';
 
 interface ProposalPrintViewProps {
   proposal: ProposalItem;
@@ -40,40 +42,8 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
 
       {/* Official A4 Document Container */}
       <div className="bg-white max-w-4xl mx-auto p-8 sm:p-12 rounded-2xl border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0 print:m-0 text-slate-900 font-serif leading-relaxed text-sm">
-        {/* Kop Surat Resmi */}
-        <div className="border-b-4 border-double border-slate-900 pb-4 mb-6 text-center relative">
-          <div className="flex items-center justify-between gap-4">
-            <div className="w-20 h-20 flex items-center justify-center p-1 border border-slate-300 rounded-full shrink-0">
-              <img
-                src="/assets/images/manis_jaya_gate_1790588960710.jpg"
-                alt="Logo Karang Taruna"
-                className="w-16 h-16 rounded-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            </div>
-
-            <div className="flex-1 text-center font-sans">
-              <h3 className="text-xs uppercase tracking-widest font-semibold text-slate-700">
-                PENGURUS KARANG TARUNA KELURAHAN MANIS JAYA
-              </h3>
-              <h2 className="text-xl sm:text-2xl font-black uppercase text-slate-950 tracking-wide mt-0.5">
-                KARANG TARUNA MANIS JAYA
-              </h2>
-              <p className="text-xs text-slate-600 font-medium mt-1">
-                Kecamatan Jatiuwung, Kota Tangerang, Provinsi Banten 15136
-              </p>
-              <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                Sekretariat: Jl. Raya Manis Jaya No. 01 | Email: karangtaruna@manisjaya.desa.id | Telp: (021) 590-2134
-              </p>
-            </div>
-
-            <div className="w-20 shrink-0 hidden sm:block text-right">
-              <span className="text-[10px] font-mono font-bold text-slate-400">REV-2026/A4</span>
-            </div>
-          </div>
-        </div>
+        {/* Kop Surat Resmi 100% Persis Gambar */}
+        <OfficialKopSurat />
 
         {/* Judul & Nomor Proposal */}
         <div className="text-center font-sans mb-8">
@@ -232,58 +202,25 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
           </div>
         </div>
 
-        {/* Lembar Pengesahan / Kolom Tanda Tangan Resmi */}
-        <div className="break-inside-avoid mt-12 pt-6 font-sans text-xs">
-          <div className="text-right mb-6">
+        {/* Lembar Pengesahan / Kolom Tanda Tangan 100% Persis Gambar */}
+        <div className="break-inside-avoid mt-10 pt-6">
+          <div className="text-right mb-4 font-serif text-xs text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
             <p>Manis Jaya, {proposal.tanggalProposal}</p>
           </div>
 
-          {/* Panitia Pelaksana */}
-          <div className="grid grid-cols-2 gap-8 text-center mb-10">
-            <div>
-              <p className="font-bold">Ketua Panitia Pelaksana</p>
-              <div className="h-20 flex items-center justify-center italic text-slate-300 text-xs">
-                (Tanda Tangan Digital)
-              </div>
-              <p className="font-bold underline text-slate-900">{proposal.kepanitiaan.ketuaPanitia}</p>
-            </div>
-            <div>
-              <p className="font-bold">Sekretaris Panitia</p>
-              <div className="h-20 flex items-center justify-center italic text-slate-300 text-xs">
-                (Tanda Tangan Digital)
-              </div>
-              <p className="font-bold underline text-slate-900">{proposal.kepanitiaan.sekretaris}</p>
-            </div>
-          </div>
-
-          {/* Mengetahui Pimpinan & Lurah */}
-          <div className="text-center font-bold mb-4 uppercase text-[11px] tracking-wider text-slate-600">
-            Mengetahui & Menyetujui:
-          </div>
-
-          <div className="grid grid-cols-2 gap-8 text-center relative">
-            {/* Stempel Organisasi */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-4 w-28 h-28 border-2 border-red-600/60 rounded-full flex items-center justify-center text-red-600/70 font-bold text-[9px] uppercase tracking-tighter text-center pointer-events-none rotate-12">
-              KARANG TARUNA<br />MANIS JAYA<br />KOTA TANGERANG
-            </div>
-
-            <div>
-              <p className="font-bold">Ketua Karang Taruna Manis Jaya</p>
-              <div className="h-20 flex items-center justify-center italic text-slate-300 text-xs">
-                (Tanda Tangan & Stempel)
-              </div>
-              <p className="font-bold underline text-slate-900">IIK ANDRIYANA</p>
-            </div>
-
-            <div>
-              <p className="font-bold">Lurah Kelurahan Manis Jaya</p>
-              <div className="h-20 flex items-center justify-center italic text-slate-300 text-xs">
-                (Tanda Tangan & Cap Kelurahan)
-              </div>
-              <p className="font-bold underline text-slate-900">DRS. H. MULYADI, M.SI</p>
-              <p className="text-[10px] text-slate-500 font-mono">NIP. 19740512 199803 1 004</p>
-            </div>
-          </div>
+          <OfficialSignatureBlock
+            ketuaTitle="Ketua Pelaksana"
+            ketuaName={proposal.kepanitiaan.ketuaPanitia || 'Andriansyah'}
+            sekretarisTitle="Sekretaris"
+            sekretarisName={proposal.kepanitiaan.sekretaris || 'Eko Mujianto'}
+            withStamp={false}
+            showTembusan={true}
+            tembusanList={[
+              'Lurah Manis Jaya',
+              'Pembina Karang Taruna Manis Jaya',
+              'Karang Taruna Kecamatan Jatiuwung',
+            ]}
+          />
         </div>
       </div>
     </div>

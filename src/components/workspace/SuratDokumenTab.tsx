@@ -32,6 +32,8 @@ import {
   FileCode,
 } from 'lucide-react';
 import { useBranding } from '../../context/BrandingContext';
+import { OfficialKopSurat } from './surat/OfficialKopSurat';
+import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
 
 interface SuratDokumenTabProps {
   onToast: (msg: string) => void;
@@ -963,73 +965,72 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
               Pratinjau Hasil Cetak Kepala Surat (Live Kop Surat Preview):
             </span>
 
-            <div className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto shadow-sm">
-              <div
-                className={`flex items-center justify-between ${
-                  jarakLogoTeks === 'rapat' ? 'gap-3' : jarakLogoTeks === 'renggang' ? 'gap-8' : 'gap-5'
-                }`}
-              >
-                {/* Left Logo */}
-                <div
-                  className={`shrink-0 flex items-center justify-center ${
-                    ukuranLogo === 'kecil' ? 'w-12 h-12' : ukuranLogo === 'besar' ? 'w-20 h-20' : 'w-16 h-16'
-                  }`}
-                >
-                  <img src={docLogoOrg} alt="Logo Kop Kiri" className="max-w-full max-h-full object-contain" />
-                </div>
+            <div className="bg-white border-2 border-slate-300 rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto shadow-sm">
+              {/* 100% SAMA SEPERTI GAMBAR RESMI */}
+              <OfficialKopSurat />
 
-                {/* Center Text Header */}
-                <div className="flex-1 text-center font-serif text-slate-900">
-                  <h4 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide leading-tight">
-                    {namaOrganisasi}
-                  </h4>
-                  <h3 className="text-sm sm:text-base font-black uppercase tracking-wider text-blue-900 leading-tight mt-0.5">
-                    {kopNamaOrg}
-                  </h3>
-                  <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-700 mt-0.5">
-                    {kopNamaWilayah}
-                  </p>
-                  <p className="text-[10px] sm:text-[11px] text-slate-600 font-sans mt-1 leading-snug">
-                    {kopAlamat}
-                  </p>
-                  <p className="text-[9px] sm:text-[10px] text-slate-500 font-sans leading-tight">
-                    {kopKontak}
-                  </p>
-                </div>
+              <div className="text-right text-xs my-3 font-serif" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                Manis Jaya, 15 September 2026
+              </div>
 
-                {/* Right Logo (if present or symmetrical) */}
-                <div
-                  className={`shrink-0 flex items-center justify-center ${
-                    ukuranLogo === 'kecil' ? 'w-12 h-12' : ukuranLogo === 'besar' ? 'w-20 h-20' : 'w-16 h-16'
-                  }`}
-                >
-                  {docLogoTambahan ? (
-                    <img src={docLogoTambahan} alt="Logo Kop Kanan" className="max-w-full max-h-full object-contain" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl border border-dashed border-slate-200 flex items-center justify-center text-[9px] text-slate-300">
-                      Logo Kanan
-                    </div>
-                  )}
+              {/* Contoh Metadata Surat */}
+              <div className="grid grid-cols-2 gap-4 items-start my-4 font-serif text-xs text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                <table className="text-left w-full border-collapse">
+                  <tbody>
+                    <tr>
+                      <td className="w-14 py-0.5 font-medium">Nomor</td>
+                      <td className="w-4 py-0.5">:</td>
+                      <td className="py-0.5 font-bold font-mono">008 /KATAR.MJ/IX/2026</td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 font-medium">Lamp</td>
+                      <td className="py-0.5">:</td>
+                      <td className="py-0.5">-</td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 font-medium align-top">Perihal</td>
+                      <td className="py-0.5 align-top">:</td>
+                      <td className="py-0.5 font-bold leading-snug">
+                        Permohonan Pengajuan Dana Corporate Social Responsibility (CSR)
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="text-left pl-2 font-serif text-xs leading-snug">
+                  <p className="font-semibold">Kepada Yth : Bapak/Ibu</p>
+                  <p className="font-bold">Pimpinan Perusahaan</p>
+                  <p className="font-bold">PT. Nulab Pharmaceutical</p>
+                  <p className="mt-1">Di –</p>
+                  <p className="pl-6">Tempat</p>
                 </div>
               </div>
 
-              {/* Kop Underline */}
-              {kopGarisBawah && (
-                <div className="mt-3">
-                  {jenisGaris === 'ganda' ? (
-                    <div className="space-y-0.5">
-                      <div className="border-t-[3px] border-slate-900 w-full" />
-                      <div className="border-t border-slate-900 w-full" />
-                    </div>
-                  ) : jenisGaris === 'tebal' ? (
-                    <div className="border-t-[3px] border-slate-900 w-full" />
-                  ) : jenisGaris === 'putus' ? (
-                    <div className="border-t-2 border-dashed border-slate-800 w-full" />
-                  ) : (
-                    <div className="border-t-2 border-slate-900 w-full" />
-                  )}
-                </div>
-              )}
+              {/* Batang Tubuh Ringkas */}
+              <div className="my-4 text-xs font-serif leading-relaxed text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                <p className="font-semibold mb-2">Dengan Hormat</p>
+                <p className="text-justify indent-6">
+                  Teriring salam dan do'a semoga Allah SWT, senantiasa melimpahkan Rahmat dan Ridho Nya serta
+                  kebahagiaan kepada kita, sehingga lancar dalam menjalankan aktifitas sehari-hari. Amin.
+                </p>
+              </div>
+
+              {/* Posisi Tanda Tangan & Stempel Resmi */}
+              <div className="mt-6 pt-4 border-t border-slate-100">
+                <OfficialSignatureBlock
+                  ketuaTitle="Ketua Pelaksana"
+                  ketuaName="Andriansyah"
+                  sekretarisTitle="Sekretaris"
+                  sekretarisName="Eko Mujianto"
+                  withStamp={stempelAktif}
+                  showTembusan={true}
+                  tembusanList={[
+                    'Lurah Manis Jaya',
+                    'Pembina Karang Taruna Manis Jaya',
+                    'Karang Taruna Kecamatan Jatiuwung',
+                  ]}
+                />
+              </div>
             </div>
           </div>
         </div>

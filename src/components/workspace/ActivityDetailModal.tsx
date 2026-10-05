@@ -1,17 +1,19 @@
 import React from 'react';
-import { X, Calendar, MapPin, User, Image, Share2, Check } from 'lucide-react';
+import { X, Calendar, MapPin, User, Image, Share2, Check, Trash2 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 
 interface ActivityDetailModalProps {
   activity: ActivityItem | null;
   onClose: () => void;
   onToast: (msg: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   activity,
   onClose,
   onToast,
+  onDelete,
 }) => {
   if (!activity) return null;
 
@@ -20,6 +22,13 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
       `Dokumentasi ${activity.title} Karang Taruna Manis Jaya: ${activity.description}`
     );
     onToast('Tautan dan rincian kegiatan berhasil disalin!');
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`Yakin ingin menghapus berita / kegiatan "${activity.title}"?`)) {
+      onDelete?.(activity.id);
+      onClose();
+    }
   };
 
   return (
@@ -50,6 +59,15 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
             >
               <Share2 className="w-4 h-4" />
             </button>
+            {onDelete && (
+              <button
+                onClick={handleDelete}
+                className="p-2 text-rose-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                title="Hapus Berita / Kegiatan"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"

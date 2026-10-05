@@ -30,6 +30,8 @@ import {
   templateSuratPresets,
   generateNextNomorSurat,
 } from '../../../data/suratInitialData';
+import { OfficialKopSurat } from './OfficialKopSurat';
+import { OfficialSignatureBlock } from './OfficialSignatureBlock';
 
 interface BuatSuratFormModalProps {
   isOpen: boolean;
@@ -68,7 +70,7 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
   const [isiSurat, setIsiSurat] = useState('');
   const [tembusanText, setTembusanText] = useState('1. Pembina Karang Taruna\n2. Arsip');
   const [status, setStatus] = useState<StatusSuratKeluar>('Draft');
-  const [stempelOrganisasi, setStempelOrganisasi] = useState(true);
+  const [stempelOrganisasi, setStempelOrganisasi] = useState(false);
 
   // Penandatangan list
   const [penandatangan, setPenandatangan] = useState<PenandatanganInfo[]>([
@@ -611,19 +613,6 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
                     </div>
                   ))}
                 </div>
-
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    type="checkbox"
-                    id="chk-stempel"
-                    checked={stempelOrganisasi}
-                    onChange={(e) => setStempelOrganisasi(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
-                  />
-                  <label htmlFor="chk-stempel" className="text-xs text-slate-700 font-medium cursor-pointer">
-                    Sertakan Cap / Stempel Resmi Karang Taruna Kelurahan Manis Jaya
-                  </label>
-                </div>
               </div>
 
               {/* Lampiran File Section */}
@@ -696,90 +685,78 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
               </div>
             </form>
           ) : (
-            /* LIVE PRATINJAU KOP SURAT RESMI */
             <div className="bg-slate-100 p-4 sm:p-6 rounded-xl overflow-x-auto flex justify-center">
-              <div className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[760px] p-8 sm:p-10 font-serif leading-relaxed text-xs">
+              {/* LIVE PRATINJAU KOP SURAT RESMI 100% PERSIS GAMBAR */}
+              <div
+                className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[760px] p-8 sm:p-10 font-serif leading-relaxed text-xs"
+                style={{ fontFamily: '"Times New Roman", Times, serif' }}
+              >
                 {/* Official Letterhead (KOP SURAT) */}
-                <div className="text-center border-b-2 border-slate-900 pb-3 mb-6 relative">
-                  <div className="flex items-center justify-center gap-4">
-                    <div className="w-16 h-16 rounded-full border-2 border-blue-600 flex items-center justify-center p-1 font-sans text-center font-bold text-blue-700 text-[10px]">
-                      LOGO KATAR
-                    </div>
-                    <div className="text-center font-sans">
-                      <h4 className="text-xs uppercase font-semibold tracking-wider text-slate-600">
-                        PENGURUS KARANG TARUNA KELURAHAN MANIS JAYA
-                      </h4>
-                      <h3 className="text-sm font-black uppercase tracking-tight text-slate-900">
-                        KECAMATAN JATIUWUNG - KOTA TANGERANG
-                      </h3>
-                      <p className="text-[10px] text-slate-500 font-normal">
-                        Sekretariat: Jl. Manis Jaya Raya No. 12, Kel. Manis Jaya, Kec. Jatiuwung, Kota Tangerang 15136
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-normal">
-                        Telp/WA: 0812 8912 3450 | Email: sekretariat@karangtarunamanisjaya.id
-                      </p>
-                    </div>
-                    <div className="w-16 h-16 rounded-full border-2 border-indigo-600 flex items-center justify-center p-1 font-sans text-center font-bold text-indigo-700 text-[10px]">
-                      KOTA TNG
-                    </div>
+                <OfficialKopSurat />
+
+                {/* Tanggal Surat Kanan Atas */}
+                <div className="text-right text-xs mb-3 font-serif">
+                  Manis Jaya, {tanggalSurat}
+                </div>
+
+                {/* Nomor, Lampiran, Perihal (Kiri) dan Tujuan (Kanan) */}
+                <div className="grid grid-cols-2 gap-4 items-start mb-6 font-serif text-xs text-black">
+                  {/* Kolom Kiri: Nomor, Lamp, Perihal */}
+                  <table className="text-left w-full border-collapse">
+                    <tbody>
+                      <tr>
+                        <td className="w-14 py-0.5 font-medium align-top">Nomor</td>
+                        <td className="w-4 py-0.5 align-top">:</td>
+                        <td className="py-0.5 font-bold font-mono align-top">{nomorSurat || '008 /KATAR.MJ/IX/2026'}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-0.5 font-medium align-top">Lamp</td>
+                        <td className="py-0.5 align-top">:</td>
+                        <td className="py-0.5 align-top">
+                          {lampiranList.length > 0 ? `${lampiranList.length} Berkas` : '-'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-0.5 font-medium align-top">Perihal</td>
+                        <td className="py-0.5 align-top">:</td>
+                        <td className="py-0.5 font-bold align-top leading-snug">
+                          {perihal || 'Permohonan Pengajuan Dana'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Kolom Kanan: Kepada Yth */}
+                  <div className="text-left font-serif text-xs leading-snug pl-2">
+                    <p className="font-semibold">Kepada Yth : Bapak/Ibu</p>
+                    <p className="font-bold text-black">{tujuan || 'Pimpinan Perusahaan'}</p>
+                    {instansi && <p className="font-bold text-black">{instansi}</p>}
+                    <p className="mt-1">Di –</p>
+                    <p className="pl-6">{alamat || 'Tempat'}</p>
                   </div>
                 </div>
 
-                {/* Nomor, Lampiran, Perihal, & Tanggal */}
-                <div className="flex justify-between items-start mb-6 font-sans text-[11px]">
-                  <div className="space-y-1">
-                    <div><b>Nomor</b> : {nomorSurat || '.../.../...'}</div>
-                    <div><b>Lampiran</b> : {lampiranList.length > 0 ? `${lampiranList.length} Berkas` : '-'}</div>
-                    <div><b>Perihal</b> : <b>{perihal || '(Perihal Surat)'}</b></div>
-                    <div><b>Sifat</b> : {sifatSurat}</div>
-                  </div>
-                  <div className="text-right">
-                    <div>Manis Jaya, {tanggalSurat}</div>
-                  </div>
-                </div>
-
-                {/* Tujuan Surat */}
-                <div className="mb-6 font-sans text-[11px]">
-                  <div>Kepada Yth.</div>
-                  <div className="font-bold">{tujuan || '(Pihak Penerima)'}</div>
-                  {instansi && <div>{instansi}</div>}
-                  {alamat && <div>di {alamat}</div>}
+                {/* Salam Pembuka */}
+                <div className="mb-3 font-serif text-xs text-black">
+                  <p className="font-semibold">Dengan Hormat</p>
                 </div>
 
                 {/* Batang Tubuh Isi Surat */}
-                <div className="mb-8 whitespace-pre-line text-justify leading-relaxed font-sans text-xs">
+                <div className="mb-8 whitespace-pre-line text-justify leading-relaxed font-serif text-xs text-black">
                   {isiSurat || 'Isi teks surat dinas belum diisi...'}
                 </div>
 
-                {/* Tanda Tangan */}
-                <div className="flex justify-end mt-8 font-sans">
-                  <div className="text-center min-w-[220px]">
-                    <div>Pengurus Karang Taruna Kelurahan Manis Jaya</div>
-                    <div className="h-20 flex items-center justify-center relative my-1">
-                      {stempelOrganisasi && (
-                        <div className="w-20 h-20 rounded-full border-2 border-dashed border-indigo-600/70 text-indigo-700 font-bold text-[9px] flex items-center justify-center text-center rotate-[-12deg] absolute">
-                          STEMPEL RESMI<br/>MANIS JAYA
-                        </div>
-                      )}
-                      <span className="text-[10px] text-slate-300 italic">(Tanda Tangan Sah)</span>
-                    </div>
-                    {penandatangan.map((ttd, i) => (
-                      <div key={i} className="mb-1">
-                        <div className="font-bold underline uppercase">{ttd.nama}</div>
-                        <div className="text-[10px] text-slate-600">{ttd.jabatan}</div>
-                        {ttd.ktaNo && <div className="text-[9px] text-slate-400">KTA: {ttd.ktaNo}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tembusan */}
-                {tembusanText && (
-                  <div className="mt-8 pt-4 border-t border-slate-200 font-sans text-[10px] text-slate-500">
-                    <div className="font-bold mb-1">Tembusan:</div>
-                    <div className="whitespace-pre-line">{tembusanText}</div>
-                  </div>
-                )}
+                {/* TANDA TANGAN SESUAI JUMLAH PENANDATANGAN FORM (TANPA STEMPEL) */}
+                <OfficialSignatureBlock
+                  signatories={penandatangan}
+                  withStamp={false}
+                  showTembusan={Boolean(tembusanText)}
+                  tembusanList={
+                    tembusanText
+                      ? tembusanText.split('\n').filter(Boolean)
+                      : []
+                  }
+                />
               </div>
             </div>
           )}

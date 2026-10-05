@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Home,
   Users,
@@ -16,9 +16,15 @@ import {
   PlusSquare,
   Database,
   X,
+  User,
+  Cloud,
+  KeyRound,
+  LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
+import { UserAccount } from '../../types/auth';
 
 export type WorkspaceTab =
   | 'beranda'
@@ -43,6 +49,10 @@ interface SidebarProps {
   unreadLettersCount?: number;
   allowedMenus?: WorkspaceTab[];
   onClose?: () => void;
+  currentUser?: UserAccount;
+  onOpenFirebaseConfig?: () => void;
+  onOpenLoginModal?: () => void;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -51,8 +61,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   unreadLettersCount = 3,
   allowedMenus,
   onClose,
+  currentUser: propCurrentUser,
+  onOpenFirebaseConfig,
+  onOpenLoginModal,
+  onLogout,
 }) => {
   const { theme } = useTheme();
+  const [showCollapsedMenu, setShowCollapsedMenu] = useState(false);
+  const [showProfileDetail, setShowProfileDetail] = useState(false);
+
+  // Active user matching top header (di atas)
+  const currentUser = propCurrentUser || (() => {
+    try {
+      const raw = localStorage.getItem('kt_auth_user_v3');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
 
   const isCollapsed = theme?.sidebarState === 'collapsed';
   const showIcon = theme ? theme.showMenuIcon : true;
@@ -449,36 +475,246 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* User Card in sidebar footer (Iik Andriyana) */}
+      {/* User Profile Card & Detail List matching propil user di atas */}
       <div
-        className={`pt-4 ${
+        className={`pt-3 mt-auto ${
           isLight ? 'border-t border-slate-200' : 'border-t border-slate-800/80'
-        } flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-1'}`}
+        }`}
       >
-        <div className="flex items-center gap-2.5">
-          <img
-            src="/src/assets/images/ilk_andriyana_1790589044021.jpg"
-            alt="Iik Andriyana"
-            referrerPolicy="no-referrer"
-            className="w-9 h-9 rounded-full object-cover border border-slate-700 shrink-0"
-          />
-          {!isCollapsed && (
-            <div className="flex flex-col text-left min-w-0">
-              <span
-                className={`text-xs font-bold leading-none truncate ${
-                  isLight ? 'text-slate-900' : 'text-white'
-                }`}
-              >
-                Iik Andriyana
-              </span>
-              <span className={`text-[10px] mt-1 leading-none ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                Admin • Manis Jaya
-              </span>
+        {isCollapsed ? (
+          <div className="relative flex justify-center">
+            <button
+              onClick={() => setShowCollapsedMenu(!showCollapsedMenu)}
+              className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+              title={`${currentUser?.name || 'Administrator'} (${currentUser?.role || 'Admin'})`}
+            >
+              {currentUser?.avatar ? (
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  referrerPolicy="no-referrer"
+                  className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0 shadow-xs"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                  {currentUser?.avatarInitials || (
+                    <User className="w-4 h-4 text-white" />
+                  )}
+                </div>
+              )}
+            </button>
+
+            {showCollapsedMenu && (
+              <div className="absolute bottom-full left-2 mb-2 w-64 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 z-50 animate-fadeIn text-left">
+                <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {currentUser?.name || 'Administrator'}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">
+                    @{currentUser?.username || 'admin'} · {currentUser?.rw || 'Kelurahan Manis Jaya'}
+                  </p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="inline-block text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-400 px-2 py-0.5 rounded">
+                      {currentUser?.role || 'Administrator'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => {
+                      setShowCollapsedMenu(false);
+                      if (onOpenFirebaseConfig) onOpenFirebaseConfig();
+                      else onSelectTab('database');
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Akun & Database Firebase</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowCollapsedMenu(false);
+                      onSelectTab('akses');
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Pengaturan Hak Akses Menu</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowCollapsedMenu(false);
+                      if (onOpenLoginModal) onOpenLoginModal();
+                      else onSelectTab('akses');
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <User className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <span>Ganti Akun Pengurus</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowCollapsedMenu(false);
+                      if (onLogout) onLogout();
+                      else window.location.reload();
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 text-red-500 shrink-0" />
+                    <span>Keluar Akun</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="w-full flex flex-col gap-2">
+            {/* Header info profil sama seperti propil user di atas - klik untuk buka/tutup detail */}
+            <div
+              onClick={() => setShowProfileDetail(!showProfileDetail)}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                isLight
+                  ? 'bg-slate-50/90 border-slate-200/80 hover:bg-slate-100/90 shadow-xs'
+                  : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/80 shadow-xs'
+              }`}
+              title="Klik untuk melihat/menyembunyikan detail profil"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {currentUser?.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                      {currentUser?.avatarInitials || (
+                        <User className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                  )}
+                  <div className="flex flex-col text-left min-w-0">
+                    <p
+                      className={`text-xs font-bold leading-tight truncate ${
+                        isLight ? 'text-slate-900' : 'text-white'
+                      }`}
+                    >
+                      {currentUser?.name || 'Administrator'}
+                    </p>
+                    <p
+                      className={`text-[10px] font-mono leading-tight truncate mt-0.5 ${
+                        isLight ? 'text-slate-500' : 'text-slate-400'
+                      }`}
+                    >
+                      @{currentUser?.username || 'admin'} · {currentUser?.rw || 'Kelurahan Manis Jaya'}
+                    </p>
+                  </div>
+                </div>
+
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 shrink-0 ${
+                    showProfileDetail
+                      ? 'rotate-180 text-blue-600'
+                      : isLight
+                      ? 'text-slate-400'
+                      : 'text-slate-500'
+                  }`}
+                />
+              </div>
+
+              <div className="mt-2 pt-1.5 border-t border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between">
+                <span
+                  className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded ${
+                    isLight
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50'
+                  }`}
+                >
+                  {currentUser?.role || 'Administrator'}
+                </span>
+                <span className={`text-[10px] font-medium flex items-center gap-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Aktif
+                </span>
+              </div>
             </div>
-          )}
-        </div>
-        {!isCollapsed && (
-          <ChevronRight className={`w-4 h-4 ${isLight ? 'text-slate-400' : 'text-slate-400'}`} />
+
+            {/* Detail List: Sembunyikan, ada ketika di klik saja */}
+            {showProfileDetail && (
+              <div className="space-y-1 animate-fadeIn pt-0.5">
+                <button
+                  onClick={() => {
+                    if (onOpenFirebaseConfig) onOpenFirebaseConfig();
+                    else onSelectTab('database');
+                  }}
+                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                    isLight
+                      ? 'text-emerald-800 hover:bg-emerald-50'
+                      : 'text-emerald-400 hover:bg-emerald-950/40'
+                  }`}
+                  title="Akun & Database Firebase"
+                >
+                  <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="truncate">Akun & Database Firebase</span>
+                </button>
+
+                <button
+                  onClick={() => onSelectTab('akses')}
+                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                    currentTab === 'akses'
+                      ? isLight
+                        ? 'bg-amber-100 text-amber-900 font-bold'
+                        : 'bg-amber-950/60 text-amber-300 font-bold'
+                      : isLight
+                      ? 'text-slate-700 hover:bg-slate-100'
+                      : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                  title="Pengaturan Hak Akses Menu"
+                >
+                  <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="truncate">Pengaturan Hak Akses Menu</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (onOpenLoginModal) onOpenLoginModal();
+                    else onSelectTab('akses');
+                  }}
+                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                    isLight
+                      ? 'text-slate-700 hover:bg-slate-100'
+                      : 'text-slate-300 hover:bg-white/5'
+                  }`}
+                  title="Ganti Akun Pengurus"
+                >
+                  <User className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span className="truncate">Ganti Akun Pengurus</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (onLogout) onLogout();
+                    else window.location.reload();
+                  }}
+                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                    isLight
+                      ? 'text-red-600 hover:bg-red-50'
+                      : 'text-red-400 hover:bg-red-950/40'
+                  }`}
+                  title="Keluar Akun"
+                >
+                  <LogOut className="w-4 h-4 text-red-500 shrink-0" />
+                  <span className="truncate">Keluar Akun</span>
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </aside>

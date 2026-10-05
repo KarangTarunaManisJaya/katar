@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { UserAccount } from '../../types/auth';
+import { compressImage, compressMultipleImages } from '../../utils/imageOptimizer';
 
 interface TambahBeritaViewProps {
   currentUser?: UserAccount;
@@ -143,34 +144,29 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     }, 50);
   };
 
-  // Upload Handlers
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Handlers with automatic lightweight compression
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setCoverPhoto(reader.result);
-          onToast('Foto cover utama berhasil diunggah!');
-        }
-      };
-      reader.readAsDataURL(file);
+      onToast('Mengoptimalkan ukuran foto...');
+      const optimized = await compressImage(file, 1024, 0.78);
+      if (optimized) {
+        setCoverPhoto(optimized);
+        onToast('Foto cover utama berhasil diunggah & dioptimalkan!');
+      }
     }
   };
 
-  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === 'string') {
-            setGalleryPhotos((prev) => [...prev, reader.result as string]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-      onToast(`${files.length} foto ditambahkan ke galeri!`);
+      onToast(`Mengoptimalkan ${files.length} foto galeri...`);
+      const optimized = await compressMultipleImages(files, 1000, 0.75);
+      const valid = optimized.filter((p) => Boolean(p));
+      if (valid.length > 0) {
+        setGalleryPhotos((prev) => [...prev, ...valid]);
+        onToast(`${valid.length} foto berhasil ditambahkan ke galeri!`);
+      }
     }
   };
 
@@ -182,17 +178,14 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     }
   };
 
-  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          setThumbnailImage(reader.result);
-          onToast('Thumbnail media sosial berhasil diunggah!');
-        }
-      };
-      reader.readAsDataURL(file);
+      const optimized = await compressImage(file, 600, 0.75);
+      if (optimized) {
+        setThumbnailImage(optimized);
+        onToast('Thumbnail media sosial berhasil diunggah!');
+      }
     }
   };
 

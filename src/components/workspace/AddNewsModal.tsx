@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Plus, Calendar, MapPin, UploadCloud, CheckCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Plus, Calendar, MapPin, UploadCloud, CheckCircle, Image as ImageIcon } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
+import { compressImage } from '../../utils/imageOptimizer';
 
 interface AddNewsModalProps {
   onClose: () => void;
@@ -20,10 +21,26 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
   const [location, setLocation] = useState('Kelurahan Manis Jaya');
   const [description, setDescription] = useState('');
   const [author, setAuthor] = useState('Iik Andriyana');
+  const [uploadedPhoto, setUploadedPhoto] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onToast('Mengoptimalkan foto dokumentasi...');
+      const optimized = await compressImage(file, 1000, 0.78);
+      if (optimized) {
+        setUploadedPhoto(optimized);
+        onToast('Foto dokumentasi berhasil dipilih!');
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
+
+    const chosenImage = uploadedPhoto || '/src/assets/images/manis_jaya_gate_1790588960710.jpg';
 
     const newActivity: ActivityItem = {
       id: `act-${Date.now()}`,
@@ -32,11 +49,11 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
       title,
       date,
       photoCount: 1,
-      image: '/src/assets/images/manis_jaya_gate_1790588960710.jpg',
+      image: chosenImage,
       description,
       location,
       author,
-      photos: ['/src/assets/images/manis_jaya_gate_1790588960710.jpg'],
+      photos: [chosenImage],
     };
 
     onAdd(newActivity);
@@ -157,14 +174,45 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
             />
           </div>
 
-          <div className="p-3 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center">
-            <UploadCloud className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-            <span className="text-xs font-medium text-slate-600 block">
-              Foto dokumentasi utama otomatis disematkan
-            </span>
-            <span className="text-[10px] text-slate-400">
-              Format JPG, PNG hingga resolusi tinggi
-            </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
+
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="p-3.5 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 hover:bg-blue-50/70 cursor-pointer text-center transition-colors"
+          >
+            {uploadedPhoto ? (
+              <div className="flex items-center gap-3">
+                <img
+                  src={uploadedPhoto}
+                  alt="Preview"
+                  className="w-14 h-14 rounded-lg object-cover border border-blue-300 shrink-0"
+                />
+                <div className="text-left">
+                  <span className="text-xs font-bold text-blue-700 block">
+                    Foto Dokumentasi Terpilih ✓
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Klik untuk mengganti foto
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <UploadCloud className="w-6 h-6 text-blue-500 mx-auto mb-1" />
+                <span className="text-xs font-semibold text-blue-700 block">
+                  Pilih / Unggah Foto Dokumentasi (Opsional)
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  Foto otomatis dikompresi agar hemat memori & sinkron instan ke semua ponsel
+                </span>
+              </>
+            )}
           </div>
 
           <div className="pt-2 flex items-center justify-end gap-3">

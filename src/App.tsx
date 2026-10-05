@@ -38,23 +38,37 @@ import {
   startRealtimeSync,
   enableAutoBroadcast,
   pushLocalDataToCloud,
+  saveNewsToFirestore,
+  deleteNewsFromFirestore,
+  notifyLocalDataChanged,
   CloudSyncStatus,
 } from './services/firestoreSyncService';
+import { addNotification } from './services/notificationService';
 
 function AppContent() {
   const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState<WorkspaceTab>('beranda');
   const [activities, setActivities] = useState<ActivityItem[]>(() => {
     try {
-      const saved = localStorage.getItem('kt_agenda_v1');
-      if (saved) return JSON.parse(saved);
+      const savedNews = localStorage.getItem('kt_news_v1');
+      if (savedNews) return JSON.parse(savedNews);
+      const savedAct = localStorage.getItem('kt_activities_v1');
+      if (savedAct) return JSON.parse(savedAct);
+      const savedAgenda = localStorage.getItem('kt_agenda_v1');
+      if (savedAgenda) {
+        const parsed = JSON.parse(savedAgenda);
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.badge) {
+          return parsed;
+        }
+      }
     } catch {}
     return ACTIVITIES_DATA;
   });
 
   useEffect(() => {
     try {
-      localStorage.setItem('kt_agenda_v1', JSON.stringify(activities));
+      localStorage.setItem('kt_news_v1', JSON.stringify(activities));
+      localStorage.setItem('kt_activities_v1', JSON.stringify(activities));
     } catch {}
   }, [activities]);
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
@@ -80,6 +94,7 @@ function AppContent() {
     return {
       ...defaultUser,
       ...user,
+      avatar: user?.avatar || defaultUser.avatar,
       allowedMenus,
     };
   };
@@ -159,6 +174,14 @@ function AppContent() {
         localStorage.setItem('kt_auth_user_v3', JSON.stringify(foundCurrent));
       } catch (e) {}
     }
+
+    addNotification({
+      title: 'Data Pengurus Disimpan',
+      message: `${sanitizedList.length} akun pengurus dan hak akses berhasil diperbarui.`,
+      type: 'anggota',
+      linkTab: 'akses',
+      actionLabel: 'Lihat Pengurus',
+    });
   };
 
   const handleLoginUser = (user: UserAccount) => {
@@ -176,9 +199,57 @@ function AppContent() {
     setShowLoginModal(true);
   };
 
-  const handleAddActivity = (newAct: ActivityItem) => {
-    setActivities([newAct, ...activities]);
+  const handleAddActivity = async (newAct: ActivityItem) => {
+    const updated = [newAct, ...activities.filter((a) => a.id !== newAct.id)];
+    setActivities(updated);
+    try {
+      localStorage.setItem('kt_news_v1', JSON.stringify(updated));
+      localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Storage save notice:', e);
+    }
+
+    // Direct real-time write to Firestore News collection + aggregate state
+    saveNewsToFirestore(newAct).catch((err) => console.warn('Firestore news write:', err));
+    pushLocalDataToCloud(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
+    notifyLocalDataChanged('Pembaruan Berita Kegiatan');
+
+    addNotification({
+      title: 'Kegiatan Baru Ditambahkan',
+      message: `${newAct.title} (${newAct.badge}) pada ${newAct.date}`,
+      type: 'kegiatan',
+      linkTab: 'berita',
+      actionLabel: 'Lihat Kegiatan',
+    });
   };
+
+  const handleDeleteActivity = async (id: string) => {
+    const updated = activities.filter((a) => a.id !== id);
+    setActivities(updated);
+    try {
+      localStorage.setItem('kt_news_v1', JSON.stringify(updated));
+      localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
+    } catch {}
+
+    deleteNewsFromFirestore(id).catch(() => {});
+    pushLocalDataToCloud('Hapus berita kegiatan', currentUser.name).catch(() => {});
+    notifyLocalDataChanged('Hapus Berita Kegiatan');
+    setSelectedActivity(null);
+    showToast('Berita kegiatan berhasil dihapus.');
+  };
+
+  // Listen for real-time news update events from Firestore listener
+  useEffect(() => {
+    const handleNewsUpdate = (e: any) => {
+      if (e.detail?.news && Array.isArray(e.detail.news)) {
+        setActivities(e.detail.news);
+      }
+    };
+    window.addEventListener('kt_news_updated', handleNewsUpdate);
+    return () => {
+      window.removeEventListener('kt_news_updated', handleNewsUpdate);
+    };
+  }, []);
 
   // Filter activities based on search query in header
   // Real-time Cloud Firestore synchronization across all devices
@@ -191,15 +262,22 @@ function AppContent() {
       },
       (updatedKeys) => {
         showToast('Data diperbarui secara real-time dari komputer/perangkat lain!');
+        addNotification({
+          title: 'Sinkronisasi Real-Time',
+          message: `Pembaruan data (${updatedKeys.join(', ')}) diterima dari perangkat lain.`,
+          type: 'sync',
+          linkTab: 'database',
+          actionLabel: 'Buka Database',
+        });
         if (updatedKeys.includes('kt_users_list_v3')) {
           try {
             const raw = localStorage.getItem('kt_users_list_v3');
             if (raw) setUsersList(JSON.parse(raw));
           } catch {}
         }
-        if (updatedKeys.includes('kt_agenda_v1')) {
+        if (updatedKeys.includes('kt_news_v1') || updatedKeys.includes('kt_activities_v1')) {
           try {
-            const raw = localStorage.getItem('kt_agenda_v1');
+            const raw = localStorage.getItem('kt_news_v1') || localStorage.getItem('kt_activities_v1');
             if (raw) setActivities(JSON.parse(raw));
           } catch {}
         }
@@ -216,6 +294,13 @@ function AppContent() {
       showToast('Menyinkronkan data ke Cloud Firestore...');
       await pushLocalDataToCloud('Sinkronisasi manual pengguna', currentUser.name);
       showToast('Data berhasil disinkronkan ke Cloud Firestore! Semua komputer langsung terupdate.');
+      addNotification({
+        title: 'Sinkronisasi Cloud Berhasil',
+        message: 'Seluruh berkas dan data tersimpan aman di Google Cloud Firestore.',
+        type: 'sync',
+        linkTab: 'database',
+        actionLabel: 'Lihat Status',
+      });
     } catch (err: any) {
       showToast(`Gagal sinkronisasi cloud: ${err.message}`);
     }
@@ -276,7 +361,11 @@ function AppContent() {
         <div className="hidden lg:block">
           <Sidebar
             currentTab={currentTab}
+            currentUser={currentUser}
             allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
+            onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
+            onOpenLoginModal={() => setShowLoginModal(true)}
+            onLogout={handleLogout}
             onSelectTab={(tab) => {
               const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
               if (isAllowed) {
@@ -299,8 +388,21 @@ function AppContent() {
             <div className="relative z-10 w-64 bg-white h-full shadow-2xl flex flex-col animate-slideInLeft">
               <Sidebar
                 currentTab={currentTab}
+                currentUser={currentUser}
                 allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
                 onClose={() => setMobileMenuOpen(false)}
+                onOpenFirebaseConfig={() => {
+                  setMobileMenuOpen(false);
+                  setShowFirebaseModal(true);
+                }}
+                onOpenLoginModal={() => {
+                  setMobileMenuOpen(false);
+                  setShowLoginModal(true);
+                }}
+                onLogout={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
                 onSelectTab={(tab) => {
                   const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
                   if (isAllowed) {
@@ -627,6 +729,7 @@ function AppContent() {
           activity={selectedActivity}
           onClose={() => setSelectedActivity(null)}
           onToast={showToast}
+          onDelete={handleDeleteActivity}
         />
       )}
 

@@ -104,12 +104,36 @@
         "reason": { "type": "string" },
         "deviceId": { "type": "string" }
       }
+    },
+    "News": {
+      "title": "News",
+      "description": "Berita dan dokumentasi kegiatan Karang Taruna Manis Jaya",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "badge": { "type": "string" },
+        "badgeColor": { "type": "string" },
+        "date": { "type": "string" },
+        "photoCount": { "type": "number" },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "location": { "type": "string" },
+        "author": { "type": "string" },
+        "photos": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "description"]
     }
   },
   "firestore": {
     "/organizations/manisjaya/live/{stateId}": {
       "schema": "SyncState",
       "description": "Dokumen sinkronisasi real-time lintas perangkat Karang Taruna Manis Jaya"
+    },
+    "/organizations/manisjaya/news/{newsId}": {
+      "schema": "News",
+      "description": "Koleksi berita dan dokumentasi kegiatan Karang Taruna Manis Jaya"
     },
     "/organizations/manisjaya/assets/{assetId}": {
       "schema": "Asset",
