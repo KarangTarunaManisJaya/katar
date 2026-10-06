@@ -34,6 +34,7 @@ import {
 import { useBranding } from '../../context/BrandingContext';
 import { OfficialKopSurat } from './surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
+import { printElementDirectly, downloadElementAsPdf } from '../../utils/pdfExport';
 
 interface SuratDokumenTabProps {
   onToast: (msg: string) => void;
@@ -66,6 +67,8 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
   const [activeSection, setActiveSection] = useState<
     'semua' | 'identitas' | 'kop' | 'penomoran' | 'jenis' | 'template' | 'ttd' | 'cetak'
   >('semua');
+
+  const previewDocRef = useRef<HTMLDivElement>(null);
 
   // =========================================================================
   // 1. IDENTITAS DOKUMEN STATE
@@ -408,6 +411,8 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
     localStorage.setItem('kt_doc_telepon', telepon);
     localStorage.setItem('kt_doc_email', email);
     localStorage.setItem('kt_doc_website', website);
+    localStorage.setItem('kt_doc_logo_org', docLogoOrg);
+    localStorage.setItem('kt_doc_logo_tambahan', docLogoTambahan);
 
     localStorage.setItem('kt_kop_aktif', String(aktifkanKop));
     localStorage.setItem('kt_kop_nama_org', kopNamaOrg);
@@ -475,8 +480,10 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
           if (file) {
             const reader = new FileReader();
             reader.onload = (event) => {
-              setDocLogoOrg(event.target?.result as string);
-              onToast('Logo organisasi berhasil diperbarui!');
+              const res = event.target?.result as string;
+              setDocLogoOrg(res);
+              localStorage.setItem('kt_doc_logo_org', res);
+              onToast('Logo utama organisasi (Kiri) berhasil diperbarui!');
             };
             reader.readAsDataURL(file);
           }
@@ -492,7 +499,9 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
           if (file) {
             const reader = new FileReader();
             reader.onload = (event) => {
-              setDocLogoTambahan(event.target?.result as string);
+              const res = event.target?.result as string;
+              setDocLogoTambahan(res);
+              localStorage.setItem('kt_doc_logo_tambahan', res);
               onToast('Logo pendamping (Kanan) berhasil diunggah!');
             };
             reader.readAsDataURL(file);
@@ -797,6 +806,7 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
                         type="button"
                         onClick={() => {
                           setDocLogoTambahan('');
+                          localStorage.removeItem('kt_doc_logo_tambahan');
                           onToast('Logo tambahan dihapus.');
                         }}
                         className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg"
@@ -1022,7 +1032,7 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
                   ketuaName="Andriansyah"
                   sekretarisTitle="Sekretaris"
                   sekretarisName="Eko Mujianto"
-                  withStamp={stempelAktif}
+                  withStamp={false}
                   showTembusan={true}
                   tembusanList={[
                     'Lurah Manis Jaya',
@@ -1794,7 +1804,10 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
             </div>
 
             {/* Document Mockup Box */}
-            <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl font-serif text-slate-900 space-y-4 text-xs">
+            <div
+              ref={previewDocRef}
+              className="p-6 bg-slate-50 border border-slate-200 rounded-2xl font-serif text-slate-900 space-y-4 text-xs print-sheet"
+            >
               <div className="text-center border-b-2 border-slate-900 pb-2">
                 <h5 className="font-black text-sm uppercase">{kopNamaOrg}</h5>
                 <p className="text-[11px] font-sans text-slate-600">{kopAlamat}</p>
@@ -1837,23 +1850,41 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
               </div>
             </div>
 
-            <div className="pt-2 flex items-center justify-end gap-2 text-xs">
+            <div className="pt-2 flex items-center justify-end gap-2 text-xs flex-wrap">
               <button
                 type="button"
                 onClick={() => setPreviewTemplate(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl"
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl cursor-pointer"
               >
                 Tutup
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  window.print();
+                onClick={async () => {
+                  if (previewDocRef.current) {
+                    const fname = `Sampel_${previewTemplate.judul.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+                    const ok = await downloadElementAsPdf(previewDocRef.current, fname);
+                    if (ok) onToast(`File sampel "${fname}" berhasil diunduh!`);
+                  }
                 }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-1.5"
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (previewDocRef.current) {
+                    printElementDirectly(previewDocRef.current);
+                  } else {
+                    window.print();
+                  }
+                }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Cetak Sampel Dokumen</span>
+                <span>Cetak Dokumen</span>
               </button>
             </div>
           </div>

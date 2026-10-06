@@ -334,11 +334,11 @@ export const SuratKeluarTab: React.FC<SuratKeluarTabProps> = ({
                     <div className="flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => onPrintPreview(item)}
-                        title="Pratinjau Cetak / PDF"
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-xs font-semibold transition-colors"
+                        title="Cetak PDF (A4)"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-xs font-bold transition-colors cursor-pointer"
                       >
                         <Printer className="w-3.5 h-3.5" />
-                        <span>Cetak</span>
+                        <span>Cetak PDF</span>
                       </button>
                       <button
                         onClick={() => onViewDetail(item)}

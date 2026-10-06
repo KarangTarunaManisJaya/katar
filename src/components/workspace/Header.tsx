@@ -18,7 +18,10 @@ import {
   BellOff,
   X,
   ChevronRight,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme } from '../../context/ThemeContext';
 import { BrandLogo } from './BrandLogo';
 import { UserAccount } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
@@ -59,6 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenFirebaseConfig,
   onToggleMobileMenu,
 }) => {
+  const { theme, updateTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -184,6 +188,24 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         )}
+
+        {/* Quick Theme Toggle (Light / Dark) */}
+        <button
+          type="button"
+          onClick={() => {
+            const nextMode = theme.displayMode === 'dark' ? 'light' : 'dark';
+            updateTheme({ displayMode: nextMode });
+          }}
+          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+          title={theme.displayMode === 'dark' ? 'Beralih ke Mode Terang (Light)' : 'Beralih ke Mode Gelap (Dark)'}
+          aria-label="Ganti Tema Tampilan"
+        >
+          {theme.displayMode === 'dark' ? (
+            <Sun className="w-5 h-5 text-amber-400 transition-transform hover:rotate-45" />
+          ) : (
+            <Moon className="w-5 h-5 text-slate-600 transition-transform hover:-rotate-12" />
+          )}
+        </button>
 
         {/* Notifications Bell with dynamic real-time badge */}
         <div className="relative" ref={notifRef}>

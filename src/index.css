@@ -24,3 +24,198 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ========================================================================= */
+/* TEMA GELAP (DARK MODE) LENGKAP & RESPONSIF                                */
+/* ========================================================================= */
+:root {
+  --kt-primary: #2563eb;
+  --kt-secondary: #0f2744;
+  --kt-accent: #38bdf8;
+  --kt-background: #f8fafc;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body,
+html.dark #root {
+  background-color: #0b1329 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark header:not(.kop-surat-container) {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+html.dark .bg-white:not(.print-sheet, .kop-surat-container, .kop-surat-container *, .official-signature-block, .official-signature-block *, .a4-sheet, .a4-sheet *) {
+  background-color: #111c38 !important;
+  color: #f1f5f9 !important;
+  border-color: #1e293b !important;
+}
+
+html.dark .bg-slate-50:not(.print-sheet *, .kop-surat-container *, .a4-sheet *) {
+  background-color: #0d1527 !important;
+  color: #cbd5e1 !important;
+  border-color: #1e293b !important;
+}
+
+html.dark .bg-slate-100:not(.print-sheet *, .a4-sheet *) {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .text-slate-900:not(.print-sheet *, .kop-surat-container *, .a4-sheet *) {
+  color: #f8fafc !important;
+}
+
+html.dark .text-slate-800:not(.print-sheet *, .kop-surat-container *, .a4-sheet *) {
+  color: #f1f5f9 !important;
+}
+
+html.dark .text-slate-700:not(.print-sheet *, .kop-surat-container *, .a4-sheet *) {
+  color: #e2e8f0 !important;
+}
+
+html.dark .text-slate-600:not(.print-sheet *, .kop-surat-container *, .a4-sheet *) {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-slate-500:not(.print-sheet *, .kop-surat-container *, .a4-sheet *) {
+  color: #94a3b8 !important;
+}
+
+html.dark .border-slate-200:not(.print-sheet *, .a4-sheet *),
+html.dark .border-slate-300:not(.print-sheet *, .a4-sheet *),
+html.dark .border-slate-100:not(.print-sheet *, .a4-sheet *) {
+  border-color: #1e293b !important;
+}
+
+html.dark input:not([type="checkbox"], [type="radio"], [type="color"], .print-sheet *),
+html.dark select:not(.print-sheet *),
+html.dark textarea:not(.print-sheet *) {
+  background-color: #0b1329 !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+html.dark table:not(.print-sheet *) thead {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+html.dark table:not(.print-sheet *) tr:hover {
+  background-color: #1e293b66 !important;
+}
+
+/* ========================================================================= */
+/* PENGATURAN CETAK RESMI A4 (HASIL CETAK PAS, TIDAK MELEBIHI KERTAS)        */
+/* ========================================================================= */
+@page {
+  size: A4 portrait;
+  margin: 12mm 14mm 12mm 14mm;
+}
+
+@media print {
+  /* Reset document background, color, and root container constraints */
+  html,
+  body,
+  #root,
+  #root > div,
+  main {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Sembunyikan elemen navigasi, sidebar, header aplikasi, dan tombol */
+  nav,
+  aside,
+  header:not(.kop-surat-container),
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Pastikan seluruh teks tidak melebihi batas kertas dan tidak overflow */
+  *, *::before, *::after {
+    box-sizing: border-box !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+  }
+
+  /* Modal Backdrop Reset saat cetak: hilangkan latar belakang gelap dan fixed inset */
+  .fixed.inset-0 {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Kontainer lembar dokumen cetak (A4 sheet) */
+  .print-sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  /* Cegah pemotongan halaman di tengah elemen penting */
+  .break-inside-avoid,
+  .kop-surat-container,
+  .official-signature-block,
+  table,
+  tr,
+  thead,
+  tfoot {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Tabel cetak rapi */
+  table {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+  }
+
+  /* Gambar dan logo pas */
+  img, svg {
+    max-width: 100% !important;
+  }
+}

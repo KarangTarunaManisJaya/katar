@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   X,
   Printer,
@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   Building,
+  Loader2,
 } from 'lucide-react';
 import {
   SuratKeluarItem,
@@ -15,6 +16,7 @@ import {
 } from '../../../types/surat';
 import { OfficialKopSurat } from './OfficialKopSurat';
 import { OfficialSignatureBlock } from './OfficialSignatureBlock';
+import { downloadElementAsPdf, printElementDirectly } from '../../../utils/pdfExport';
 
 interface CetakSuratModalProps {
   isOpen: boolean;
@@ -33,6 +35,34 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
 }) => {
   if (!isOpen || (!suratKeluar && !lembarDisposisi)) return null;
 
+  const printDocRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportStatus, setExportStatus] = useState('');
+
+  const handleDownloadPdf = async () => {
+    if (!printDocRef.current) return;
+    setIsExportingPdf(true);
+    const rawNomor = suratKeluar?.nomorSurat || lembarDisposisi?.nomorDisposisi || 'dokumen';
+    const cleanNomor = rawNomor.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = suratKeluar
+      ? `Surat_${cleanNomor}.pdf`
+      : `Disposisi_${cleanNomor}.pdf`;
+
+    const success = await downloadElementAsPdf(
+      printDocRef.current,
+      filename,
+      (msg) => setExportStatus(msg)
+    );
+
+    setIsExportingPdf(false);
+    setExportStatus('');
+    if (success) {
+      onToast(`File PDF "${filename}" berhasil diunduh!`);
+    } else {
+      onToast('Gagal membuat file PDF. Silakan gunakan tombol Cetak.');
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -46,10 +76,10 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-300 flex flex-col max-h-[96vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto print:static print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:inset-auto">
+      <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-300 flex flex-col max-h-[96vh] print:w-full print:max-w-none print:shadow-none print:border-none print:rounded-none print:max-h-none print:m-0 print:p-0">
         {/* Modal Toolbar (hidden on print) */}
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white rounded-t-2xl print:hidden">
+        <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-900 text-white rounded-t-2xl print:hidden">
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-emerald-400" />
             <div>
@@ -57,12 +87,12 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
                 {suratKeluar ? `Pratinjau Cetak Surat: ${suratKeluar.nomorSurat}` : `Lembar Disposisi Resmi: ${lembarDisposisi?.nomorDisposisi}`}
               </h2>
               <p className="text-[11px] text-slate-400">
-                Format baku A4 siap cetak dengan kepala surat resmi dan tanda tangan resmi
+                {exportStatus || 'Format baku A4 siap cetak & unduh PDF'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {suratKeluar && (
               <button
                 type="button"
@@ -72,17 +102,43 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
                 <Copy className="w-3.5 h-3.5" /> Salin Teks
               </button>
             )}
+
+            {/* Tombol Unduh PDF Asli (.pdf) */}
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+              title="Unduh langsung sebagai file dokumen PDF"
+            >
+              {isExportingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Membuat PDF...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh PDF</span>
+                </>
+              )}
+            </button>
+
+            {/* Tombol Cetak PDF */}
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+              title="Cetak Dokumen ke PDF (A4)"
             >
-              <Printer className="w-4 h-4" /> Cetak / PDF
+              <Printer className="w-3.5 h-3.5" />
+              <span>Cetak PDF</span>
             </button>
+
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors ml-1"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors ml-1 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -90,20 +146,23 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
         </div>
 
         {/* Paper Document Container */}
-        <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-100 flex justify-center">
+        <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-100 flex justify-center print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
           {suratKeluar && (
-            <div className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[760px] min-h-[960px] p-8 sm:p-12 font-serif text-xs leading-relaxed flex flex-col justify-between">
+            <div
+              ref={printDocRef}
+              className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[760px] p-6 sm:p-10 font-serif text-xs leading-relaxed flex flex-col justify-between print-sheet print:p-0 print:m-0 print:max-w-full print:min-h-0 print:border-none print:shadow-none print:text-black"
+            >
               <div>
                 {/* 100% SAMA SEPERTI GAMBAR: OFFICIAL KOP SURAT */}
                 <OfficialKopSurat />
 
                 {/* Tanggal Surat di Kanan Atas */}
-                <div className="text-right text-xs mb-3 font-serif" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                <div className="text-right text-xs mb-2 sm:mb-3 font-serif print:mb-2 text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
                   Manis Jaya, {suratKeluar.tanggalSurat}
                 </div>
 
                 {/* Surat Metadata (Kiri: Nomor, Lamp, Perihal) dan Tujuan (Kanan: Kepada Yth) */}
-                <div className="grid grid-cols-2 gap-4 items-start mb-6 font-serif text-xs text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                <div className="grid grid-cols-2 gap-4 items-start mb-4 sm:mb-5 font-serif text-xs text-black print:mb-3" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
                   {/* Kolom Kiri: Nomor, Lamp, Perihal */}
                   <table className="text-left w-full border-collapse">
                     <tbody>
@@ -142,13 +201,13 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
                 </div>
 
                 {/* Salam Pembuka */}
-                <div className="mb-3 font-serif text-xs text-black" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+                <div className="mb-2 font-serif text-xs text-black print:mb-1.5" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
                   <p className="font-semibold">Dengan Hormat</p>
                 </div>
 
                 {/* Batang Tubuh Isi Surat */}
                 <div
-                  className="mb-8 whitespace-pre-line text-justify leading-relaxed font-serif text-xs text-black"
+                  className="mb-5 sm:mb-6 whitespace-pre-line text-justify leading-relaxed font-serif text-xs sm:text-[13px] text-black print:text-[11.5pt] print:leading-normal print:mb-4 max-w-full break-words"
                   style={{ fontFamily: '"Times New Roman", Times, serif' }}
                 >
                   {suratKeluar.isiSurat}
@@ -156,7 +215,7 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
               </div>
 
               {/* TANDA TANGAN SESUAI JUMLAH PENANDATANGAN SURAT (TANPA STEMPEL) */}
-              <div>
+              <div className="print:mt-3 break-inside-avoid">
                 <OfficialSignatureBlock
                   signatories={suratKeluar.penandatangan}
                   withStamp={false}
@@ -169,7 +228,10 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
 
           {/* LEMBAR DISPOSISI PRINT LAYOUT */}
           {lembarDisposisi && (
-            <div className="bg-white text-slate-900 shadow-xl border-2 border-slate-900 w-full max-w-[760px] p-6 sm:p-8 font-sans text-xs flex flex-col justify-between">
+            <div
+              ref={printDocRef}
+              className="bg-white text-slate-900 shadow-xl border-2 border-slate-900 w-full max-w-[760px] p-6 sm:p-8 font-sans text-xs flex flex-col justify-between print-sheet print:p-0 print:m-0 print:max-w-full print:shadow-none print:border-none"
+            >
               <div>
                 {/* Header Disposisi */}
                 <div className="text-center border-b-2 border-slate-900 pb-3 mb-4">

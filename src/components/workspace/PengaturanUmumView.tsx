@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useBranding } from '../../context/BrandingContext';
+import { useTheme } from '../../context/ThemeContext';
 import { BrandLogo } from './BrandLogo';
 import { AplikasiSystemTab } from './AplikasiSystemTab';
 import { TampilanThemeTab } from './TampilanThemeTab';
@@ -43,11 +44,29 @@ import {
 interface PengaturanUmumViewProps {
   onToast: (msg: string) => void;
   onNavigateToTab?: (tab: any) => void;
+  initialTab?: 'info' | 'aplikasi' | 'notifikasi' | 'surat' | 'keamanan' | 'tampilan';
 }
 
-export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast, onNavigateToTab }) => {
+export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast, onNavigateToTab, initialTab }) => {
   const { logoUrl, kopFileName: globalKopFileName, setLogoUrl, setKopLogoUrl, resetLogo, resetKopLogo } = useBranding();
-  const [activeTab, setActiveTab] = useState<'info' | 'aplikasi' | 'notifikasi' | 'surat' | 'keamanan' | 'tampilan'>('info');
+  const { theme, updateTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'info' | 'aplikasi' | 'notifikasi' | 'surat' | 'keamanan' | 'tampilan'>(() => {
+    if (initialTab) return initialTab;
+    try {
+      const saved = localStorage.getItem('kt_active_pengaturan_tab');
+      if (saved && ['info', 'aplikasi', 'notifikasi', 'surat', 'keamanan', 'tampilan'].includes(saved)) {
+        return saved as any;
+      }
+    } catch {}
+    return 'info';
+  });
+
+  const handleTabChange = (tab: 'info' | 'aplikasi' | 'notifikasi' | 'surat' | 'keamanan' | 'tampilan') => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem('kt_active_pengaturan_tab', tab);
+    } catch {}
+  };
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -75,7 +94,15 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
 
   // 3. Preferensi Aplikasi
   const [itemsPerPage, setItemsPerPage] = useState(() => localStorage.getItem('kt_per_page') || '20');
-  const [displayMode, setDisplayMode] = useState(() => localStorage.getItem('kt_display_mode') || 'Terang (Light)');
+  const [displayMode, setDisplayMode] = useState(() => {
+    return theme.displayMode === 'dark' ? 'Gelap (Dark)' : theme.displayMode === 'system' ? 'Sistem Otomatis' : 'Terang (Light)';
+  });
+
+  // Keep displayMode in sync when theme changes
+  useEffect(() => {
+    const label = theme.displayMode === 'dark' ? 'Gelap (Dark)' : theme.displayMode === 'system' ? 'Sistem Otomatis' : 'Terang (Light)';
+    setDisplayMode(label);
+  }, [theme.displayMode]);
   const [notifSistem, setNotifSistem] = useState(() => localStorage.getItem('kt_notif_sistem') !== 'false');
   const [tampilLogin, setTampilLogin] = useState(() => localStorage.getItem('kt_tampil_login') !== 'false');
   const [simpanPencarian, setSimpanPencarian] = useState(() => localStorage.getItem('kt_simpan_search') !== 'false');
@@ -347,7 +374,7 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
       {/* 2. NAVIGATION TABS BAR - All 6 tabs functional */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-1.5 flex items-center gap-1 shadow-2xs overflow-x-auto">
         <button
-          onClick={() => setActiveTab('info')}
+          onClick={() => handleTabChange('info')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'info'
               ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
@@ -359,7 +386,7 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
         </button>
 
         <button
-          onClick={() => setActiveTab('aplikasi')}
+          onClick={() => handleTabChange('aplikasi')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'aplikasi'
               ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
@@ -371,7 +398,7 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
         </button>
 
         <button
-          onClick={() => setActiveTab('notifikasi')}
+          onClick={() => handleTabChange('notifikasi')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'notifikasi'
               ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
@@ -383,7 +410,7 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
         </button>
 
         <button
-          onClick={() => setActiveTab('surat')}
+          onClick={() => handleTabChange('surat')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'surat'
               ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
@@ -395,7 +422,7 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
         </button>
 
         <button
-          onClick={() => setActiveTab('keamanan')}
+          onClick={() => handleTabChange('keamanan')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'keamanan'
               ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
@@ -407,7 +434,7 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
         </button>
 
         <button
-          onClick={() => setActiveTab('tampilan')}
+          onClick={() => handleTabChange('tampilan')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'tampilan'
               ? 'bg-blue-50 text-blue-700 border border-blue-200/80 shadow-2xs'
@@ -758,8 +785,16 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
                     <select
                       value={displayMode}
                       onChange={(e) => {
-                        setDisplayMode(e.target.value);
-                        onToast(`Mode tampilan diubah ke ${e.target.value}`);
+                        const val = e.target.value;
+                        setDisplayMode(val);
+                        if (val === 'Gelap (Dark)') {
+                          updateTheme({ displayMode: 'dark' });
+                        } else if (val === 'Terang (Light)') {
+                          updateTheme({ displayMode: 'light' });
+                        } else {
+                          updateTheme({ displayMode: 'system' });
+                        }
+                        onToast(`Mode tampilan diubah ke ${val}`);
                       }}
                       className="w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >

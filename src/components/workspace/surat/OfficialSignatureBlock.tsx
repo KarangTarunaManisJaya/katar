@@ -128,38 +128,38 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
 
   return (
     <div
-      className={`w-full font-serif text-slate-900 select-none ${className}`}
+      className={`w-full font-serif text-slate-900 select-none official-signature-block break-inside-avoid ${className}`}
       style={{ fontFamily: '"Times New Roman", Times, serif' }}
     >
       {/* ------------------------------------------------------------------ */}
       {/* KASUS 1 PENANDATANGAN (Surat Tugas / Rekomendasi / SK Tunggal)     */}
       {/* ------------------------------------------------------------------ */}
       {count === 1 && (
-        <div className="w-full flex justify-end my-6 pr-4 sm:pr-8">
-          <div className="flex flex-col items-center text-center w-56 relative">
-            <div className="mb-2">
-              <p className="text-sm text-black">Hormat kami :</p>
-              <p className="text-sm font-semibold text-black">{organizationName}</p>
-              <p className="text-sm font-medium text-black mt-2">
+        <div className="w-full flex justify-end my-3 sm:my-4 print:my-2 pr-4 sm:pr-8">
+          <div className="flex flex-col items-center text-center w-52 sm:w-56 relative">
+            <div className="mb-1.5 sm:mb-2 print:mb-1">
+              <p className="text-xs sm:text-sm text-black">Hormat kami :</p>
+              <p className="text-xs sm:text-sm font-semibold text-black">{organizationName}</p>
+              <p className="text-xs sm:text-sm font-medium text-black mt-1 sm:mt-1.5">
                 {activeSignatories[0].jabatan || 'Ketua'}
               </p>
             </div>
-            <div className="h-20 flex items-center justify-center relative w-full">
+            <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative w-full">
               {activeSignatories[0].signatureUrl ? (
                 <img
                   src={activeSignatories[0].signatureUrl}
                   alt="Tanda Tangan"
-                  className="h-16 object-contain"
+                  className="h-12 sm:h-14 print:h-10 object-contain"
                 />
               ) : (
                 <SignatureSvg index={0} />
               )}
             </div>
-            <p className="text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
+            <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
               {activeSignatories[0].nama}
             </p>
             {activeSignatories[0].ktaNo && (
-              <p className="text-[10px] text-slate-700 font-mono mt-0.5">
+              <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                 KTA: {activeSignatories[0].ktaNo}
               </p>
             )}
@@ -171,60 +171,60 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
       {/* KASUS 2 PENANDATANGAN (2 Kolom: Kiri & Kanan - Tanpa Stempel)      */}
       {/* ------------------------------------------------------------------ */}
       {count === 2 && (
-        <div className="flex flex-col items-center justify-center my-6">
-          <div className="text-center mb-4">
-            <p className="text-sm text-black">Hormat kami :</p>
-            <p className="text-sm font-semibold text-black">{organizationName}</p>
+        <div className="flex flex-col items-center justify-center my-3 sm:my-4 print:my-2">
+          <div className="text-center mb-2 sm:mb-3 print:mb-1.5">
+            <p className="text-xs sm:text-sm text-black">Hormat kami :</p>
+            <p className="text-xs sm:text-sm font-semibold text-black">{organizationName}</p>
           </div>
 
-          <div className="w-full max-w-xl mx-auto flex items-start justify-between px-4 sm:px-8">
+          <div className="w-full max-w-xl mx-auto flex items-start justify-between px-2 sm:px-6">
             {/* Kolom Kiri: Penandatangan 1 */}
-            <div className="flex flex-col items-center text-center w-48">
-              <p className="text-sm font-medium text-black mb-2">
+            <div className="flex flex-col items-center text-center w-44 sm:w-48">
+              <p className="text-xs sm:text-sm font-medium text-black mb-1 sm:mb-1.5">
                 {activeSignatories[0].jabatan || 'Ketua Pelaksana'}
               </p>
-              <div className="h-20 flex items-center justify-center relative">
+              <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
                 {activeSignatories[0].signatureUrl ? (
                   <img
                     src={activeSignatories[0].signatureUrl}
                     alt="Tanda Tangan"
-                    className="h-16 object-contain"
+                    className="h-12 sm:h-14 print:h-10 object-contain"
                   />
                 ) : (
                   <SignatureSvg index={0} />
                 )}
               </div>
-              <p className="text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
+              <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
                 {activeSignatories[0].nama}
               </p>
               {activeSignatories[0].ktaNo && (
-                <p className="text-[10px] text-slate-700 font-mono mt-0.5">
+                <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                   KTA: {activeSignatories[0].ktaNo}
                 </p>
               )}
             </div>
 
             {/* Kolom Kanan: Penandatangan 2 */}
-            <div className="flex flex-col items-center text-center w-48">
-              <p className="text-sm font-medium text-black mb-2">
+            <div className="flex flex-col items-center text-center w-44 sm:w-48">
+              <p className="text-xs sm:text-sm font-medium text-black mb-1 sm:mb-1.5">
                 {activeSignatories[1].jabatan || 'Sekretaris'}
               </p>
-              <div className="h-20 flex items-center justify-center relative">
+              <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
                 {activeSignatories[1].signatureUrl ? (
                   <img
                     src={activeSignatories[1].signatureUrl}
                     alt="Tanda Tangan"
-                    className="h-16 object-contain"
+                    className="h-12 sm:h-14 print:h-10 object-contain"
                   />
                 ) : (
                   <SignatureSvg index={1} />
                 )}
               </div>
-              <p className="text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
+              <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
                 {activeSignatories[1].nama}
               </p>
               {activeSignatories[1].ktaNo && (
-                <p className="text-[10px] text-slate-700 font-mono mt-0.5">
+                <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                   KTA: {activeSignatories[1].ktaNo}
                 </p>
               )}
@@ -237,28 +237,28 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
       {/* KASUS 3 PENANDATANGAN (3 Kolom Sejajar Bersih)                     */}
       {/* ------------------------------------------------------------------ */}
       {count === 3 && (
-        <div className="flex flex-col items-center justify-center my-6">
-          <div className="text-center mb-4">
-            <p className="text-sm text-black">Hormat kami :</p>
-            <p className="text-sm font-semibold text-black">{organizationName}</p>
+        <div className="flex flex-col items-center justify-center my-3 sm:my-4 print:my-2">
+          <div className="text-center mb-2 sm:mb-3 print:mb-1.5">
+            <p className="text-xs sm:text-sm text-black">Hormat kami :</p>
+            <p className="text-xs sm:text-sm font-semibold text-black">{organizationName}</p>
           </div>
 
-          <div className="w-full max-w-2xl mx-auto grid grid-cols-3 gap-3 px-2 sm:px-4">
+          <div className="w-full max-w-2xl mx-auto grid grid-cols-3 gap-2 sm:gap-3 px-2">
             {activeSignatories.map((sig, idx) => (
               <div key={idx} className="flex flex-col items-center text-center">
-                <p className="text-sm font-medium text-black mb-2">{sig.jabatan || 'Pengurus'}</p>
-                <div className="h-20 flex items-center justify-center relative">
+                <p className="text-xs sm:text-sm font-medium text-black mb-1 sm:mb-1.5">{sig.jabatan || 'Pengurus'}</p>
+                <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
                   {sig.signatureUrl ? (
-                    <img src={sig.signatureUrl} alt="Tanda Tangan" className="h-16 object-contain" />
+                    <img src={sig.signatureUrl} alt="Tanda Tangan" className="h-12 sm:h-14 print:h-10 object-contain" />
                   ) : (
                     <SignatureSvg index={idx} />
                   )}
                 </div>
-                <p className="text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
+                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
                   {sig.nama}
                 </p>
                 {sig.ktaNo && (
-                  <p className="text-[10px] text-slate-700 font-mono mt-0.5">KTA: {sig.ktaNo}</p>
+                  <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">KTA: {sig.ktaNo}</p>
                 )}
               </div>
             ))}
@@ -270,62 +270,62 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
       {/* KASUS 4 ATAU LEBIH PENANDATANGAN (Pengurus Pelaksana + Mengetahui) */}
       {/* ------------------------------------------------------------------ */}
       {count >= 4 && (
-        <div className="flex flex-col items-center justify-center my-6 space-y-6">
+        <div className="flex flex-col items-center justify-center my-3 sm:my-4 print:my-2 space-y-4 sm:space-y-5">
           {/* Baris 1: Pelaksana (Ketua & Sekretaris) */}
           <div className="w-full">
-            <div className="text-center mb-4">
-              <p className="text-sm text-black">Hormat kami :</p>
-              <p className="text-sm font-semibold text-black">{organizationName}</p>
+            <div className="text-center mb-2 sm:mb-3 print:mb-1.5">
+              <p className="text-xs sm:text-sm text-black">Hormat kami :</p>
+              <p className="text-xs sm:text-sm font-semibold text-black">{organizationName}</p>
             </div>
 
-            <div className="w-full max-w-xl mx-auto flex items-start justify-between px-4 sm:px-8">
+            <div className="w-full max-w-xl mx-auto flex items-start justify-between px-2 sm:px-6">
               {/* Kolom 1 */}
-              <div className="flex flex-col items-center text-center w-48">
-                <p className="text-sm font-medium text-black mb-2">
+              <div className="flex flex-col items-center text-center w-44 sm:w-48">
+                <p className="text-xs sm:text-sm font-medium text-black mb-1 sm:mb-1.5">
                   {activeSignatories[0].jabatan || 'Ketua Pelaksana'}
                 </p>
-                <div className="h-20 flex items-center justify-center relative">
+                <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
                   {activeSignatories[0].signatureUrl ? (
                     <img
                       src={activeSignatories[0].signatureUrl}
                       alt="Tanda Tangan"
-                      className="h-16 object-contain"
+                      className="h-12 sm:h-14 print:h-10 object-contain"
                     />
                   ) : (
                     <SignatureSvg index={0} />
                   )}
                 </div>
-                <p className="text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
+                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
                   {activeSignatories[0].nama}
                 </p>
                 {activeSignatories[0].ktaNo && (
-                  <p className="text-[10px] text-slate-700 font-mono mt-0.5">
+                  <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                     KTA: {activeSignatories[0].ktaNo}
                   </p>
                 )}
               </div>
 
               {/* Kolom 2 */}
-              <div className="flex flex-col items-center text-center w-48">
-                <p className="text-sm font-medium text-black mb-2">
+              <div className="flex flex-col items-center text-center w-44 sm:w-48">
+                <p className="text-xs sm:text-sm font-medium text-black mb-1 sm:mb-1.5">
                   {activeSignatories[1].jabatan || 'Sekretaris'}
                 </p>
-                <div className="h-20 flex items-center justify-center relative">
+                <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
                   {activeSignatories[1].signatureUrl ? (
                     <img
                       src={activeSignatories[1].signatureUrl}
                       alt="Tanda Tangan"
-                      className="h-16 object-contain"
+                      className="h-12 sm:h-14 print:h-10 object-contain"
                     />
                   ) : (
                     <SignatureSvg index={1} />
                   )}
                 </div>
-                <p className="text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
+                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
                   {activeSignatories[1].nama}
                 </p>
                 {activeSignatories[1].ktaNo && (
-                  <p className="text-[10px] text-slate-700 font-mono mt-0.5">
+                  <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                     KTA: {activeSignatories[1].ktaNo}
                   </p>
                 )}
@@ -334,30 +334,30 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
           </div>
 
           {/* Baris 2: Mengetahui / Pejabat Tambahan */}
-          <div className="w-full pt-2">
-            <div className="text-center mb-3">
-              <p className="text-xs uppercase tracking-wider font-semibold text-black">
+          <div className="w-full pt-1.5">
+            <div className="text-center mb-2">
+              <p className="text-[11px] sm:text-xs uppercase tracking-wider font-semibold text-black">
                 Mengetahui / Menyetujui :
               </p>
             </div>
-            <div className="w-full max-w-xl mx-auto flex items-start justify-around px-4">
+            <div className="w-full max-w-xl mx-auto flex items-start justify-around px-2 sm:px-4">
               {activeSignatories.slice(2).map((sig, idx) => (
-                <div key={idx} className="flex flex-col items-center text-center w-48">
-                  <p className="text-sm font-medium text-black mb-2">
+                <div key={idx} className="flex flex-col items-center text-center w-44 sm:w-48">
+                  <p className="text-xs sm:text-sm font-medium text-black mb-1 sm:mb-1.5">
                     {sig.jabatan || 'Pembina'}
                   </p>
-                  <div className="h-20 flex items-center justify-center relative">
+                  <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
                     {sig.signatureUrl ? (
-                      <img src={sig.signatureUrl} alt="Tanda Tangan" className="h-16 object-contain" />
+                      <img src={sig.signatureUrl} alt="Tanda Tangan" className="h-12 sm:h-14 print:h-10 object-contain" />
                     ) : (
                       <SignatureSvg index={idx + 2} />
                     )}
                   </div>
-                  <p className="text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
+                  <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
                     {sig.nama}
                   </p>
                   {sig.ktaNo && (
-                    <p className="text-[10px] text-slate-700 font-mono mt-0.5">
+                    <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                       KTA/NIP: {sig.ktaNo}
                     </p>
                   )}
@@ -370,7 +370,7 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
 
       {/* Bagian Tembusan di Pojok Kiri Bawah Sesuai Format Resmi */}
       {showTembusan && tembusanList && tembusanList.length > 0 && (
-        <div className="mt-8 pt-4 text-left font-serif text-xs text-black">
+        <div className="mt-4 sm:mt-6 pt-2 print:mt-2.5 print:pt-1 text-left font-serif text-xs text-black break-inside-avoid">
           <p className="font-bold mb-1">Tembusan Kepada Yth :</p>
           <ol className="list-decimal list-inside space-y-0.5 pl-1">
             {tembusanList.map((item, index) => (

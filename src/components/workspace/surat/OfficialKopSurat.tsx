@@ -6,6 +6,10 @@ interface OfficialKopSuratProps {
   isCompact?: boolean;
   customLogo?: string;
   customLogoKanan?: string;
+  customNamaOrg?: string;
+  customNamaWilayah?: string;
+  customAlamat?: string;
+  customKontak?: string;
 }
 
 // Logo Karang Taruna Resmi Vektor Cadangan (Fallback jika belum ada logo yang diunggah)
@@ -45,6 +49,10 @@ export const OfficialKopSurat: React.FC<OfficialKopSuratProps> = ({
   isCompact = false,
   customLogo,
   customLogoKanan,
+  customNamaOrg,
+  customNamaWilayah,
+  customAlamat,
+  customKontak,
 }) => {
   const { logoUrl, kopLogoUrl } = useBranding();
 
@@ -100,22 +108,25 @@ export const OfficialKopSurat: React.FC<OfficialKopSuratProps> = ({
     setImgErrorKanan(false);
   }, [customLogoKanan]);
 
+  // Ukuran Logo & Header yang proporsional dan pas
+  const logoDimension = isCompact
+    ? 'w-14 h-14'
+    : 'w-16 h-16 sm:w-[72px] sm:h-[72px]';
+
   return (
-    <div className={`w-full font-serif text-slate-900 ${className}`}>
-      <div className="flex items-center justify-between gap-3 sm:gap-4 pb-2">
+    <div className={`w-full font-serif text-slate-900 kop-surat-container break-inside-avoid ${className}`}>
+      <div className="flex items-center justify-between gap-3 sm:gap-4 pb-1">
         {/* =================================================================== */}
         {/* LOGO UTAMA (KIRI) SESUAI PENGATURAN UMUM & SURAT DOKUMEN           */}
         {/* =================================================================== */}
         <div
-          className={`${
-            isCompact ? 'w-16 h-16' : 'w-20 h-20 sm:w-24 sm:h-24'
-          } shrink-0 flex items-center justify-center p-0.5`}
+          className={`${logoDimension} shrink-0 flex items-center justify-center p-0.5`}
         >
           {logoUtamaKiri && !imgErrorKiri ? (
             <img
               src={logoUtamaKiri}
               alt="Logo Utama Kiri"
-              className="max-w-full max-h-full object-contain drop-shadow-xs"
+              className="w-full h-full object-contain drop-shadow-xs"
               onError={() => setImgErrorKiri(true)}
             />
           ) : (
@@ -124,51 +135,51 @@ export const OfficialKopSurat: React.FC<OfficialKopSuratProps> = ({
         </div>
 
         {/* =================================================================== */}
-        {/* TEKS KOP SURAT RESMI (100% PERSIS FORMAT GAMBAR CONTOH)             */}
+        {/* TEKS KOP SURAT RESMI: UKURAN PAS & PRESISI DENGAN LOGO              */}
         {/* =================================================================== */}
         <div className="text-center flex-1 min-w-0 px-1">
           <h1
             className={`${
-              isCompact ? 'text-base sm:text-lg' : 'text-lg sm:text-2xl'
-            } font-black uppercase tracking-normal text-black leading-tight font-sans`}
+              isCompact ? 'text-sm sm:text-base' : 'text-base sm:text-lg md:text-[18px]'
+            } font-black uppercase tracking-wide text-black leading-tight font-sans`}
             style={{ fontFamily: '"Arial", "Helvetica", sans-serif' }}
           >
-            KARANG TARUNA MANIS JAYA
+            {customNamaOrg || 'KARANG TARUNA MANIS JAYA'}
           </h1>
           <h2
             className={`${
-              isCompact ? 'text-xs sm:text-sm' : 'text-sm sm:text-lg'
+              isCompact ? 'text-[11px] sm:text-xs' : 'text-xs sm:text-[13px]'
             } font-bold uppercase tracking-wider text-black mt-0.5 leading-tight font-sans`}
             style={{ fontFamily: '"Arial", "Helvetica", sans-serif' }}
           >
-            KEC. JATIUWUNG KOTA TANGERANG
+            {customNamaWilayah || 'KEC. JATIUWUNG KOTA TANGERANG'}
           </h2>
           <p
             className={`${
-              isCompact ? 'text-[9px]' : 'text-[10.5px] sm:text-[12px]'
-            } text-black leading-snug mt-1 font-sans`}
+              isCompact ? 'text-[9px]' : 'text-[10px] sm:text-[11px]'
+            } text-black leading-tight mt-1 font-serif`}
             style={{ fontFamily: '"Times New Roman", Times, serif' }}
           >
-            Sekertariat : JL. Rumah Susun, Kp. Cikoneng Girang, Kel. Manis Jaya, Kec. Jatiuwung
+            {customAlamat || 'Sekretariat : JL. Rumah Susun, Kp. Cikoneng Girang, Kel. Manis Jaya, Kec. Jatiuwung'}
           </p>
           <p
             className={`${
-              isCompact ? 'text-[9px]' : 'text-[10.5px] sm:text-[12px]'
-            } text-black leading-snug font-sans`}
+              isCompact ? 'text-[8.5px]' : 'text-[9.5px] sm:text-[10px]'
+            } text-black leading-tight font-serif mt-0.5`}
             style={{ fontFamily: '"Times New Roman", Times, serif' }}
           >
-            Kota Tangerang,Banten 15136 Email :{' '}
-            <span className="text-blue-800 underline">karangtarunamanisjaya@gmail.com</span>
+            Kota Tangerang, Banten 15136 &bull; Email:{' '}
+            <span className="text-black underline">karangtarunamanisjaya@gmail.com</span>
           </p>
           <p
             className={`${
-              isCompact ? 'text-[9px]' : 'text-[10.5px] sm:text-[12px]'
-            } text-black leading-snug flex items-center justify-center gap-1.5 flex-wrap mt-0.5 font-sans`}
+              isCompact ? 'text-[8.5px]' : 'text-[9px] sm:text-[9.5px]'
+            } text-black leading-tight flex items-center justify-center gap-1.5 flex-wrap mt-0.5 font-serif`}
             style={{ fontFamily: '"Times New Roman", Times, serif' }}
           >
             <span>Hp 0838-9786-9234, 0878-0861-1626</span>
-            <span className="inline-flex items-center gap-1">
-              <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-[#1877f2] text-white text-[9px] font-black leading-none">
+            <span className="inline-flex items-center gap-0.5">
+              <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-[#1877f2] text-white text-[8px] font-black leading-none">
                 f
               </span>
               <span className="font-semibold">Karang Taruna Manis Jaya</span>
@@ -177,32 +188,32 @@ export const OfficialKopSurat: React.FC<OfficialKopSuratProps> = ({
         </div>
 
         {/* =================================================================== */}
-        {/* LOGO TAMBAHAN (KANAN) JIKA ADA ATAU CONTAINER PENYEIMBANG          */}
+        {/* LOGO TAMBAHAN (KANAN) ATAU PENYEIMBANG SIMETRIS UKURAN PAS         */}
         {/* =================================================================== */}
         {logoTambahanKanan && !imgErrorKanan ? (
           <div
-            className={`${
-              isCompact ? 'w-16 h-16' : 'w-20 h-20 sm:w-24 sm:h-24'
-            } shrink-0 flex items-center justify-center p-0.5`}
+            className={`${logoDimension} shrink-0 flex items-center justify-center p-0.5`}
           >
             <img
               src={logoTambahanKanan}
               alt="Logo Tambahan Kanan"
-              className="max-w-full max-h-full object-contain drop-shadow-xs"
+              className="w-full h-full object-contain drop-shadow-xs"
               onError={() => setImgErrorKanan(true)}
             />
           </div>
         ) : (
           <div
-            className={`${
-              isCompact ? 'w-16 h-16' : 'w-20 h-20 sm:w-24 sm:h-24'
-            } shrink-0 hidden sm:block pointer-events-none opacity-0 select-none`}
+            className={`${logoDimension} shrink-0 hidden sm:block pointer-events-none opacity-0 select-none`}
+            aria-hidden="true"
           />
         )}
       </div>
 
-      {/* Garis Pembatas Kop Surat Tebal Hitam Sesuai Gambar */}
-      <div className="border-b-[2.5px] border-black w-full mt-1 mb-5" />
+      {/* Garis Pembatas Kop Surat Resmi Standar Ganda/Tunggal (Pas & Rapi) */}
+      <div
+        className="w-full mt-1.5 mb-3 print:mt-1 print:mb-2 border-b-[2.5px] border-black"
+        style={{ borderBottomStyle: 'double', borderBottomWidth: '3.5px' }}
+      />
     </div>
   );
 };

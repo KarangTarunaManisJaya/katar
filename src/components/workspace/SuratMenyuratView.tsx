@@ -404,8 +404,10 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
     setDisposisi(disposisi.map((d) => (d.id === item.id ? item : d)));
   };
 
+  const isPrintActive = Boolean(printSuratKeluar || printLembarDisposisi);
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className={`space-y-6 max-w-7xl mx-auto pb-12 ${isPrintActive ? 'print:hidden' : ''}`}>
       {/* Sub-Navigation Tabs Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto">

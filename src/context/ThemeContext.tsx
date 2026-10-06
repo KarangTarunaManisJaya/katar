@@ -95,19 +95,41 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     // Apply dark class to document body if dark mode or system dark
     const root = document.documentElement;
-    if (theme.displayMode === 'dark') {
-      root.classList.add('dark');
-    } else if (theme.displayMode === 'light') {
-      root.classList.remove('dark');
-    } else if (theme.displayMode === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
+    const body = document.body;
+    
+    const applyMode = (isDark: boolean) => {
+      if (isDark) {
         root.classList.add('dark');
+        body.classList.add('dark');
       } else {
         root.classList.remove('dark');
+        body.classList.remove('dark');
       }
+    };
+
+    if (theme.displayMode === 'dark') {
+      applyMode(true);
+    } else if (theme.displayMode === 'light') {
+      applyMode(false);
+    } else if (theme.displayMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      applyMode(mediaQuery.matches);
+      
+      const listener = (e: MediaQueryListEvent) => {
+        applyMode(e.matches);
+      };
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
     }
   }, [theme.displayMode]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--kt-primary', theme.primaryColor || '#2563eb');
+    root.style.setProperty('--kt-secondary', theme.secondaryColor || '#0f2744');
+    root.style.setProperty('--kt-accent', theme.accentColor || '#38bdf8');
+    root.style.setProperty('--kt-background', theme.displayMode === 'dark' ? '#0b1329' : (theme.backgroundColor || '#f8fafc'));
+  }, [theme.primaryColor, theme.secondaryColor, theme.accentColor, theme.backgroundColor, theme.displayMode]);
 
   return (
     <ThemeContext.Provider value={{ theme, updateTheme, resetTheme }}>

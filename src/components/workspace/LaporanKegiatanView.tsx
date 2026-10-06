@@ -1,10 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   FileText,
   Calendar,
   Search,
   RotateCcw,
   Printer,
+  Download,
+  Loader2,
   FileSpreadsheet,
   FileDown,
   Users,
@@ -27,6 +29,7 @@ import {
 import { ActivityItem } from '../../data/workspaceData';
 import { OfficialKopSurat } from './surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
+import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
 
 export interface LaporanKegiatanItem {
   id: string;
@@ -290,6 +293,8 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
   onToast,
 }) => {
   const currentYear = new Date().getFullYear();
+  const printDocRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Persistent Laporan List with real-time sync across devices
   const [laporanList, setLaporanList] = useState<LaporanKegiatanItem[]>(() => {
@@ -412,11 +417,13 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
   // Export handlers
   const handlePrint = () => {
     setShowPrintModal(true);
+    setTimeout(() => {
+      window.print();
+    }, 150);
   };
 
   const handleExportPDF = () => {
     setShowPrintModal(true);
-    onToast('Membuka pratinjau cetak resmi Laporan Kegiatan...');
   };
 
   const handleExportExcel = () => {
@@ -488,7 +495,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-16 animate-fadeIn text-slate-800">
+    <div className={`space-y-6 pb-16 animate-fadeIn text-slate-800 ${showPrintModal ? 'print:hidden' : ''}`}>
       {/* ----------------------------------------------------------------------- */}
       {/* Top Page Header (Title + Breadcrumbs) */}
       {/* ----------------------------------------------------------------------- */}
@@ -640,23 +647,16 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
       </div>
 
       {/* ----------------------------------------------------------------------- */}
-      {/* Export Action Buttons: Cetak, PDF, Excel */}
+      {/* Export Action Buttons: Cetak PDF, Unduh PDF, Excel */}
       {/* ----------------------------------------------------------------------- */}
       <div className="flex items-center justify-end gap-2">
         <button
           onClick={handlePrint}
-          className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+          title="Cetak PDF Dokumen Laporan (A4)"
         >
-          <Printer className="w-4 h-4 text-blue-600" />
-          <span>Cetak</span>
-        </button>
-
-        <button
-          onClick={handleExportPDF}
-          className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-rose-600/30 flex items-center gap-1.5 transition-all"
-        >
-          <FileDown className="w-4 h-4" />
-          <span>PDF</span>
+          <Printer className="w-4 h-4" />
+          <span>Cetak PDF</span>
         </button>
 
         <button
@@ -1246,22 +1246,59 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
       {/* MODAL PRATINJAU CETAK RESMI LAPORAN KEGIATAN 100% PERSIS GAMBAR */}
       {/* ----------------------------------------------------------------------- */}
       {showPrintModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-300 flex flex-col max-h-[94vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto print:static print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:inset-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-300 flex flex-col max-h-[94vh] print:w-full print:max-w-none print:shadow-none print:border-none print:rounded-none print:max-h-none print:m-0 print:p-0">
             {/* Header Modal Bar */}
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white rounded-t-2xl print:hidden">
+            <div className="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-900 text-white rounded-t-2xl print:hidden">
               <div className="flex items-center gap-2">
                 <Printer className="w-5 h-5 text-blue-400" />
                 <h3 className="font-bold text-sm sm:text-base">Pratinjau Dokumen Cetak Laporan Kegiatan</h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Tombol Unduh PDF */}
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  onClick={async () => {
+                    if (!printDocRef.current) return;
+                    setIsExportingPdf(true);
+                    const filename = `Laporan_Kegiatan_${startDate}_sd_${endDate}.pdf`.replace(/[^a-zA-Z0-9_.-]/g, '_');
+                    const success = await downloadElementAsPdf(printDocRef.current, filename);
+                    setIsExportingPdf(false);
+                    if (success) {
+                      onToast(`File "${filename}" berhasil diunduh!`);
+                    } else {
+                      onToast('Gagal membuat PDF. Silakan gunakan tombol Cetak.');
+                    }
+                  }}
+                  disabled={isExportingPdf}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <Printer className="w-3.5 h-3.5" /> Cetak Sekarang
+                  {isExportingPdf ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Membuat PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Unduh PDF</span>
+                    </>
+                  )}
                 </button>
+
+                {/* Tombol Cetak PDF */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.print();
+                  }}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Cetak Laporan ke PDF (A4)"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak PDF</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setShowPrintModal(false)}
@@ -1273,9 +1310,10 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
             </div>
 
             {/* Paper Document Container (100% Sama Seperti Gambar) */}
-            <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-100 flex justify-center">
+            <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-100 flex justify-center print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">
               <div
-                className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[780px] p-8 sm:p-12 font-serif text-xs leading-relaxed flex flex-col justify-between"
+                ref={printDocRef}
+                className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[780px] p-6 sm:p-10 font-serif text-xs leading-relaxed flex flex-col justify-between print-sheet print:p-0 print:m-0 print:max-w-full print:min-h-0 print:border-none print:shadow-none print:text-black"
                 style={{ fontFamily: '"Times New Roman", Times, serif' }}
               >
                 <div>
@@ -1283,7 +1321,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                   <OfficialKopSurat />
 
                   {/* Tanggal & Tempat */}
-                  <div className="text-right text-xs mb-4 text-black">
+                  <div className="text-right text-xs mb-3 text-black print:mb-2">
                     Manis Jaya,{' '}
                     {new Date().toLocaleDateString('id-ID', {
                       day: 'numeric',
@@ -1293,7 +1331,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                   </div>
 
                   {/* Judul Laporan */}
-                  <div className="text-center my-4 font-sans">
+                  <div className="text-center my-3 sm:my-4 font-sans print:my-2">
                     <h2 className="text-base sm:text-lg font-black uppercase text-black tracking-wide">
                       LAPORAN REKAPITULASI DOKUMENTASI & KEGIATAN
                     </h2>
@@ -1306,29 +1344,29 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                   </div>
 
                   {/* Tabel Data Rekapitulasi Kegiatan */}
-                  <div className="my-5 overflow-x-auto">
-                    <table className="w-full border-collapse border border-black text-[11px]">
+                  <div className="my-4 overflow-x-auto print:overflow-visible max-w-full">
+                    <table className="w-full border-collapse border border-black text-[10px] sm:text-[11px] print:text-[9pt] table-fixed">
                       <thead>
                         <tr className="bg-slate-100 text-black">
-                          <th className="border border-black px-2 py-1.5 text-center w-8">No</th>
-                          <th className="border border-black px-2 py-1.5 text-center w-20">Tanggal</th>
-                          <th className="border border-black px-3 py-1.5 text-left">Nama / Agenda Kegiatan</th>
-                          <th className="border border-black px-2 py-1.5 text-center w-24">Kategori</th>
-                          <th className="border border-black px-2 py-1.5 text-left w-28">Lokasi</th>
-                          <th className="border border-black px-2 py-1.5 text-center w-20">Peserta</th>
-                          <th className="border border-black px-2 py-1.5 text-center w-20">Status</th>
+                          <th className="border border-black px-1.5 py-1 text-center w-[6%]">No</th>
+                          <th className="border border-black px-2 py-1 text-center w-[14%]">Tanggal</th>
+                          <th className="border border-black px-2.5 py-1 text-left w-[32%]">Nama / Agenda Kegiatan</th>
+                          <th className="border border-black px-2 py-1 text-center w-[14%]">Kategori</th>
+                          <th className="border border-black px-2 py-1 text-left w-[16%]">Lokasi</th>
+                          <th className="border border-black px-1.5 py-1 text-center w-[9%]">Peserta</th>
+                          <th className="border border-black px-1.5 py-1 text-center w-[9%]">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredList.slice(0, 15).map((item, idx) => (
                           <tr key={item.id} className="text-black">
-                            <td className="border border-black px-2 py-1 text-center font-mono">{idx + 1}</td>
+                            <td className="border border-black px-1.5 py-1 text-center font-mono">{idx + 1}</td>
                             <td className="border border-black px-2 py-1 text-center">{item.tanggal}</td>
-                            <td className="border border-black px-3 py-1 font-semibold">{item.judul}</td>
+                            <td className="border border-black px-2.5 py-1 font-semibold truncate print:whitespace-normal">{item.judul}</td>
                             <td className="border border-black px-2 py-1 text-center">{item.kategori}</td>
-                            <td className="border border-black px-2 py-1">{item.lokasi}</td>
-                            <td className="border border-black px-2 py-1 text-center">{item.peserta}</td>
-                            <td className="border border-black px-2 py-1 text-center font-medium">{item.status}</td>
+                            <td className="border border-black px-2 py-1 truncate print:whitespace-normal">{item.lokasi}</td>
+                            <td className="border border-black px-1.5 py-1 text-center">{item.peserta}</td>
+                            <td className="border border-black px-1.5 py-1 text-center font-medium">{item.status}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1336,7 +1374,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                   </div>
 
                   {/* Keterangan & Catatan Pelaksanaan */}
-                  <div className="my-4 text-xs text-black leading-relaxed">
+                  <div className="my-4 text-xs text-black leading-relaxed print:text-[10pt]">
                     <p className="indent-6">
                       Demikian laporan rekapitulasi kegiatan ini disusun sebagai wujud pertanggungjawaban
                       serta dokumentasi resmi program kerja Karang Taruna Kelurahan Manis Jaya. Seluruh kegiatan
@@ -1346,7 +1384,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                 </div>
 
                 {/* POSISI TANDA TANGAN LAPORAN (TANPA STEMPEL SESUAI INSTRUKSI RESMI) */}
-                <div className="mt-8">
+                <div className="mt-6 print:mt-4 break-inside-avoid">
                   <OfficialSignatureBlock
                     ketuaTitle="Ketua Umum"
                     ketuaName="Muhammad Ryan Pratama, S.Kom."

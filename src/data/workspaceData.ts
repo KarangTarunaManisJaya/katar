@@ -1,7 +1,7 @@
 export interface ActivityItem {
   id: string;
-  badge: 'Kegiatan' | 'Dokumentasi';
-  badgeColor: 'dark' | 'green' | 'purple' | 'orange';
+  badge: 'Kegiatan' | 'Dokumentasi' | 'Berita' | 'Pengumuman';
+  badgeColor: 'dark' | 'green' | 'purple' | 'orange' | 'blue' | 'rose';
   title: string;
   date: string;
   photoCount: number;
@@ -10,6 +10,45 @@ export interface ActivityItem {
   location: string;
   author: string;
   photos: string[];
+  // Extended rich fields for detailed news & activities
+  subtitle?: string;
+  type?: 'Kegiatan' | 'Berita' | 'Pengumuman' | 'Dokumentasi' | 'Liputan Khusus' | 'Artikel Pemuda';
+  category?: string;
+  time?: string;
+  endTime?: string;
+  organizer?: string;
+  division?: string;
+  targetScope?: string;
+  priority?: 'Rutin' | 'Penting' | 'Mendesak';
+  registrationStatus?: 'Terbuka Umum' | 'Khusus Pengurus' | 'Perlu Registrasi' | 'Undangan Khusus';
+  registrationUrl?: string;
+  estimatedBudget?: string;
+  fundingSource?: string;
+  summary?: string;
+  content?: string;
+  objective?: string;
+  result?: string;
+  keyQuote?: { quote: string; person: string; role: string };
+  rundown?: Array<{ id: string; time: string; activity: string; pic: string }>;
+  vipGuests?: Array<{ id: string; name: string; title: string; status: string }>;
+  participantCount?: string;
+  participantsInvolved?: string;
+  partners?: string;
+  sponsors?: Array<{ id: string; name: string; tier: string }>;
+  contactPerson?: { name: string; phone: string; email?: string };
+  coverCaption?: string;
+  videoUrl?: string;
+  attachments?: Array<{ id: string; name: string; size?: string; type?: string }>;
+  driveUrl?: string;
+  status?: 'Draft' | 'Publikasikan Sekarang' | 'Menunggu Review';
+  publishDate?: string;
+  slug?: string;
+  isFeatured?: boolean;
+  showOnHome?: boolean;
+  allowComments?: boolean;
+  tags?: string[];
+  metaDescription?: string;
+  socialCaption?: string;
 }
 
 export interface WorkspaceMember {

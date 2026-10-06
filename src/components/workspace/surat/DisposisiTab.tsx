@@ -306,13 +306,14 @@ export const DisposisiTab: React.FC<DisposisiTabProps> = ({
                 )}
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => onPrintLembarDisposisi(item)}
-                  title="Cetak Lembar Disposisi Resmi"
-                  className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-amber-50 rounded"
+                  title="Cetak PDF Lembar Disposisi (A4)"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded text-xs font-bold transition-colors cursor-pointer"
                 >
-                  <Printer className="w-4 h-4" />
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak PDF</span>
                 </button>
                 <button
                   onClick={() => onEdit(item)}

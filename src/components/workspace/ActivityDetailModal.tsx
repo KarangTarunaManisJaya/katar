@@ -139,10 +139,65 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
             <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block mb-2">
               Deskripsi & Laporan Pelaksanaan
             </span>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              {activity.description}
+            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+              {activity.content || activity.description}
             </p>
           </div>
+
+          {/* Key Quote if present */}
+          {activity.keyQuote?.quote && (
+            <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs">
+              <p className="italic text-slate-800 mb-2">"{activity.keyQuote.quote}"</p>
+              <p className="font-bold text-slate-900">{activity.keyQuote.person} <span className="font-normal text-slate-500">({activity.keyQuote.role})</span></p>
+            </div>
+          )}
+
+          {/* Rundown table if present */}
+          {activity.rundown && activity.rundown.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
+                Susunan Acara / Rundown
+              </span>
+              <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 font-bold text-slate-700 text-[11px] border-b border-slate-200">
+                    <tr>
+                      <th className="p-2">Waktu</th>
+                      <th className="p-2">Agenda</th>
+                      <th className="p-2">PIC</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {activity.rundown.map((r, i) => (
+                      <tr key={i}>
+                        <td className="p-2 text-blue-600 font-semibold font-mono text-[11px]">{r.time}</td>
+                        <td className="p-2 text-slate-800">{r.activity}</td>
+                        <td className="p-2 text-slate-500">{r.pic}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Contact Person if present */}
+          {activity.contactPerson?.name && (
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between text-xs">
+              <div>
+                <span className="font-bold text-emerald-900 block">{activity.contactPerson.name}</span>
+                <span className="text-emerald-700 text-[11px]">{activity.contactPerson.phone}</span>
+              </div>
+              <a
+                href={`https://wa.me/${activity.contactPerson.phone.replace(/[^0-9]/g, '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold"
+              >
+                WhatsApp
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

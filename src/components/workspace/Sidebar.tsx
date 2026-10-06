@@ -21,6 +21,7 @@ import {
   KeyRound,
   LogOut,
   ChevronDown,
+  Palette,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
@@ -432,43 +433,68 @@ export const Sidebar: React.FC<SidebarProps> = ({
               const isActive = currentTab === item.id;
               const allowed = isMenuAllowed(item.id);
               return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectTab(item.id)}
-                  style={getActiveStyle(isActive)}
-                  className={`w-full flex items-center ${
-                    isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
-                  } rounded-xl text-xs sm:text-sm transition-all ${
-                    !isActive ? getInactiveClass(allowed) : 'shadow-md font-bold'
-                  }`}
-                  title={item.label + (!allowed ? ' (Terkunci)' : '')}
-                >
-                  <div className="flex items-center gap-3">
-                    {showIcon && (
-                      <Icon
-                        className={`w-4 h-4 ${
-                          isActive
-                            ? 'text-white'
-                            : allowed
-                            ? isLight
-                              ? 'text-slate-500'
+                <div key={item.id}>
+                  <button
+                    onClick={() => onSelectTab(item.id)}
+                    style={getActiveStyle(isActive)}
+                    className={`w-full flex items-center ${
+                      isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
+                    } rounded-xl text-xs sm:text-sm transition-all ${
+                      !isActive ? getInactiveClass(allowed) : 'shadow-md font-bold'
+                    }`}
+                    title={item.label + (!allowed ? ' (Terkunci)' : '')}
+                  >
+                    <div className="flex items-center gap-3">
+                      {showIcon && (
+                        <Icon
+                          className={`w-4 h-4 ${
+                            isActive
+                              ? 'text-white'
+                              : allowed
+                              ? isLight
+                                ? 'text-slate-500'
+                                : 'text-slate-400'
                               : 'text-slate-400'
-                            : 'text-slate-400'
-                        }`}
-                      />
+                          }`}
+                        />
+                      )}
+                      {showText && <span>{item.label}</span>}
+                    </div>
+                    {!isCollapsed && (
+                      <>
+                        {isActive ? (
+                          <ChevronRight className="w-4 h-4 opacity-80 shrink-0" />
+                        ) : !allowed ? (
+                          <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        ) : null}
+                      </>
                     )}
-                    {showText && <span>{item.label}</span>}
-                  </div>
-                  {!isCollapsed && (
-                    <>
-                      {isActive ? (
-                        <ChevronRight className="w-4 h-4 opacity-80 shrink-0" />
-                      ) : !allowed ? (
-                        <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      ) : null}
-                    </>
+                  </button>
+
+                  {/* Sub-item under Pengaturan: Kustomisasi Tampilan */}
+                  {!isCollapsed && item.id === 'pengaturan' && currentTab === 'pengaturan' && (
+                    <div className="pl-7 pr-1 pt-1 pb-0.5 space-y-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          try {
+                            localStorage.setItem('kt_active_pengaturan_tab', 'tampilan');
+                            window.dispatchEvent(new CustomEvent('kt_switch_pengaturan_tab', { detail: 'tampilan' }));
+                          } catch {}
+                          onSelectTab('pengaturan');
+                        }}
+                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
+                          isLight
+                            ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                            : 'text-slate-300 hover:text-white hover:bg-white/5 font-medium'
+                        }`}
+                      >
+                        <Palette className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Kustomisasi Tampilan</span>
+                      </button>
+                    </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </nav>

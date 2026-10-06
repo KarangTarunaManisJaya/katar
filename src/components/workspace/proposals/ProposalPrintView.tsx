@@ -1,8 +1,9 @@
-import React from 'react';
-import { Printer, ArrowLeft, Download, ShieldCheck } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Printer, ArrowLeft, Download, ShieldCheck, Loader2 } from 'lucide-react';
 import { ProposalItem } from '../../../types/proposal';
 import { OfficialKopSurat } from '../surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from '../surat/OfficialSignatureBlock';
+import { downloadElementAsPdf, printElementDirectly } from '../../../utils/pdfExport';
 
 interface ProposalPrintViewProps {
   proposal: ProposalItem;
@@ -12,9 +13,30 @@ interface ProposalPrintViewProps {
 
 export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, onBack, onToast }) => {
   const currentYear = new Date().getFullYear();
+  const printDocRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!printDocRef.current) return;
+    setIsExportingPdf(true);
+    const cleanNomor = (proposal.nomorProposal || 'proposal').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Proposal_${cleanNomor}.pdf`;
+
+    const success = await downloadElementAsPdf(printDocRef.current, filename);
+    setIsExportingPdf(false);
+    if (success) {
+      onToast(`File "${filename}" berhasil diunduh!`);
+    } else {
+      onToast('Gagal mengunduh PDF. Silakan gunakan tombol Cetak.');
+    }
+  };
 
   const handlePrint = () => {
-    window.print();
+    if (printDocRef.current) {
+      printElementDirectly(printDocRef.current);
+    } else {
+      window.print();
+    }
   };
 
   return (
@@ -23,30 +45,53 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
       <div className="print:hidden bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={onBack}
-          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Kembali ke Daftar Proposal
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Tombol Unduh PDF Langsung */}
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isExportingPdf}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+          >
+            {isExportingPdf ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Membuat PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span>Unduh File PDF</span>
+              </>
+            )}
+          </button>
+
+          {/* Tombol Cetak Dokumen */}
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            Cetak / Simpan PDF (A4)
+            <span>Cetak Dokumen</span>
           </button>
         </div>
       </div>
 
       {/* Official A4 Document Container */}
-      <div className="bg-white max-w-4xl mx-auto p-8 sm:p-12 rounded-2xl border border-slate-200 shadow-sm print:border-none print:shadow-none print:p-0 print:m-0 text-slate-900 font-serif leading-relaxed text-sm">
+      <div
+        ref={printDocRef}
+        className="bg-white max-w-4xl mx-auto p-6 sm:p-10 rounded-2xl border border-slate-200 shadow-sm print-sheet print:border-none print:shadow-none print:p-0 print:m-0 print:max-w-full text-slate-900 font-serif leading-relaxed text-sm print:text-black"
+      >
         {/* Kop Surat Resmi 100% Persis Gambar */}
         <OfficialKopSurat />
 
         {/* Judul & Nomor Proposal */}
-        <div className="text-center font-sans mb-8">
+        <div className="text-center font-sans mb-6 sm:mb-8 print:mb-5">
           <h1 className="text-lg sm:text-xl font-black uppercase text-slate-950 tracking-wide underline underline-offset-4">
             PROPOSAL KEGIATAN
           </h1>
@@ -64,7 +109,7 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
         </div>
 
         {/* Batang Tubuh Proposal */}
-        <div className="space-y-6 text-justify leading-relaxed">
+        <div className="space-y-5 sm:space-y-6 text-justify leading-relaxed break-words max-w-full">
           {/* 1. Latar Belakang */}
           <div>
             <h4 className="font-sans font-bold text-slate-950 text-sm mb-1 uppercase tracking-wide">

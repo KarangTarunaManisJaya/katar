@@ -241,9 +241,9 @@ export const SuratDetailModal: React.FC<SuratDetailModalProps> = ({
                   onClose();
                   onPrintPreview(suratKeluar!);
                 }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
               >
-                <Printer className="w-4 h-4" /> Pratinjau Cetak / PDF
+                <Printer className="w-4 h-4" /> Cetak PDF
               </button>
             )}
             <button
