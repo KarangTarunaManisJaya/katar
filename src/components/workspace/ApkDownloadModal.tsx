@@ -55,13 +55,15 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({
   const apkFilename = 'ManisJaya_KarangTaruna_v1.2.0.apk';
   const zipFilename = 'ManisJaya_SourceCode_Mentahan.zip';
 
-  // Compute robust absolute download URLs
+  // Compute robust absolute download URLs that respect base path (e.g. /katar/ on GitHub Pages)
   const getAbsoluteFileUrl = (filename: string) => {
     if (typeof window !== 'undefined') {
       const origin = window.location.origin;
-      return `${origin}/${filename}`;
+      const baseUrl = import.meta.env.BASE_URL || '/';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      return `${origin}${cleanBase.startsWith('/') ? '' : '/'}${cleanBase}${filename}`;
     }
-    return `/${filename}`;
+    return `./${filename}`;
   };
 
   const apkUrl = getAbsoluteFileUrl(apkFilename);
@@ -116,18 +118,13 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({
       link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-
-      // Secondary fallback navigation for stubborn mobile webviews
       setTimeout(() => {
-        try {
-          window.location.assign(url);
-        } catch {
-          // ignore
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
         }
-      }, 350);
+      }, 500);
     } catch {
-      window.open(url, '_blank');
+      window.location.href = url;
     }
   };
 
@@ -135,19 +132,23 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({
   const handleOpenInChromeOrTab = () => {
     onToast('Membuka unduhan langsung di peramban Google Chrome...');
     if (typeof window !== 'undefined') {
-      const host = window.location.host;
-      const protocol = window.location.protocol.replace(':', '');
-      const intentUrl = `intent://${host}/${apkFilename}#Intent;scheme=${protocol};package=com.android.chrome;end`;
+      try {
+        const urlObj = new URL(apkUrl);
+        const hostWithPath = `${urlObj.host}${urlObj.pathname}`;
+        const protocol = urlObj.protocol.replace(':', '');
+        const intentUrl = `intent://${hostWithPath}#Intent;scheme=${protocol};package=com.android.chrome;end`;
 
-      // Try Android intent if on mobile Android
-      const isAndroid = /Android/i.test(navigator.userAgent);
-      if (isAndroid) {
-        window.location.href = intentUrl;
-        setTimeout(() => {
-          window.open(apkUrl, '_blank');
-        }, 600);
-      } else {
-        window.open(apkUrl, '_blank');
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        if (isAndroid) {
+          window.location.href = intentUrl;
+          setTimeout(() => {
+            triggerNativeDownload(apkUrl, apkFilename);
+          }, 800);
+        } else {
+          triggerNativeDownload(apkUrl, apkFilename);
+        }
+      } catch {
+        triggerNativeDownload(apkUrl, apkFilename);
       }
     }
   };

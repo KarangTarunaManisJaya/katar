@@ -80,7 +80,23 @@ export async function downloadElementAsPdf(
     }
 
     if (onProgress) onProgress('Mengunduh file...');
-    pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
+    const pdfFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    try {
+      pdf.save(pdfFilename);
+    } catch {
+      const blob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = pdfFilename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (document.body.contains(link)) document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 10000);
+    }
     return true;
   } catch (error) {
     console.error('Gagal membuat PDF:', error);
