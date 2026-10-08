@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBranding } from '../../../context/BrandingContext';
+import { BrandLogo } from '../BrandLogo';
 
 interface OfficialKopSuratProps {
   className?: string;
@@ -14,34 +15,7 @@ interface OfficialKopSuratProps {
 
 // Logo Karang Taruna Resmi Vektor Cadangan (Fallback jika belum ada logo yang diunggah)
 const OfficialKarangTarunaEmblem: React.FC = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-xs">
-    {/* Outer golden lotus petals */}
-    <circle cx="50" cy="50" r="46" fill="#f59e0b" stroke="#b45309" strokeWidth="1.5" />
-    <path
-      d="M50 4 C58 16 68 20 80 20 C80 32 84 42 96 50 C84 58 80 68 80 80 C68 80 58 84 50 96 C42 84 32 80 20 80 C20 68 16 58 4 50 C16 42 20 32 20 20 C32 20 42 16 50 4 Z"
-      fill="#fbbf24"
-      stroke="#d97706"
-      strokeWidth="1.2"
-    />
-    {/* Red Inner Shield / Base */}
-    <circle cx="50" cy="50" r="36" fill="#dc2626" stroke="#fef08a" strokeWidth="2" />
-    {/* Central White / Blue circular emblem */}
-    <circle cx="50" cy="50" r="26" fill="#1e3a8a" stroke="#f59e0b" strokeWidth="1.5" />
-    <circle cx="50" cy="50" r="23" fill="#ffffff" />
-    {/* Golden Torch & Wings */}
-    <path d="M46 62 L54 62 L52 42 L48 42 Z" fill="#f59e0b" />
-    <path d="M44 42 L56 42 L50 28 Z" fill="#ef4444" />
-    <circle cx="50" cy="38" r="4" fill="#fbbf24" />
-    {/* Flame rays */}
-    <path d="M50 24 L52 29 L48 29 Z" fill="#dc2626" />
-    <path d="M42 32 L46 34 L43 36 Z" fill="#f59e0b" />
-    <path d="M58 32 L54 34 L57 36 Z" fill="#f59e0b" />
-    {/* Lower Ribbon with Text */}
-    <path d="M24 66 Q50 74 76 66 L74 74 Q50 82 26 74 Z" fill="#fbbf24" stroke="#b45309" strokeWidth="0.8" />
-    <text x="50" y="73" fontSize="4.8" fill="#1e3a8a" fontWeight="900" textAnchor="middle" letterSpacing="0.4">
-      KARANG TARUNA
-    </text>
-  </svg>
+  <BrandLogo size="lg" className="w-full h-full" />
 );
 
 export const OfficialKopSurat: React.FC<OfficialKopSuratProps> = ({

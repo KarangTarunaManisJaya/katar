@@ -158,6 +158,27 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
     onToast('Logo organisasi telah dikembalikan ke lambang resmi Karang Taruna.');
   };
 
+  const handleForceRefreshCache = async () => {
+    try {
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.unregister();
+        }
+      }
+      onToast('Cache HP/Browser berhasil dikosongkan! Memuat ulang logo & pembaruan...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } catch {
+      window.location.reload();
+    }
+  };
+
   // Kop Surat upload handler
   const handleKopFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -525,6 +546,16 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
                   <span className="text-[10px] text-slate-400 mt-1.5 text-center">
                     Format: JPG, PNG (maks. 2MB)
                   </span>
+
+                  <button
+                    type="button"
+                    onClick={handleForceRefreshCache}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold shadow-2xs transition-colors"
+                    title="Bersihkan cache browser & service worker untuk memuat logo terbaru di HP"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Segarkan Cache HP / Browser</span>
+                  </button>
                 </div>
 
                 {/* Inputs Section */}

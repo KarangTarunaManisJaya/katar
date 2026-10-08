@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId, useState } from 'react';
 import { useBranding } from '../../context/BrandingContext';
 
 interface BrandLogoProps {
@@ -9,6 +9,9 @@ interface BrandLogoProps {
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md', onClick }) => {
   const { logoUrl } = useBranding();
+  const [imgError, setImgError] = useState(false);
+  const rawId = useId();
+  const archId = `archLogo_${rawId.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   const dimensions = {
     sm: 'w-7 h-7',
@@ -19,7 +22,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md
 
   const clickableClass = onClick ? 'cursor-pointer select-none' : '';
 
-  if (logoUrl) {
+  if (logoUrl && !imgError) {
     return (
       <div
         onClick={onClick}
@@ -29,6 +32,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md
           src={logoUrl}
           alt="Logo Karang Taruna Manis Jaya"
           className="w-full h-full object-contain"
+          onError={() => setImgError(true)}
         />
       </div>
     );
@@ -40,16 +44,16 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({ className = '', size = 'md
       onClick={onClick}
       className={`${dimensions} shrink-0 flex items-center justify-center ${clickableClass} ${className}`}
     >
-      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-sm">
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-sm select-none">
         <circle cx="50" cy="50" r="47" fill="#1e3a8a" stroke="#facc15" strokeWidth="2.5" />
         <circle cx="50" cy="50" r="39" fill="#1d4ed8" stroke="#facc15" strokeWidth="1.8" strokeDasharray="3,1" />
         <circle cx="50" cy="50" r="29" fill="#dc2626" stroke="#facc15" strokeWidth="2" />
         <path d="M50 31 L54 44 L46 44 Z" fill="#facc15" />
         <path d="M48 44 L52 44 L51 67 L49 67 Z" fill="#f8fafc" />
         <circle cx="50" cy="50" r="10" fill="#facc15" opacity="0.35" />
-        <path id="archLogo" d="M22,50 a28,28 0 1,1 56,0" fill="none" />
+        <path id={archId} d="M22,50 a28,28 0 1,1 56,0" fill="none" />
         <text fontSize="7" fill="#ffffff" fontWeight="bold" letterSpacing="0.8">
-          <textPath href="#archLogo" startOffset="50%" textAnchor="middle">
+          <textPath href={`#${archId}`} startOffset="50%" textAnchor="middle">
             KARANG TARUNA
           </textPath>
         </text>

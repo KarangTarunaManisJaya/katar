@@ -80,7 +80,7 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
     () => localStorage.getItem('kt_doc_nama_kt') || 'Karang Taruna Kelurahan Manis Jaya'
   );
   const [docLogoOrg, setDocLogoOrg] = useState(
-    () => localStorage.getItem('kt_doc_logo_org') || logoUrl || '/src/assets/images/logo_karang_taruna_1790646270000.png'
+    () => localStorage.getItem('kt_doc_logo_org') || logoUrl || './logo.png'
   );
   const [docLogoTambahan, setDocLogoTambahan] = useState(
     () => localStorage.getItem('kt_doc_logo_tambahan') || ''

@@ -311,6 +311,15 @@ def main():
     img_48 = render_logo_image(48)
     write_png("public/ic_launcher_48.png", 48, 48, img_48)
 
+    # Generate genuine Windows .ico resource with 192x192 PNG for desktop browser tab & hover cards
+    print("[*] Building multi-resolution favicon.ico...")
+    with open("public/icon-192.png", "rb") as pf:
+        d192 = pf.read()
+    ico_header = struct.pack('<HHH', 0, 1, 1)
+    ico_entry = struct.pack('<BBBBHHII', 0, 0, 0, 0, 1, 32, len(d192), 22)
+    with open("public/favicon.ico", "wb") as f_ico:
+        f_ico.write(ico_header + ico_entry + d192)
+
     print("[+] All official Karang Taruna logo icons successfully generated!")
 
 if __name__ == '__main__':
