@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manisjaya-cache-v1';
+const CACHE_NAME = 'manisjaya-cache-v3';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -28,10 +28,18 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
+
   // Never intercept APK installers or ZIP downloads so browser natively downloads full binary files without size cutoff
-  if (url.pathname.endsWith('.apk') || url.pathname.endsWith('.zip') || url.pathname.includes('ManisJaya_')) {
-    return;
+  if (
+    url.pathname.endsWith('.apk') ||
+    url.pathname.endsWith('.zip') ||
+    url.pathname.includes('ManisJaya_') ||
+    url.pathname.includes('.apk') ||
+    url.search.includes('.apk')
+  ) {
+    return; // Pass through natively to network
   }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
