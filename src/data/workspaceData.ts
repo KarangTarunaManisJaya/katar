@@ -19,7 +19,11 @@ export interface ActivityItem {
   organizer?: string;
   division?: string;
   targetScope?: string;
-  priority?: 'Rutin' | 'Penting' | 'Mendesak';
+  targetSasaran?: string;
+  mapsUrl?: string;
+  budget?: number;
+  estimatedAttendees?: number;
+  priority?: 'Rutin' | 'Penting' | 'Mendesak' | 'Biasa';
   registrationStatus?: 'Terbuka Umum' | 'Khusus Pengurus' | 'Perlu Registrasi' | 'Undangan Khusus';
   registrationUrl?: string;
   estimatedBudget?: string;
@@ -29,12 +33,12 @@ export interface ActivityItem {
   objective?: string;
   result?: string;
   keyQuote?: { quote: string; person: string; role: string };
-  rundown?: Array<{ id: string; time: string; activity: string; pic: string }>;
-  vipGuests?: Array<{ id: string; name: string; title: string; status: string }>;
+  rundown?: Array<{ id?: string; time: string; activity: string; pic: string }>;
+  vipGuests?: Array<{ id?: string; name: string; title?: string; role?: string; status?: string }>;
   participantCount?: string;
   participantsInvolved?: string;
   partners?: string;
-  sponsors?: Array<{ id: string; name: string; tier: string }>;
+  sponsors?: Array<{ id?: string; name: string; tier: string }>;
   contactPerson?: { name: string; phone: string; email?: string };
   coverCaption?: string;
   videoUrl?: string;
@@ -96,62 +100,152 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     id: 'act-1',
     badge: 'Kegiatan',
     badgeColor: 'dark',
-    title: 'Pengadaan Peralatan Kegiatan',
+    category: 'Sarana & Prasarana',
+    priority: 'Biasa',
+    title: 'Pengadaan Peralatan & Logistik Kegiatan Pemuda',
+    subtitle: 'Inventarisasi aset panggung, partisi portabel, dan sound system pendukung',
     date: `12 Ags ${CURRENT_YEAR}`,
+    time: '09:00 - 15:30',
     photoCount: 2,
     image: '/src/assets/images/equipment_red_tools_1790588983260.jpg',
     description: 'Penyediaan dan pengecekan perlengkapan modular panggung, partisi lipat, serta boks penyimpanan logistik penunjang kegiatan Karang Taruna Manis Jaya.',
-    location: 'Sekretariat Karang Taruna Manis Jaya',
+    content: 'Dalam rangka menunjang kelancaran berbagai agenda pemuda dan kemasyarakatan di wilayah Kelurahan Manis Jaya, pengurus Karang Taruna melaksanakan serah terima serta pengecekan kelayakan logistik panggung modular, sistem kelistrikan, dan partisi lipat serbaguna.\n\nSeluruh sarana kini telah disimpan dengan rapi di gudang sekretariat dan siap dipinjamkan secara gratis untuk kegiatan kemasyarakatan tingkat RT/RW se-Kelurahan Manis Jaya.',
+    location: 'Sekretariat Karang Taruna Manis Jaya, Jl. Industri Raya',
+    mapsUrl: 'https://maps.google.com/?q=Manis+Jaya+Tangerang',
     author: 'Iik Andriyana',
+    targetSasaran: 'Pengurus Karang Taruna & Warga RW 01 - RW 08',
+    budget: 8500000,
+    estimatedAttendees: 25,
+    isFeatured: false,
+    tags: ['Aset', 'Logistik', 'Peralatan', 'Sekretariat'],
     photos: [
       '/src/assets/images/equipment_red_tools_1790588983260.jpg',
       '/src/assets/images/device_hardware_office_1790589008132.jpg'
     ],
+    rundown: [
+      { time: '09:00 - 10:30', activity: 'Kedatangan logistik & unboxing armada', pic: 'Bagus Tri' },
+      { time: '10:30 - 12:00', activity: 'Pengecekan spesifikasi & uji fungsi partisi', pic: 'Ahmad Fauzi' },
+      { time: '13:00 - 15:30', activity: 'Penataan rak gudang dan inventarisasi kartu stok', pic: 'Divisi Aset' }
+    ],
+    contactPerson: {
+      name: 'Iik Andriyana (Ketua Karang Taruna)',
+      phone: '0812-8912-3450'
+    }
   },
   {
     id: 'act-2',
     badge: 'Kegiatan',
     badgeColor: 'green',
-    title: 'Pemasangan Perangkat Kantor',
+    category: 'Pendidikan',
+    priority: 'Penting',
+    title: 'Pemasangan Perangkat Display & Wi-Fi Digital Sekretariat',
+    subtitle: 'Digitalisasi layanan kepemudaan dan ruang multimedia pemuda',
     date: `28 Jul ${CURRENT_YEAR}`,
+    time: '13:00 - 17:00',
     photoCount: 3,
     image: '/src/assets/images/device_hardware_office_1790589008132.jpg',
     description: 'Instalasi jaringan internet wifi publik, rak server administrasi, dan perangkat display informasi digital untuk pelayanan pemuda.',
+    content: 'Sebagai wujud modernisasi administrasi keorganisasian, Karang Taruna Manis Jaya meresmikan fasilitas Wi-Fi publik berkecepatan tinggi serta smart display di Balai Warga. Fasilitas ini terbuka untuk pelajar dan mahasiswa yang ingin belajar kelompok, browsing materi pendidikan, maupun mengadakan diskusi kreatif kepemudaan.',
     location: 'Ruang Multimedia Balai Manis Jaya',
+    mapsUrl: 'https://maps.google.com/?q=Kelurahan+Manis+Jaya',
     author: 'Divisi IT & Aset',
+    targetSasaran: 'Pelajar, Mahasiswa, dan Pemuda Manis Jaya',
+    budget: 6200000,
+    estimatedAttendees: 40,
+    isFeatured: false,
+    tags: ['Digitalisasi', 'InternetGratis', 'IT', 'Edukasi'],
     photos: [
       '/src/assets/images/device_hardware_office_1790589008132.jpg',
       '/src/assets/images/equipment_red_tools_1790588983260.jpg'
     ],
+    keyQuote: {
+      quote: 'Fasilitas internet dan ruang multimedia ini dihadirkan agar generasi muda Manis Jaya memiliki ruang produktif untuk mengasah skill digital.',
+      person: 'Iik Andriyana',
+      role: 'Ketua Karang Taruna'
+    },
+    contactPerson: {
+      name: 'Admin IT Sekretariat',
+      phone: '0812-8912-3451'
+    }
   },
   {
     id: 'act-3',
     badge: 'Kegiatan',
     badgeColor: 'purple',
-    title: 'Kegiatan Bulanan',
+    category: 'Sosial',
+    priority: 'Penting',
+    title: 'Rapat Pleno Koordinasi & Evaluasi Program Bulanan',
+    subtitle: 'Sinkronisasi program kerja semester dua dan persiapan PHBN RI',
     date: `15 Jul ${CURRENT_YEAR}`,
+    time: '19:30 - 22:00',
     photoCount: 1,
-    image: '', // Placeholder in the screenshot
+    image: '/src/assets/images/manis_jaya_gate_1790588960710.jpg',
     description: 'Rapat koordinasi bulanan evaluasi program kerja lintas seksi dan perumusan agenda peringatan Hari Kemerdekaan RI tingkat kelurahan.',
-    location: 'Pendopo Balai Pertemuan RW 04',
+    content: 'Rapat Pleno Bulanan dihadiri oleh seluruh jajaran pengurus harian Karang Taruna Kelurahan Manis Jaya serta perwakilan unit kerja pemuda tingkat RW 01 hingga RW 08. Agenda fokus pada evaluasi transparansi kas organisasi, penjaringan aspirasi pemuda di tiap lingkungan rukun warga, serta pembentukan panitia Semarak Kemerdekaan RI.',
+    location: 'Pendopo Balai Pertemuan RW 04 Manis Jaya',
+    mapsUrl: 'https://maps.google.com/?q=Manis+Jaya+Tangerang',
     author: 'Sekretariat',
-    photos: [],
+    targetSasaran: 'Pengurus Harian & Utusan Karang Taruna Unit RW',
+    budget: 1500000,
+    estimatedAttendees: 35,
+    isFeatured: false,
+    tags: ['RapatPleno', 'Evaluasi', 'Koordinasi', 'Pemuda'],
+    photos: [
+      '/src/assets/images/manis_jaya_gate_1790588960710.jpg'
+    ],
+    rundown: [
+      { time: '19:30 - 19:45', activity: 'Pembukaan & Menyanyikan Mars Karang Taruna', pic: 'Sekretaris' },
+      { time: '19:45 - 20:30', activity: 'Laporan Progres Bendahara & Seksi Bidang', pic: 'Bagus Tri' },
+      { time: '20:30 - 21:45', activity: 'Sesi Diskusi & Pembentukan Panitia 17 Agustus', pic: 'Fajar Maulana' },
+      { time: '21:45 - 22:00', activity: 'Doa penutup dan ramah tamah', pic: 'Ahmad Fauzi' }
+    ],
+    contactPerson: {
+      name: 'Anisa Rahmawati (Sekretaris)',
+      phone: '0812-8912-3452'
+    }
   },
   {
     id: 'act-4',
     badge: 'Dokumentasi',
     badgeColor: 'orange',
-    title: 'Bakti Sosial Karang Taruna',
+    category: 'Sosial',
+    priority: 'Mendesak',
+    title: 'Bakti Sosial Peduli Sesama & Santunan Sembako RW 02',
+    subtitle: 'Penyaluran 150 paket sembako dan layanan cek tensi gula darah gratis',
     date: `5 Jul ${CURRENT_YEAR}`,
+    time: '08:00 - 13:00',
     photoCount: 4,
     image: '/src/assets/images/baksos_karang_taruna_1790589027203.jpg',
     description: 'Penyaluran 150 paket sembako berkah pemuda dan pemeriksaan kesehatan gratis bagi lansia serta warga kurang mampu di Kelurahan Manis Jaya.',
-    location: 'Gazebo Warga RW 02 Manis Jaya',
+    content: 'Aksi kepedulian sosial pemuda Karang Taruna Manis Jaya berkolaborasi bersama Puskesmas Manis Jaya dan para donatur lokal sukses menyalurkan 150 paket sembako berisi beras, minyak goreng, gula, dan mie instan.\n\nSelain pembagian sembako, tim medis relawan juga memberikan layanan pengecekan tekanan darah, gula darah, dan konsultasi kesehatan secara cuma-cuma kepada ratusan lansia warga RW 02.',
+    location: 'Gazebo Warga RW 02 Kelurahan Manis Jaya',
+    mapsUrl: 'https://maps.google.com/?q=Manis+Jaya+Tangerang',
     author: 'Iik Andriyana',
+    targetSasaran: '150 Keluarga Lansia dan Dhuafa RW 02',
+    budget: 14500000,
+    estimatedAttendees: 150,
+    isFeatured: true,
+    tags: ['Baksos', 'PeduliSesama', 'Santunan', 'KesehatanGratis'],
     photos: [
       '/src/assets/images/baksos_karang_taruna_1790589027203.jpg',
-      '/src/assets/images/manis_jaya_gate_1790588960710.jpg'
+      '/src/assets/images/manis_jaya_gate_1790588960710.jpg',
+      '/src/assets/images/device_hardware_office_1790589008132.jpg',
+      '/src/assets/images/equipment_red_tools_1790588983260.jpg'
     ],
+    keyQuote: {
+      quote: 'Pemuda hadir bukan sekadar meramaikan suasana, melainkan membawa manfaat nyata yang menyentuh langsung kehidupan masyarakat di lingkungan.',
+      person: 'Bapak Lurah Manis Jaya',
+      role: 'Pelindung Organisasi'
+    },
+    rundown: [
+      { time: '08:00 - 08:30', activity: 'Registrasi penerima santunan dan kupon sembako', pic: 'Dwi Lestari' },
+      { time: '08:30 - 11:30', activity: 'Pemeriksaan tensi darah & pembagian paket berkah', pic: 'Hendri Setiawan' },
+      { time: '11:30 - 13:00', activity: 'Penyaluran door-to-door bagi lansia yang berhalangan hadir', pic: 'Tim Relawan RW 02' }
+    ],
+    contactPerson: {
+      name: 'Hendri Setiawan (Seksi Sosial)',
+      phone: '0812-8912-3456'
+    }
   },
 ];
 

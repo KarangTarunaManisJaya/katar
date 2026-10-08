@@ -24,6 +24,8 @@ import {
   Lock,
   Database,
   Cloud,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 import { WorkspaceTab } from './Sidebar';
 import { ActivityItem } from '../../data/workspaceData';
@@ -37,6 +39,7 @@ interface BerandaViewProps {
   onSelectActivity: (act: ActivityItem) => void;
   activities: ActivityItem[];
   allowedMenus?: WorkspaceTab[];
+  onDownloadApk?: () => void;
 }
 
 export const BerandaView: React.FC<BerandaViewProps> = ({
@@ -46,6 +49,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   onSelectActivity,
   activities,
   allowedMenus,
+  onDownloadApk,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'administrasi' | 'kegiatan' | 'sistem'>('all');
 
@@ -349,6 +353,36 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* BANNER DOWNLOAD APK PROGRAM ANDROID */}
+      {onDownloadApk && (
+        <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-md border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-13 h-13 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
+              <Smartphone className="w-7 h-7 text-emerald-300" />
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/25 border border-emerald-400/30 text-[10px] font-bold uppercase tracking-wider mb-1 text-emerald-200">
+                <span>Program APK Android v1.2.0</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black leading-tight text-white">
+                Download Aplikasi Android Karang Taruna Manis Jaya
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+                Unduh file installer APK untuk akses offline direktori anggota, arsip surat, notifikasi kilat, dan layanan pemuda di smartphone Android.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onDownloadApk}
+            className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-slate-950" />
+            <span>Download APK (.apk)</span>
+          </button>
+        </div>
+      )}
 
       {/* 2. DEDICATED SECTION: BUTTON MENU (SESUAI REQUEST USER) */}
       <div className="space-y-4">

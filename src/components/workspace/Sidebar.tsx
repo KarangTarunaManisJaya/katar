@@ -22,6 +22,7 @@ import {
   LogOut,
   ChevronDown,
   Palette,
+  Smartphone,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
@@ -54,6 +55,7 @@ interface SidebarProps {
   onOpenFirebaseConfig?: () => void;
   onOpenLoginModal?: () => void;
   onLogout?: () => void;
+  onDownloadApk?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -66,6 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenFirebaseConfig,
   onOpenLoginModal,
   onLogout,
+  onDownloadApk,
 }) => {
   const { theme } = useTheme();
   const [showCollapsedMenu, setShowCollapsedMenu] = useState(false);
@@ -582,6 +585,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span>Ganti Akun Pengurus</span>
                   </button>
 
+                  {onDownloadApk && (
+                    <button
+                      onClick={() => {
+                        setShowCollapsedMenu(false);
+                        onDownloadApk();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Smartphone className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Download APK Android</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       setShowCollapsedMenu(false);
@@ -599,6 +615,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         ) : (
           <div className="w-full flex flex-col gap-2">
+            {/* APK Android Download Button */}
+            {onDownloadApk && (
+              <button
+                type="button"
+                onClick={onDownloadApk}
+                className="w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 flex items-center justify-between transition-all group cursor-pointer"
+                title="Download File Installer APK Android Karang Taruna"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Smartphone className="w-4 h-4 text-white group-hover:scale-110 transition-transform shrink-0" />
+                  <span className="truncate">Download APK Android</span>
+                </div>
+                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono shrink-0">v1.2.0</span>
+              </button>
+            )}
+
             {/* Header info profil sama seperti propil user di atas - klik untuk buka/tutup detail */}
             <div
               onClick={() => setShowProfileDetail(!showProfileDetail)}

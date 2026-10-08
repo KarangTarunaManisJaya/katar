@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Sun,
   Moon,
+  Smartphone,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { BrandLogo } from './BrandLogo';
@@ -50,6 +51,7 @@ interface HeaderProps {
   syncStatus?: CloudSyncStatus;
   onManualSync?: () => void;
   onOpenFirebaseConfig?: () => void;
+  onDownloadApk?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -61,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
   onManualSync,
   onOpenFirebaseConfig,
   onToggleMobileMenu,
+  onDownloadApk,
 }) => {
   const { theme, updateTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -187,6 +190,19 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
           </div>
+        )}
+
+        {/* Download APK Button */}
+        {onDownloadApk && (
+          <button
+            type="button"
+            onClick={onDownloadApk}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+            title="Download Program APK Android Karang Taruna"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="hidden xs:inline sm:inline">Download APK</span>
+          </button>
         )}
 
         {/* Quick Theme Toggle (Light / Dark) */}
@@ -449,6 +465,19 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
               </div>
+
+              {onDownloadApk && (
+                <button
+                  onClick={() => {
+                    setShowProfileMenu(false);
+                    onDownloadApk();
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs font-medium text-emerald-800 hover:bg-emerald-50 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
+                  <span>Download APK Android</span>
+                </button>
+              )}
 
               {onOpenFirebaseConfig && (
                 <button

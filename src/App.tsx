@@ -22,6 +22,8 @@ import { AssetsView } from './components/workspace/Views';
 import { NotificationToast } from './components/NotificationToast';
 import { AksesPenggunaView } from './components/workspace/AksesPenggunaView';
 import { TambahBeritaView } from './components/workspace/TambahBeritaView';
+import { SemuaBeritaView } from './components/workspace/SemuaBeritaView';
+import { ApkDownloadModal } from './components/workspace/ApkDownloadModal';
 import { LaporanKegiatanView } from './components/workspace/LaporanKegiatanView';
 import { JadwalKegiatanView } from './components/workspace/JadwalKegiatanView';
 import { AsetOrganisasiView } from './components/workspace/AsetOrganisasiView';
@@ -74,6 +76,7 @@ function AppContent() {
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
   const [showAddNews, setShowAddNews] = useState(false);
   const [showFirebaseModal, setShowFirebaseModal] = useState(false);
+  const [showApkModal, setShowApkModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -331,6 +334,7 @@ function AppContent() {
         syncStatus={cloudSyncStatus}
         onManualSync={handleManualCloudSync}
         onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
+        onDownloadApk={() => setShowApkModal(true)}
         onNavigateToTab={(tab) => {
           const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (Array.isArray(currentUser.allowedMenus) && currentUser.allowedMenus.includes(tab));
           if (isAllowed) {
@@ -366,6 +370,7 @@ function AppContent() {
             onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
             onOpenLoginModal={() => setShowLoginModal(true)}
             onLogout={handleLogout}
+            onDownloadApk={() => setShowApkModal(true)}
             onSelectTab={(tab) => {
               const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
               if (isAllowed) {
@@ -402,6 +407,10 @@ function AppContent() {
                 onLogout={() => {
                   setMobileMenuOpen(false);
                   handleLogout();
+                }}
+                onDownloadApk={() => {
+                  setMobileMenuOpen(false);
+                  setShowApkModal(true);
                 }}
                 onSelectTab={(tab) => {
                   const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
@@ -510,6 +519,7 @@ function AppContent() {
                   onToast={showToast}
                   onSelectActivity={(act) => setSelectedActivity(act)}
                   activities={filteredActivities}
+                  onDownloadApk={() => setShowApkModal(true)}
                 />
               )}
 
@@ -565,30 +575,15 @@ function AppContent() {
                 />
               )}
 
-              {/* 9. Subview: Berita Kegiatan */}
+              {/* 9. Subview: Berita Kegiatan (Semua Berita & Dokumentasi Kegiatan lengkap) */}
               {currentTab === 'berita' && (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                        Semua Berita & Dokumentasi Kegiatan
-                      </h2>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Kumpulan rilis pers dan foto kegiatan Karang Taruna Manis Jaya.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setCurrentTab('tambah_berita')}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5"
-                    >
-                      <span>+ Tambah Berita Baru</span>
-                    </button>
-                  </div>
-                  <RecentActivities
-                    activities={activities}
-                    onSelectActivity={(act) => setSelectedActivity(act)}
-                  />
-                </div>
+                <SemuaBeritaView
+                  activities={activities}
+                  onSelectActivity={(act) => setSelectedActivity(act)}
+                  onAddNews={() => setCurrentTab('tambah_berita')}
+                  onToast={showToast}
+                  onDeleteActivity={handleDeleteActivity}
+                />
               )}
 
               {/* 9b. Subview: Tambah Berita / Kegiatan Baru (Exact match of uploaded screenshot!) */}
@@ -827,6 +822,13 @@ function AppContent() {
       <FirebaseConfigModal
         isOpen={showFirebaseModal}
         onClose={() => setShowFirebaseModal(false)}
+        onToast={showToast}
+      />
+
+      {/* Modal: Download Program APK Android Karang Taruna */}
+      <ApkDownloadModal
+        isOpen={showApkModal}
+        onClose={() => setShowApkModal(false)}
         onToast={showToast}
       />
     </div>
