@@ -11,7 +11,37 @@ export default defineConfig(() => {
 
   return {
     base,
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: 'apk-headers-middleware',
+        configureServer(server) {
+          server.middlewares.use((req, res, next) => {
+            if (req.url && req.url.includes('ManisJaya_KarangTaruna_v1.2.0.apk')) {
+              res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+              res.setHeader('Content-Disposition', 'attachment; filename="ManisJaya_KarangTaruna_v1.2.0.apk"');
+            } else if (req.url && req.url.includes('ManisJaya_SourceCode_Mentahan.zip')) {
+              res.setHeader('Content-Type', 'application/zip');
+              res.setHeader('Content-Disposition', 'attachment; filename="ManisJaya_SourceCode_Mentahan.zip"');
+            }
+            next();
+          });
+        },
+        configurePreviewServer(server) {
+          server.middlewares.use((req, res, next) => {
+            if (req.url && req.url.includes('ManisJaya_KarangTaruna_v1.2.0.apk')) {
+              res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+              res.setHeader('Content-Disposition', 'attachment; filename="ManisJaya_KarangTaruna_v1.2.0.apk"');
+            } else if (req.url && req.url.includes('ManisJaya_SourceCode_Mentahan.zip')) {
+              res.setHeader('Content-Type', 'application/zip');
+              res.setHeader('Content-Disposition', 'attachment; filename="ManisJaya_SourceCode_Mentahan.zip"');
+            }
+            next();
+          });
+        },
+      },
+    ],
     resolve: {
       alias: {
         '@': path.resolve('.'),

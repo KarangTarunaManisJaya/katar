@@ -341,16 +341,30 @@ def main():
     files_to_pack["resources.arsc"] = build_resources_arsc()
     
     # 1d. Res resources (App launcher icon, colors, strings)
-    # Use real icon from public if available
+    # MUST USE the official Karang Taruna emblem matching desktop/mobile UI
+    icon_candidates = [
+        "public/icon-512.png",
+        "public/assets/icon-512.png",
+        "public/icon-192.png",
+        "public/assets/icon-192.png",
+        "public/logo.png"
+    ]
     icon_sample = None
-    for icon_candidate in ["public/hero_karang_taruna_1790587873230.jpg", "public/ahmad_fauzi_portrait_1790646239274.jpg"]:
+    for icon_candidate in icon_candidates:
         if os.path.exists(icon_candidate):
             with open(icon_candidate, "rb") as f:
                 icon_sample = f.read()
+            print(f"[*] Loaded official Karang Taruna launcher icon from: {icon_candidate}")
             break
             
     if not icon_sample:
-        icon_sample = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
+        # Generate if not present
+        os.system("python3 src/scripts/generate_official_logo.py")
+        if os.path.exists("public/icon-512.png"):
+            with open("public/icon-512.png", "rb") as f:
+                icon_sample = f.read()
+        else:
+            icon_sample = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
         
     files_to_pack["res/mipmap-hdpi/ic_launcher.png"] = icon_sample
     files_to_pack["res/mipmap-mdpi/ic_launcher.png"] = icon_sample
@@ -383,6 +397,8 @@ def main():
     total_asset_bytes = 0
     for root, dirs, files in os.walk(DIST_DIR):
         for fname in files:
+            if fname.endswith(('.apk', '.zip', '.map')):
+                continue
             full_path = os.path.join(root, fname)
             rel_path = os.path.relpath(full_path, DIST_DIR)
             apk_asset_path = f"assets/www/{rel_path}"

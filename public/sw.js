@@ -27,6 +27,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  // Never intercept APK installers or ZIP downloads so browser natively downloads full binary files without size cutoff
+  if (url.pathname.endsWith('.apk') || url.pathname.endsWith('.zip') || url.pathname.includes('ManisJaya_')) {
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
