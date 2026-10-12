@@ -35,6 +35,7 @@ import { useBranding } from '../../context/BrandingContext';
 import { OfficialKopSurat } from './surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
 import { printElementDirectly, downloadElementAsPdf } from '../../utils/pdfExport';
+import { resolveAssetUrl } from '../../utils/assetUrl';
 
 interface SuratDokumenTabProps {
   onToast: (msg: string) => void;
@@ -80,7 +81,7 @@ export const SuratDokumenTab: React.FC<SuratDokumenTabProps> = ({ onToast }) => 
     () => localStorage.getItem('kt_doc_nama_kt') || 'Karang Taruna Kelurahan Manis Jaya'
   );
   const [docLogoOrg, setDocLogoOrg] = useState(
-    () => localStorage.getItem('kt_doc_logo_org') || logoUrl || './logo.png'
+    () => localStorage.getItem('kt_doc_logo_org') || logoUrl || resolveAssetUrl('./logo.png?v=2')
   );
   const [docLogoTambahan, setDocLogoTambahan] = useState(
     () => localStorage.getItem('kt_doc_logo_tambahan') || ''

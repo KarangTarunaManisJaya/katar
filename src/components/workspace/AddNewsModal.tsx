@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, Plus, Calendar, MapPin, UploadCloud, CheckCircle, Image as ImageIcon } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { compressImage } from '../../utils/imageOptimizer';
+import { resolveAssetUrl } from '../../utils/assetUrl';
 
 interface AddNewsModalProps {
   onClose: () => void;
@@ -40,7 +41,7 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
     e.preventDefault();
     if (!title.trim() || !description.trim()) return;
 
-    const chosenImage = uploadedPhoto || '/src/assets/images/manis_jaya_gate_1790588960710.jpg';
+    const chosenImage = uploadedPhoto || resolveAssetUrl('/src/assets/images/manis_jaya_gate_1790588960710.jpg');
 
     const newActivity: ActivityItem = {
       id: `act-${Date.now()}`,

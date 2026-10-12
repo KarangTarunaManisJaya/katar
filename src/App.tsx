@@ -27,9 +27,11 @@ import { ApkDownloadModal } from './components/workspace/ApkDownloadModal';
 import { LaporanKegiatanView } from './components/workspace/LaporanKegiatanView';
 import { JadwalKegiatanView } from './components/workspace/JadwalKegiatanView';
 import { AsetOrganisasiView } from './components/workspace/AsetOrganisasiView';
+import { InventarisAssetView } from './components/workspace/InventarisAssetView';
 import { DatabaseGoogleDriveView } from './components/workspace/DatabaseGoogleDriveView';
 import { FirebaseConfigModal } from './components/workspace/FirebaseConfigModal';
 import { LoginModal } from './components/auth/LoginModal';
+import { resolveAssetUrl } from './utils/assetUrl';
 import { DEFAULT_USERS, UserAccount } from './types/auth';
 import { Lock, ArrowLeft } from 'lucide-react';
 import {
@@ -97,7 +99,7 @@ function AppContent() {
     return {
       ...defaultUser,
       ...user,
-      avatar: user?.avatar || defaultUser.avatar,
+      avatar: resolveAssetUrl(user?.avatar || defaultUser.avatar),
       allowedMenus,
     };
   };
@@ -555,9 +557,9 @@ function AppContent() {
                 />
               )}
 
-              {/* 7. Subview: Aset Organisasi */}
+              {/* 7. Subview: Inventaris Aset Organisasi (Pencatatan Barang, Kondisi, Lokasi & Integrasi Firebase) */}
               {currentTab === 'aset' && (
-                <AsetOrganisasiView
+                <InventarisAssetView
                   onToast={showToast}
                   onBackToHome={() => setCurrentTab('ringkasan')}
                   onNavigateToTab={(tab) => {

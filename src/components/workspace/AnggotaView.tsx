@@ -55,6 +55,7 @@ import {
   INITIAL_MEMBERS,
   memberToUserAccount,
 } from '../../data/membersData';
+import { resolveAssetUrl } from '../../utils/assetUrl';
 
 export type { DetailedMember } from '../../data/membersData';
 
@@ -479,7 +480,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                   skills: 'Kepemudaan',
                   interests: 'Sosial',
                   emergencyContact: '-',
-                  avatar: '/src/assets/images/ahmad_fauzi_portrait_1790646239274.jpg',
+                  avatar: resolveAssetUrl('/src/assets/images/ahmad_fauzi_portrait_1790646239274.jpg'),
                   period: '2024 - 2027',
                   username: `anggota${nextNum}`,
                   password: 'karangtaruna',

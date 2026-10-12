@@ -5,6 +5,7 @@ import { BrandLogo } from './BrandLogo';
 import { AplikasiSystemTab } from './AplikasiSystemTab';
 import { TampilanThemeTab } from './TampilanThemeTab';
 import { SuratDokumenTab } from './SuratDokumenTab';
+import { resolveAssetUrl } from '../../utils/assetUrl';
 import {
   Settings,
   Building2,
@@ -331,7 +332,7 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
         <div className="absolute top-0 right-0 w-2/5 h-full hidden md:block pointer-events-none opacity-95">
           <div className="absolute inset-0 bg-gradient-to-r from-[#eef6ff] via-[#e5f0fe]/70 to-transparent z-10" />
           <img
-            src="/src/assets/images/settings_banner_gears_1790645443277.jpg"
+            src={resolveAssetUrl('/src/assets/images/settings_banner_gears_1790645443277.jpg')}
             alt="Pengaturan Sistem Illustration"
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover object-center"

@@ -1,13 +1,19 @@
-const CACHE_NAME = 'manisjaya-cache-v5';
+const CACHE_NAME = 'manisjaya-cache-v6';
 const PRECACHE_ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './manifest.json?v=2',
   './logo.svg',
+  './logo.svg?v=2',
   './logo.png',
+  './logo.png?v=2',
   './icon-192.png',
+  './icon-192.png?v=2',
   './icon-512.png',
-  './favicon.ico'
+  './icon-512.png?v=2',
+  './favicon.ico',
+  './favicon.ico?v=2'
 ];
 
 self.addEventListener('install', (event) => {
@@ -63,7 +69,7 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          return caches.match(event.request).then((cached) => cached || caches.match('./index.html') || caches.match('/'));
+          return caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || caches.match('./index.html') || caches.match('/'));
         })
     );
     return;
@@ -71,7 +77,7 @@ self.addEventListener('fetch', (event) => {
 
   // Stale-While-Revalidate for other assets
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {

@@ -316,46 +316,10 @@ export const ProposalsView: React.FC<ViewProps> = ({ onToast }) => {
   );
 };
 
-export const AssetsView: React.FC<ViewProps> = ({ onToast }) => {
-  return (
-    <div className="space-y-6 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Inventaris Aset & Peralatan Organisasi
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Data peralatan sound system, tenda, kursi, dan sarana olahraga inventaris Karang Taruna.
-          </p>
-        </div>
-        <button
-          onClick={() => onToast('Pencatatan aset baru dibuka')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Tambah Aset
-        </button>
-      </div>
+import { InventarisAssetView } from './InventarisAssetView';
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {WORKSPACE_ASSETS.map((ast) => (
-          <div key={ast.id} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-2 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                {ast.category}
-              </span>
-              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                {ast.condition}
-              </span>
-            </div>
-            <h4 className="text-sm font-bold text-slate-900">{ast.name}</h4>
-            <div className="text-xs text-slate-500 space-y-1 pt-1">
-              <div>Jumlah: <span className="font-semibold text-slate-800">{ast.quantity} Unit</span></div>
-              <div>Lokasi: <span className="text-slate-700">{ast.location}</span></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+export { InventarisAssetView };
+
+export const AssetsView: React.FC<ViewProps> = ({ onToast, onBackToHome }) => {
+  return <InventarisAssetView onToast={onToast} onBackToHome={onBackToHome} />;
 };

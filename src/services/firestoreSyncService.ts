@@ -25,6 +25,7 @@ import {
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { ActivityItem, ACTIVITIES_DATA } from '../data/workspaceData';
+import { AssetItem } from '../data/assetData';
 
 export interface FirebaseConfig {
   projectId: string;
@@ -464,6 +465,67 @@ export const deleteNewsFromFirestore = async (itemId: string): Promise<void> => 
     await deleteDoc(docRef);
   } catch (err) {
     console.warn('deleteNewsFromFirestore notice:', err);
+  }
+};
+
+/**
+ * Direct real-time save of a single asset item to Firestore collection
+ */
+export const saveAssetToFirestore = async (item: AssetItem): Promise<void> => {
+  try {
+    const docRef = doc(db, 'organizations', 'manisjaya', 'assets', String(item.id));
+    await setDoc(
+      docRef,
+      {
+        ...item,
+        updatedAt: new Date().toISOString(),
+        deviceId: DEVICE_ID,
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('saveAssetToFirestore notice:', err);
+  }
+};
+
+/**
+ * Direct deletion of an asset item from Firestore collection
+ */
+export const deleteAssetFromFirestore = async (itemId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'organizations', 'manisjaya', 'assets', String(itemId));
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('deleteAssetFromFirestore notice:', err);
+  }
+};
+
+/**
+ * Real-time listener for assets collection from Firestore
+ */
+export const subscribeAssetsFromFirestore = (
+  callback: (assets: AssetItem[]) => void
+): (() => void) => {
+  try {
+    const colRef = collection(db, 'organizations', 'manisjaya', 'assets');
+    const unsub = onSnapshot(
+      colRef,
+      (snapshot) => {
+        const remoteList: AssetItem[] = [];
+        snapshot.forEach((d) => {
+          remoteList.push({ id: d.id, ...d.data() } as AssetItem);
+        });
+        if (remoteList.length > 0) {
+          callback(remoteList);
+        }
+      },
+      (err) => {
+        console.debug('subscribeAssets notice:', err);
+      }
+    );
+    return unsub;
+  } catch {
+    return () => {};
   }
 };
 

@@ -1,4 +1,5 @@
 import { WorkspaceTab } from '../components/workspace/Sidebar';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 export interface UserAccount {
   id: string;
@@ -136,7 +137,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     phone: '0812 8912 3450',
     email: 'iikandriyana@karangtarunamanisjaya.id',
     avatarInitials: 'IA',
-    avatar: '/src/assets/images/ilk_andriyana_1790589044021.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/ilk_andriyana_1790589044021.jpg'),
     isSuperAdmin: true,
     status: 'Aktif',
     allowedMenus: [
@@ -171,7 +172,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     phone: '0812 8912 3451',
     email: 'fajarmaulana@karangtarunamanisjaya.id',
     avatarInitials: 'FM',
-    avatar: '/src/assets/images/fajar_maulana_portrait_1790646270000.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/fajar_maulana_portrait_1790646270000.jpg'),
     isSuperAdmin: false,
     status: 'Aktif',
     allowedMenus: [
@@ -200,7 +201,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     phone: '0812 8912 3452',
     email: 'anisa@karangtarunamanisjaya.id',
     avatarInitials: 'AR',
-    avatar: '/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg'),
     isSuperAdmin: false,
     status: 'Aktif',
     allowedMenus: [
@@ -228,7 +229,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     phone: '0812 8912 3453',
     email: 'bagus@karangtarunamanisjaya.id',
     avatarInitials: 'BP',
-    avatar: '/src/assets/images/budi_santoso_portrait_1790646268733.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/budi_santoso_portrait_1790646268733.jpg'),
     isSuperAdmin: false,
     status: 'Aktif',
     allowedMenus: [
@@ -255,7 +256,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     phone: '0812 3456 7890',
     email: 'ahmadfauzi@gmail.com',
     avatarInitials: 'AF',
-    avatar: '/src/assets/images/ahmad_fauzi_portrait_1790646239274.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/ahmad_fauzi_portrait_1790646239274.jpg'),
     isSuperAdmin: false,
     status: 'Aktif',
     allowedMenus: [
@@ -281,7 +282,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     phone: '0812 8912 3455',
     email: 'dewi@karangtarunamanisjaya.id',
     avatarInitials: 'DL',
-    avatar: '/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg'),
     isSuperAdmin: false,
     status: 'Aktif',
     allowedMenus: [

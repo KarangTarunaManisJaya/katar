@@ -1,17 +1,11 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
-  getAuth,
   signInWithPopup,
   GoogleAuthProvider,
   onAuthStateChanged,
   User,
   signOut,
 } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
-
-// Initialize Firebase App instance safely (singleton)
-export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
+import { app, auth } from './firestoreSyncService';
 
 // Configure Google Auth Provider with Google Drive file scope (non-sensitive, prevents Error 403 verification blocks)
 export const driveProvider = new GoogleAuthProvider();

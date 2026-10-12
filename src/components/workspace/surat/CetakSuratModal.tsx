@@ -64,7 +64,12 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
   };
 
   const handlePrint = () => {
-    window.print();
+    if (printDocRef.current) {
+      printElementDirectly(printDocRef.current);
+      onToast('Membuka dialog cetak lembar resmi...');
+    } else {
+      window.print();
+    }
   };
 
   const handleCopyText = () => {

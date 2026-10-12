@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, Award, ShieldCheck, Calendar, Sparkles } from 'lucide-react';
 import { ORGANISASI_INFO } from '../data/mockData';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 interface HeroProps {
   onRegisterClick: () => void;
@@ -74,7 +75,7 @@ export const Hero: React.FC<HeroProps> = ({ onRegisterClick, onExploreAgendaClic
           <div className="lg:col-span-5">
             <div className="relative rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl bg-slate-800 group">
               <img
-                src="/src/assets/images/hero_karang_taruna_1790587873230.jpg"
+                src={resolveAssetUrl('/src/assets/images/hero_karang_taruna_1790587873230.jpg')}
                 alt="Semangat gotong royong pemuda Karang Taruna Bhakti Pertiwi"
                 referrerPolicy="no-referrer"
                 className="w-full aspect-[4/3] sm:aspect-[16/11] object-cover transition-transform duration-700 group-hover:scale-105"

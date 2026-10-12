@@ -68,8 +68,13 @@ export const Header: React.FC<HeaderProps> = ({
   const { theme, updateTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [currentUser?.avatar]);
 
   // Subscribe to real-time notifications
   useEffect(() => {
@@ -407,11 +412,12 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-full hover:bg-slate-100 transition-colors"
           >
             {/* Foto profil pengguna */}
-            {currentUser?.avatar ? (
+            {currentUser?.avatar && !avatarError ? (
               <img
                 src={currentUser.avatar}
                 alt={currentUser.name || 'Foto Profil'}
                 referrerPolicy="no-referrer"
+                onError={() => setAvatarError(true)}
                 className="w-8 h-8 rounded-full object-cover border border-slate-300 shadow-xs shrink-0"
               />
             ) : currentUser?.avatarInitials ? (

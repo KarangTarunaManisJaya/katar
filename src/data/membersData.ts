@@ -1,5 +1,6 @@
 import { WorkspaceTab } from '../components/workspace/Sidebar';
 import { UserAccount } from '../types/auth';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 export interface DetailedMember {
   id: string;
@@ -61,7 +62,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     skills: 'Kepemimpinan, Manajemen Organisasi, Komunikasi Publik',
     interests: 'Pemberdayaan Pemuda, Olahraga, Kewirausahaan',
     emergencyContact: '0812 8912 9999 (Keluarga)',
-    avatar: '/src/assets/images/ilk_andriyana_1790589044021.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/ilk_andriyana_1790589044021.jpg'),
     period: '2024 - 2027',
     username: 'admin',
     password: 'admin123',
@@ -115,7 +116,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     skills: 'Manajemen Acara, Negosiasi, Olahraga',
     interests: 'Olahraga, Kepemudaan',
     emergencyContact: '0812 3333 4444',
-    avatar: '/src/assets/images/fajar_maulana_portrait_1790646270000.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/fajar_maulana_portrait_1790646270000.jpg'),
     period: '2024 - 2027',
     username: 'fajar',
     password: 'karangtaruna',
@@ -152,7 +153,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     skills: 'Tata Naskah Dinas, Arsip, Notulensi, Komputer',
     interests: 'Literasi, Pendidikan, Administrasi',
     emergencyContact: '0813 2222 3333 (Ibu)',
-    avatar: '/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg'),
     period: '2024 - 2027',
     username: 'sekretaris',
     password: 'karangtaruna',
@@ -189,7 +190,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     skills: 'Penyusunan Kas, Perpajakan, Audit, Excel',
     interests: 'Kewirausahaan UMKM, Keuangan Organisasi',
     emergencyContact: '0812 9999 8888 (Ayah)',
-    avatar: '/src/assets/images/budi_santoso_portrait_1790646268733.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/budi_santoso_portrait_1790646268733.jpg'),
     period: '2024 - 2027',
     username: 'bendahara',
     password: 'karangtaruna',
@@ -226,7 +227,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     skills: 'Turnamen Futsal, Voli, Atletik, Wasit',
     interests: 'Olahraga, Kepemudaan, Pelatihan',
     emergencyContact: '0812 9876 5432 (Siti Rahma)',
-    avatar: '/src/assets/images/ahmad_fauzi_portrait_1790646239274.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/ahmad_fauzi_portrait_1790646239274.jpg'),
     period: '2024 - 2027',
     username: 'ahmad',
     password: 'karangtaruna',
@@ -263,7 +264,7 @@ export const INITIAL_MEMBERS: DetailedMember[] = [
     skills: 'Fotografi, Desain Grafis, Video Editing, Social Media',
     interests: 'Kreativitas Pemuda, Seni Budaya, Dokumentasi',
     emergencyContact: '0857 8888 7777 (Keluarga)',
-    avatar: '/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg',
+    avatar: resolveAssetUrl('/src/assets/images/siti_nurhaliza_portrait_1790646253976.jpg'),
     period: '2024 - 2027',
     username: 'humas',
     password: 'karangtaruna',

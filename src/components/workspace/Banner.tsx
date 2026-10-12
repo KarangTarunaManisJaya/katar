@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Calendar, FileText, Plus, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { resolveAssetUrl } from '../../utils/assetUrl';
 
 interface BannerProps {
   onAddNewsClick: () => void;
@@ -18,7 +19,7 @@ export const Banner: React.FC<BannerProps> = ({ onAddNewsClick, onExploreClick }
           {/* Smooth fade wave over the gate photo */}
           <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#eef7ff] via-[#e5f1fd]/80 to-transparent" />
           <img
-            src="/src/assets/images/manis_jaya_gate_1790588960710.jpg"
+            src={resolveAssetUrl('/src/assets/images/manis_jaya_gate_1790588960710.jpg')}
             alt="Gerbang Karang Taruna Manis Jaya"
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover object-center"

@@ -1,3 +1,5 @@
+import { resolveAssetUrl } from '../utils/assetUrl';
+
 export interface ActivityItem {
   id: string;
   badge: 'Kegiatan' | 'Dokumentasi' | 'Berita' | 'Pengumuman';
@@ -107,7 +109,7 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     date: `12 Ags ${CURRENT_YEAR}`,
     time: '09:00 - 15:30',
     photoCount: 2,
-    image: '/src/assets/images/equipment_red_tools_1790588983260.jpg',
+    image: resolveAssetUrl('/src/assets/images/equipment_red_tools_1790588983260.jpg'),
     description: 'Penyediaan dan pengecekan perlengkapan modular panggung, partisi lipat, serta boks penyimpanan logistik penunjang kegiatan Karang Taruna Manis Jaya.',
     content: 'Dalam rangka menunjang kelancaran berbagai agenda pemuda dan kemasyarakatan di wilayah Kelurahan Manis Jaya, pengurus Karang Taruna melaksanakan serah terima serta pengecekan kelayakan logistik panggung modular, sistem kelistrikan, dan partisi lipat serbaguna.\n\nSeluruh sarana kini telah disimpan dengan rapi di gudang sekretariat dan siap dipinjamkan secara gratis untuk kegiatan kemasyarakatan tingkat RT/RW se-Kelurahan Manis Jaya.',
     location: 'Sekretariat Karang Taruna Manis Jaya, Jl. Industri Raya',
@@ -119,8 +121,8 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     isFeatured: false,
     tags: ['Aset', 'Logistik', 'Peralatan', 'Sekretariat'],
     photos: [
-      '/src/assets/images/equipment_red_tools_1790588983260.jpg',
-      '/src/assets/images/device_hardware_office_1790589008132.jpg'
+      resolveAssetUrl('/src/assets/images/equipment_red_tools_1790588983260.jpg'),
+      resolveAssetUrl('/src/assets/images/device_hardware_office_1790589008132.jpg')
     ],
     rundown: [
       { time: '09:00 - 10:30', activity: 'Kedatangan logistik & unboxing armada', pic: 'Bagus Tri' },
@@ -143,7 +145,7 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     date: `28 Jul ${CURRENT_YEAR}`,
     time: '13:00 - 17:00',
     photoCount: 3,
-    image: '/src/assets/images/device_hardware_office_1790589008132.jpg',
+    image: resolveAssetUrl('/src/assets/images/device_hardware_office_1790589008132.jpg'),
     description: 'Instalasi jaringan internet wifi publik, rak server administrasi, dan perangkat display informasi digital untuk pelayanan pemuda.',
     content: 'Sebagai wujud modernisasi administrasi keorganisasian, Karang Taruna Manis Jaya meresmikan fasilitas Wi-Fi publik berkecepatan tinggi serta smart display di Balai Warga. Fasilitas ini terbuka untuk pelajar dan mahasiswa yang ingin belajar kelompok, browsing materi pendidikan, maupun mengadakan diskusi kreatif kepemudaan.',
     location: 'Ruang Multimedia Balai Manis Jaya',
@@ -155,8 +157,8 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     isFeatured: false,
     tags: ['Digitalisasi', 'InternetGratis', 'IT', 'Edukasi'],
     photos: [
-      '/src/assets/images/device_hardware_office_1790589008132.jpg',
-      '/src/assets/images/equipment_red_tools_1790588983260.jpg'
+      resolveAssetUrl('/src/assets/images/device_hardware_office_1790589008132.jpg'),
+      resolveAssetUrl('/src/assets/images/equipment_red_tools_1790588983260.jpg')
     ],
     keyQuote: {
       quote: 'Fasilitas internet dan ruang multimedia ini dihadirkan agar generasi muda Manis Jaya memiliki ruang produktif untuk mengasah skill digital.',
@@ -179,7 +181,7 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     date: `15 Jul ${CURRENT_YEAR}`,
     time: '19:30 - 22:00',
     photoCount: 1,
-    image: '/src/assets/images/manis_jaya_gate_1790588960710.jpg',
+    image: resolveAssetUrl('/src/assets/images/manis_jaya_gate_1790588960710.jpg'),
     description: 'Rapat koordinasi bulanan evaluasi program kerja lintas seksi dan perumusan agenda peringatan Hari Kemerdekaan RI tingkat kelurahan.',
     content: 'Rapat Pleno Bulanan dihadiri oleh seluruh jajaran pengurus harian Karang Taruna Kelurahan Manis Jaya serta perwakilan unit kerja pemuda tingkat RW 01 hingga RW 08. Agenda fokus pada evaluasi transparansi kas organisasi, penjaringan aspirasi pemuda di tiap lingkungan rukun warga, serta pembentukan panitia Semarak Kemerdekaan RI.',
     location: 'Pendopo Balai Pertemuan RW 04 Manis Jaya',
@@ -191,7 +193,7 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     isFeatured: false,
     tags: ['RapatPleno', 'Evaluasi', 'Koordinasi', 'Pemuda'],
     photos: [
-      '/src/assets/images/manis_jaya_gate_1790588960710.jpg'
+      resolveAssetUrl('/src/assets/images/manis_jaya_gate_1790588960710.jpg')
     ],
     rundown: [
       { time: '19:30 - 19:45', activity: 'Pembukaan & Menyanyikan Mars Karang Taruna', pic: 'Sekretaris' },
@@ -215,7 +217,7 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     date: `5 Jul ${CURRENT_YEAR}`,
     time: '08:00 - 13:00',
     photoCount: 4,
-    image: '/src/assets/images/baksos_karang_taruna_1790589027203.jpg',
+    image: resolveAssetUrl('/src/assets/images/baksos_karang_taruna_1790589027203.jpg'),
     description: 'Penyaluran 150 paket sembako berkah pemuda dan pemeriksaan kesehatan gratis bagi lansia serta warga kurang mampu di Kelurahan Manis Jaya.',
     content: 'Aksi kepedulian sosial pemuda Karang Taruna Manis Jaya berkolaborasi bersama Puskesmas Manis Jaya dan para donatur lokal sukses menyalurkan 150 paket sembako berisi beras, minyak goreng, gula, dan mie instan.\n\nSelain pembagian sembako, tim medis relawan juga memberikan layanan pengecekan tekanan darah, gula darah, dan konsultasi kesehatan secara cuma-cuma kepada ratusan lansia warga RW 02.',
     location: 'Gazebo Warga RW 02 Kelurahan Manis Jaya',
@@ -227,10 +229,10 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     isFeatured: true,
     tags: ['Baksos', 'PeduliSesama', 'Santunan', 'KesehatanGratis'],
     photos: [
-      '/src/assets/images/baksos_karang_taruna_1790589027203.jpg',
-      '/src/assets/images/manis_jaya_gate_1790588960710.jpg',
-      '/src/assets/images/device_hardware_office_1790589008132.jpg',
-      '/src/assets/images/equipment_red_tools_1790588983260.jpg'
+      resolveAssetUrl('/src/assets/images/baksos_karang_taruna_1790589027203.jpg'),
+      resolveAssetUrl('/src/assets/images/manis_jaya_gate_1790588960710.jpg'),
+      resolveAssetUrl('/src/assets/images/device_hardware_office_1790589008132.jpg'),
+      resolveAssetUrl('/src/assets/images/equipment_red_tools_1790588983260.jpg')
     ],
     keyQuote: {
       quote: 'Pemuda hadir bukan sekadar meramaikan suasana, melainkan membawa manfaat nyata yang menyentuh langsung kehidupan masyarakat di lingkungan.',

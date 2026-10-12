@@ -1,4 +1,5 @@
 import { Pengurus, AgendaEvent, KasTransaction, UmkmProduct, Aspiration } from '../types';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 export const ORGANISASI_INFO = {
   name: 'Karang Taruna Manis Jaya',
@@ -97,7 +98,7 @@ export const MOCK_EVENTS: AgendaEvent[] = [
     description: 'Aksi pembersihan drainase bersama, penanaman 250 bibit pohon peneduh, dan edukasi pemilahan sampah organik & anorganik serentak di Manis Jaya.',
     quota: 100,
     registeredCount: 72,
-    image: '/src/assets/images/activity_gotong_royong_1790587890085.jpg',
+    image: resolveAssetUrl('/src/assets/images/activity_gotong_royong_1790587890085.jpg'),
     status: 'Akan Datang',
   },
   {
@@ -110,7 +111,7 @@ export const MOCK_EVENTS: AgendaEvent[] = [
     description: 'Kompetisi tahunan menjunjung tinggi sportivitas antar pemuda RW 01 sampai RW 08 untuk merebut Piala Bergilir Karang Taruna Manis Jaya.',
     quota: 160,
     registeredCount: 134,
-    image: '/src/assets/images/activity_sports_youth_1790587904269.jpg',
+    image: resolveAssetUrl('/src/assets/images/activity_sports_youth_1790587904269.jpg'),
     status: 'Akan Datang',
   },
   {
@@ -123,7 +124,7 @@ export const MOCK_EVENTS: AgendaEvent[] = [
     description: 'Pelatihan intensif optimasi toko online di Shopee, TikTok Shop, serta praktik foto produk smartphone untuk memperluas pasar usaha pemuda.',
     quota: 40,
     registeredCount: 36,
-    image: '/src/assets/images/umkm_creative_youth_1790587923367.jpg',
+    image: resolveAssetUrl('/src/assets/images/umkm_creative_youth_1790587923367.jpg'),
     status: 'Akan Datang',
   },
   {
@@ -136,7 +137,7 @@ export const MOCK_EVENTS: AgendaEvent[] = [
     description: 'Bekerja sama dengan Unit Transfusi Darah (UTD) PMI Kota Tangerang dengan target 120 kantong darah serta pemeriksaan tensi & gula darah gratis.',
     quota: 120,
     registeredCount: 95,
-    image: '/src/assets/images/hero_karang_taruna_1790587873230.jpg',
+    image: resolveAssetUrl('/src/assets/images/hero_karang_taruna_1790587873230.jpg'),
     status: 'Akan Datang',
   },
 ];
@@ -215,7 +216,7 @@ export const MOCK_UMKM: UmkmProduct[] = [
     priceUnit: 'botol 250ml',
     description: 'Kopi cold brew artisan racikan pemuda Manis Jaya dengan biji kopi Nusantara, rasa lembut rendah asam dan aroma karamel alami.',
     whatsapp: '6281289123450',
-    image: '/src/assets/images/umkm_creative_youth_1790587923367.jpg',
+    image: resolveAssetUrl('/src/assets/images/umkm_creative_youth_1790587923367.jpg'),
     rating: 4.9,
   },
   {
@@ -228,7 +229,7 @@ export const MOCK_UMKM: UmkmProduct[] = [
     priceUnit: 'kemasan 350gr',
     description: 'Dodol legit khas Tangerang resep warisan keluarga yang diolah higienis oleh kelompok wirausaha muda tanpa bahan pengawet.',
     whatsapp: '6281289123451',
-    image: '/src/assets/images/umkm_creative_youth_1790587923367.jpg',
+    image: resolveAssetUrl('/src/assets/images/umkm_creative_youth_1790587923367.jpg'),
     rating: 4.8,
   },
   {
@@ -241,7 +242,7 @@ export const MOCK_UMKM: UmkmProduct[] = [
     priceUnit: 'mulai dari / pcs',
     description: 'Pengerjaan sablon kaos komunitas, seragam event, topi, dan merchandise berkualitas tinggi dengan bahan combed anti-gerah.',
     whatsapp: '6281289123452',
-    image: '/src/assets/images/hero_karang_taruna_1790587873230.jpg',
+    image: resolveAssetUrl('/src/assets/images/hero_karang_taruna_1790587873230.jpg'),
     rating: 5.0,
   },
   {
@@ -254,7 +255,7 @@ export const MOCK_UMKM: UmkmProduct[] = [
     priceUnit: 'botol 500ml',
     description: 'Madu randu asli tanpa campuran pemanis buatan, hasil panen budidaya perkebunan pemuda peduli ketahanan pangan lokal.',
     whatsapp: '6281289123453',
-    image: '/src/assets/images/activity_gotong_royong_1790587890085.jpg',
+    image: resolveAssetUrl('/src/assets/images/activity_gotong_royong_1790587890085.jpg'),
     rating: 4.9,
   },
 ];

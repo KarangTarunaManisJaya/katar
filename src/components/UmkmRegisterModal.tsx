@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Store, CheckCircle } from 'lucide-react';
 import { UmkmProduct } from '../types';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 interface UmkmRegisterModalProps {
   onClose: () => void;
@@ -35,7 +36,7 @@ export const UmkmRegisterModal: React.FC<UmkmRegisterModalProps> = ({
       priceUnit,
       description,
       whatsapp: whatsapp.replace(/\D/g, ''),
-      image: '/src/assets/images/umkm_creative_youth_1790587923367.jpg',
+      image: resolveAssetUrl('/src/assets/images/umkm_creative_youth_1790587923367.jpg'),
       rating: 5.0,
     });
 

@@ -43,6 +43,8 @@ export interface AssetItem {
   penanggungJawab: string;
   fotoAsset?: string;
   keterangan: string;
+  jumlah?: number;
+  satuan?: string;
 }
 
 export interface PeminjamanAsset {

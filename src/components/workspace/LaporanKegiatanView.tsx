@@ -1290,7 +1290,12 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    window.print();
+                    if (printDocRef.current) {
+                      printElementDirectly(printDocRef.current);
+                      onToast('Membuka dialog cetak dokumen laporan resmi...');
+                    } else {
+                      window.print();
+                    }
                   }}
                   className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Cetak Laporan ke PDF (A4)"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   Users,
@@ -73,6 +73,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { theme } = useTheme();
   const [showCollapsedMenu, setShowCollapsedMenu] = useState(false);
   const [showProfileDetail, setShowProfileDetail] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [propCurrentUser?.avatar]);
 
   // Active user matching top header (di atas)
   const currentUser = propCurrentUser || (() => {
@@ -517,11 +522,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
               title={`${currentUser?.name || 'Administrator'} (${currentUser?.role || 'Admin'})`}
             >
-              {currentUser?.avatar ? (
+              {currentUser?.avatar && !avatarError ? (
                 <img
                   src={currentUser.avatar}
                   alt={currentUser.name}
                   referrerPolicy="no-referrer"
+                  onError={() => setAvatarError(true)}
                   className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0 shadow-xs"
                 />
               ) : (
@@ -643,11 +649,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  {currentUser?.avatar ? (
+                  {currentUser?.avatar && !avatarError ? (
                     <img
                       src={currentUser.avatar}
                       alt={currentUser.name}
                       referrerPolicy="no-referrer"
+                      onError={() => setAvatarError(true)}
                       className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0 shadow-xs"
                     />
                   ) : (

@@ -14,13 +14,14 @@ export async function downloadElementAsPdf(
   try {
     if (onProgress) onProgress('Menyiapkan dokumen...');
 
-    // Pastikan gambar sudah selesai dimuat
+    // Pastikan seluruh gambar selesai dimuat dan atur crossOrigin
     const images = element.querySelectorAll('img');
     await Promise.all(
       Array.from(images).map(
         (img) =>
           new Promise<void>((resolve) => {
-            if (img.complete) return resolve();
+            if (img.complete && img.naturalHeight !== 0) return resolve();
+            img.crossOrigin = 'anonymous';
             img.onload = () => resolve();
             img.onerror = () => resolve();
           })
@@ -33,11 +34,12 @@ export async function downloadElementAsPdf(
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       backgroundColor: '#ffffff',
       logging: false,
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
+      imageTimeout: 15000,
+      windowWidth: element.scrollWidth || 800,
+      windowHeight: element.scrollHeight || 1130,
     });
 
     if (onProgress) onProgress('Menyusun lembar A4...');
@@ -56,31 +58,33 @@ export async function downloadElementAsPdf(
     const pageHeight = 297;
     const margin = 8; // margin aman 8mm
     const printableWidth = pageWidth - margin * 2; // 194mm
+    const printableHeight = pageHeight - margin * 2; // 281mm
 
     // Hitung tinggi proporsional dari kanvas terhadap lebar kertas
     const imgHeight = (canvas.height * printableWidth) / canvas.width;
 
-    if (imgHeight <= pageHeight - margin * 2) {
+    if (imgHeight <= printableHeight) {
       // Pas dalam 1 halaman A4
       pdf.addImage(imgData, 'JPEG', margin, margin, printableWidth, imgHeight);
     } else {
-      // Dokumen multi-halaman (misal proposal panjang atau laporan banyak item)
+      // Dokumen multi-halaman
       let heightLeft = imgHeight;
-      let position = margin;
-
-      pdf.addImage(imgData, 'JPEG', margin, position, printableWidth, imgHeight);
-      heightLeft -= (pageHeight - margin * 2);
+      let pageIndex = 0;
 
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight + margin;
-        pdf.addPage();
+        if (pageIndex > 0) {
+          pdf.addPage();
+        }
+        const position = margin - (pageIndex * printableHeight);
         pdf.addImage(imgData, 'JPEG', margin, position, printableWidth, imgHeight);
-        heightLeft -= (pageHeight - margin * 2);
+        heightLeft -= printableHeight;
+        pageIndex++;
       }
     }
 
-    if (onProgress) onProgress('Mengunduh file...');
+    if (onProgress) onProgress('Mengunduh file PDF...');
     const pdfFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+
     try {
       pdf.save(pdfFilename);
     } catch {
@@ -99,26 +103,33 @@ export async function downloadElementAsPdf(
     }
     return true;
   } catch (error) {
-    console.error('Gagal membuat PDF:', error);
-    return false;
+    console.error('Gagal membuat PDF via canvas:', error);
+    // Fallback darurat: gunakan print helper agar user tetap bisa Save as PDF
+    try {
+      if (onProgress) onProgress('Membuka dialog cetak PDF...');
+      return printElementDirectly(element);
+    } catch {
+      return false;
+    }
   }
 }
 
 /**
- * Utilitas cetak dokumen resmi via hidden iframe yang tahan blokir iframe
- * Menyalin seluruh stylesheet tailwind agar hasil cetak persis dengan layar.
+ * Utilitas cetak dokumen resmi via offscreen iframe yang kompatibel dengan semua browser
+ * Menyalin seluruh stylesheet tailwind agar hasil cetak persis dengan layar tanpa merusak tampilan.
  */
 export function printElementDirectly(element: HTMLElement): boolean {
   try {
-    // Buat iframe tersembunyi
+    // Buat iframe off-screen dengan ukuran fisik nyata (agar browser tidak memblokir print)
     const printFrame = document.createElement('iframe');
     printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    printFrame.style.visibility = 'hidden';
+    printFrame.style.top = '-9999px';
+    printFrame.style.left = '-9999px';
+    printFrame.style.width = '1024px';
+    printFrame.style.height = '1024px';
+    printFrame.style.border = 'none';
+    printFrame.style.opacity = '0';
+    printFrame.style.pointerEvents = 'none';
     document.body.appendChild(printFrame);
 
     const doc = printFrame.contentWindow?.document;
@@ -139,19 +150,19 @@ export function printElementDirectly(element: HTMLElement): boolean {
       <html lang="id">
         <head>
           <meta charset="utf-8" />
-          <title>Cetak Dokumen Resmi</title>
+          <title>Cetak Dokumen Resmi Karang Taruna</title>
           ${stylesHtml}
           <style>
             @page {
               size: A4 portrait;
-              margin: 12mm 14mm 12mm 14mm;
+              margin: 10mm 12mm 10mm 12mm;
             }
-            body {
+            html, body {
               background: #ffffff !important;
               color: #000000 !important;
               margin: 0 !important;
               padding: 0 !important;
-              font-family: "Times New Roman", Times, serif;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
@@ -162,9 +173,21 @@ export function printElementDirectly(element: HTMLElement): boolean {
               border: none !important;
               padding: 0 !important;
               margin: 0 !important;
+              background: #ffffff !important;
             }
             * {
               box-sizing: border-box !important;
+            }
+            .no-print, button {
+              display: none !important;
+            }
+            table {
+              border-collapse: collapse !important;
+              width: 100% !important;
+            }
+            tr, th, td {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
           </style>
         </head>
@@ -190,9 +213,9 @@ export function printElementDirectly(element: HTMLElement): boolean {
           if (document.body.contains(printFrame)) {
             document.body.removeChild(printFrame);
           }
-        }, 1000);
+        }, 1500);
       }
-    }, 400);
+    }, 500);
 
     return true;
   } catch (err) {
