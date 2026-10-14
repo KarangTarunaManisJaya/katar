@@ -26,11 +26,14 @@ import {
   Cloud,
   Smartphone,
   Download,
+  Vote,
 } from 'lucide-react';
 import { WorkspaceTab } from './Sidebar';
 import { ActivityItem } from '../../data/workspaceData';
 import { Banner } from './Banner';
 import { RecentActivities } from './RecentActivities';
+import { VotingAnggotaSection } from './VotingAnggotaSection';
+import { UserAccount, DEFAULT_USERS } from '../../types/auth';
 
 interface BerandaViewProps {
   onNavigate: (tab: WorkspaceTab) => void;
@@ -40,6 +43,8 @@ interface BerandaViewProps {
   activities: ActivityItem[];
   allowedMenus?: WorkspaceTab[];
   onDownloadApk?: () => void;
+  archivedCount?: number;
+  currentUser?: UserAccount;
 }
 
 export const BerandaView: React.FC<BerandaViewProps> = ({
@@ -50,6 +55,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   activities,
   allowedMenus,
   onDownloadApk,
+  archivedCount = 0,
+  currentUser = DEFAULT_USERS[0],
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'administrasi' | 'kegiatan' | 'sistem'>('all');
 
@@ -256,6 +263,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
           activities={activities}
           onSelectActivity={onSelectActivity}
           onViewAllClick={() => onNavigate('berita')}
+          onOpenArchive={() => onNavigate('arsip_kegiatan')}
+          archivedCount={archivedCount}
         />
       </div>
 
@@ -311,6 +320,20 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
               >
                 <Briefcase className="w-3.5 h-3.5 text-amber-300" />
                 <span>Lihat Kegiatan</span>
+              </button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('section-voting-anggota');
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    onToast('Mengarahkan ke Fitur Voting Anggota...');
+                  }
+                }}
+                className="px-4 py-2 bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-200 border border-emerald-400/30 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Vote className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Voting Anggota (Live 🟢)</span>
               </button>
             </div>
           </div>
@@ -383,6 +406,15 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
           </button>
         </div>
       )}
+
+      {/* 4. DEDICATED COMPONENT: FITUR VOTING ANGGOTA (PENGAMBILAN KEPUTUSAN & PEMILIHAN KETUA KEGIATAN REAL-TIME) */}
+      <div id="section-voting-anggota">
+        <VotingAnggotaSection
+          currentUser={currentUser}
+          onToast={onToast}
+          onNavigateToTab={onNavigate}
+        />
+      </div>
 
       {/* 2. DEDICATED SECTION: BUTTON MENU (SESUAI REQUEST USER) */}
       <div className="space-y-4">
@@ -554,6 +586,20 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>+ Jadwalkan</span>
+          </button>
+          <button
+            onClick={() => {
+              const el = document.getElementById('section-voting-anggota');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                onToast('Membuka Fitur Voting Anggota...');
+              }
+            }}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Vote className="w-3.5 h-3.5" />
+            <span>+ Ikuti Voting</span>
           </button>
         </div>
       </div>

@@ -23,6 +23,7 @@ import {
   ChevronDown,
   Palette,
   Smartphone,
+  Archive,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
@@ -31,6 +32,7 @@ import { UserAccount } from '../../types/auth';
 export type WorkspaceTab =
   | 'beranda'
   | 'ringkasan'
+  | 'arsip_kegiatan'
   | 'anggota'
   | 'surat'
   | 'proposal'
@@ -49,6 +51,7 @@ interface SidebarProps {
   currentTab: WorkspaceTab;
   onSelectTab: (tab: WorkspaceTab) => void;
   unreadLettersCount?: number;
+  archivedCount?: number;
   allowedMenus?: WorkspaceTab[];
   onClose?: () => void;
   currentUser?: UserAccount;
@@ -62,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   onSelectTab,
   unreadLettersCount = 3,
+  archivedCount = 0,
   allowedMenus,
   onClose,
   currentUser: propCurrentUser,
@@ -122,11 +126,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (id === 'tambah_berita' || id === 'kategori' || id === 'galeri') {
       return allowedMenus.includes('berita') || allowedMenus.includes(id);
     }
+    if (id === 'arsip_kegiatan') {
+      return allowedMenus.includes('ringkasan') || allowedMenus.includes('arsip_kegiatan');
+    }
     return allowedMenus.includes(id);
   };
 
   const kegiatanItems = [
     { id: 'ringkasan' as WorkspaceTab, label: 'Kegiatan', icon: Briefcase },
+    {
+      id: 'arsip_kegiatan' as WorkspaceTab,
+      label: 'Arsip Kegiatan',
+      icon: Archive,
+      badge: archivedCount > 0 ? archivedCount : undefined,
+    },
     { id: 'proposal' as WorkspaceTab, label: 'Proposal', icon: FileText },
     { id: 'laporan' as WorkspaceTab, label: 'Laporan', icon: BarChart3 },
   ];

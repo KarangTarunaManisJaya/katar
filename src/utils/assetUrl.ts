@@ -1,6 +1,6 @@
 /**
  * Resolves static asset paths consistently across development, Cloud Run,
- * and GitHub Pages subdirectory deployments (/katar/).
+ * AI Studio preview iframes, and GitHub Pages subdirectory deployments (/katar/).
  */
 export function resolveAssetUrl(url: string | undefined | null): string {
   if (!url) return '';
@@ -13,13 +13,26 @@ export function resolveAssetUrl(url: string | undefined | null): string {
     return url;
   }
 
-  const base = import.meta.env.BASE_URL || './';
-  const cleanBase = base.endsWith('/') ? base : `${base}/`;
-
-  let cleanPath = url.startsWith('/') ? url.slice(1) : url;
-  if (cleanPath.startsWith('./')) {
-    cleanPath = cleanPath.slice(2);
+  let base = '/';
+  if (typeof window !== 'undefined') {
+    const { hostname, pathname } = window.location;
+    if (hostname.includes('github.io') && pathname.startsWith('/katar')) {
+      base = '/katar/';
+    }
+  } else if (
+    typeof process !== 'undefined' &&
+    (process.env?.GITHUB_ACTIONS === 'true' || process.env?.GITHUB_PAGES === 'true')
+  ) {
+    base = '/katar/';
   }
 
-  return `${cleanBase}${cleanPath}`;
+  // Remove leading './' or '/'
+  let clean = url.replace(/^\.?\/+/, '');
+
+  // If already prefixed with katar/, don't duplicate
+  if (base !== '/' && clean.startsWith('katar/')) {
+    clean = clean.slice(6);
+  }
+
+  return `${base}${clean}`;
 }

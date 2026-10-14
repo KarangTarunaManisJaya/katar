@@ -14,15 +14,24 @@ export const Banner: React.FC<BannerProps> = ({ onAddNewsClick, onExploreClick }
     <div className="w-full">
       {/* Banner Box */}
       <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#eef7ff] via-[#e5f1fd] to-[#dbeefd] border border-blue-100 shadow-sm">
-        {/* Curving decorative glow */}
-        <div className="absolute top-0 right-0 w-1/2 h-full opacity-90 hidden lg:block pointer-events-none">
-          {/* Smooth fade wave over the gate photo */}
-          <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#eef7ff] via-[#e5f1fd]/80 to-transparent" />
+        {/* Curving decorative photo - Visible on all devices & viewport sizes */}
+        <div className="absolute top-0 right-0 w-full sm:w-2/3 md:w-1/2 h-full pointer-events-none overflow-hidden">
+          {/* Smooth fade wave over the gate photo ensuring foreground text readability */}
+          <div className="absolute inset-0 z-10 bg-gradient-to-r from-[#eef7ff] via-[#eef7ff]/85 sm:via-[#e5f1fd]/70 to-transparent/30" />
           <img
             src={resolveAssetUrl('/src/assets/images/manis_jaya_gate_1790588960710.jpg')}
             alt="Gerbang Karang Taruna Manis Jaya"
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-center opacity-40 sm:opacity-75 lg:opacity-90 transition-opacity duration-300"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.tried) {
+                target.dataset.tried = '1';
+                target.src = resolveAssetUrl('/assets/images/manis_jaya_gate_1790588960710.jpg');
+              } else if (target.dataset.tried === '1') {
+                target.dataset.tried = '2';
+                target.src = resolveAssetUrl('/manis_jaya_gate_1790588960710.jpg');
+              }
+            }}
           />
         </div>
 

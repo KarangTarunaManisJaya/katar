@@ -10,6 +10,7 @@ import {
   ArrowRight,
   TrendingUp,
   FileSpreadsheet,
+  Archive,
 } from 'lucide-react';
 import { KegiatanVisualisasiCharts } from './KegiatanVisualisasiCharts';
 import { RecentActivities } from './RecentActivities';
@@ -22,6 +23,8 @@ interface KegiatanViewProps {
   onExploreCalendar: () => void;
   onViewAllNews: () => void;
   onToast: (msg: string) => void;
+  onOpenArchive?: () => void;
+  archivedCount?: number;
 }
 
 export const KegiatanView: React.FC<KegiatanViewProps> = ({
@@ -31,8 +34,59 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
   onExploreCalendar,
   onViewAllNews,
   onToast,
+  onOpenArchive,
+  archivedCount = 0,
 }) => {
-  const [filterCategory, setFilterCategory] = useState<'semua' | 'sosial' | 'olahraga' | 'kewirausahaan'>('semua');
+  const handleExportActivitiesCsv = () => {
+    if (activities.length === 0) {
+      onToast('Tidak ada kegiatan untuk diekspor.');
+      return;
+    }
+
+    const headers = [
+      'No',
+      'ID Kegiatan',
+      'Judul Kegiatan',
+      'Kategori',
+      'Tanggal Pelaksanaan',
+      'Waktu',
+      'Lokasi',
+      'Penanggung Jawab',
+      'Anggaran (Rp)',
+      'Perkiraan Peserta',
+      'Jumlah Foto',
+      'Ringkasan Deskripsi',
+    ];
+
+    const rows = activities.map((act, index) => [
+      index + 1,
+      act.id,
+      `"${(act.title || '').replace(/"/g, '""')}"`,
+      `"${(act.category || act.badge || '-').replace(/"/g, '""')}"`,
+      `"${(act.date || '').replace(/"/g, '""')}"`,
+      `"${(act.time || '-').replace(/"/g, '""')}"`,
+      `"${(act.location || '').replace(/"/g, '""')}"`,
+      `"${(act.author || '').replace(/"/g, '""')}"`,
+      act.budget || 0,
+      act.estimatedAttendees || 0,
+      act.photoCount || (act.photos ? act.photos.length : 1),
+      `"${(act.description || '').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent =
+      '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Data_Program_Kegiatan_Karang_Taruna_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    onToast(`Berhasil mengekspor ${activities.length} data kegiatan ke Excel/CSV!`);
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn pb-10">
@@ -57,7 +111,7 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={onAddActivity}
-              className="px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all transform active:scale-95"
+              className="px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all transform active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>+ Tambah Kegiatan</span>
@@ -65,18 +119,29 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
 
             <button
               onClick={onExploreCalendar}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-2 transition-all"
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-2 transition-all cursor-pointer"
             >
               <Calendar className="w-4 h-4 text-sky-200" />
               <span>Kalender Agenda</span>
             </button>
 
+            {onOpenArchive && (
+              <button
+                onClick={onOpenArchive}
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-2 transition-all cursor-pointer text-amber-200 hover:text-white"
+                title="Buka Depo Arsip Kegiatan Karang Taruna"
+              >
+                <Archive className="w-4 h-4 text-amber-300" />
+                <span>Arsip Kegiatan ({archivedCount})</span>
+              </button>
+            )}
+
             <button
-              onClick={() => onToast('Mengunduh rekapitulasi data kegiatan (XLSX)...')}
-              className="p-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs text-white transition-all"
-              title="Unduh Rekap Spreadsheet"
+              onClick={handleExportActivitiesCsv}
+              className="p-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs text-white transition-all cursor-pointer"
+              title="Unduh Rekapitulasi Kegiatan ke Spreadsheet (CSV/Excel)"
             >
-              <FileSpreadsheet className="w-4 h-4" />
+              <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
             </button>
           </div>
         </div>

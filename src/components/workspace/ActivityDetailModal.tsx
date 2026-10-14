@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   Eye,
   Check,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
@@ -31,6 +33,7 @@ interface ActivityDetailModalProps {
   onClose: () => void;
   onToast: (msg: string) => void;
   onDelete?: (id: string) => void;
+  onToggleArchive?: (activity: ActivityItem) => void;
 }
 
 export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
@@ -38,6 +41,7 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   onClose,
   onToast,
   onDelete,
+  onToggleArchive,
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -69,7 +73,19 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
     const text = encodeURIComponent(
       `*DOKUMENTASI KEGIATAN KARANG TARUNA MANIS JAYA*\n\n*${activity.title}*\n🗓 Tanggal: ${activity.date}${activity.time ? ` (${activity.time} WIB)` : ''}\n📍 Lokasi: ${activity.location}\n👤 Penanggung Jawab: ${activity.author}\n\n${activity.description}`
     );
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    const url = `https://api.whatsapp.com/send?text=${text}`;
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      navigator.clipboard?.writeText(decodeURIComponent(text));
+      onToast('Teks warta telah disalin ke clipboard!');
+    }
   };
 
   const handlePrint = () => {
@@ -180,6 +196,28 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
               >
                 <Share2 className="w-4 h-4" />
               </button>
+              {onToggleArchive && (
+                <button
+                  type="button"
+                  onClick={() => onToggleArchive(activity)}
+                  className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                    activity.isArchived
+                      ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50'
+                      : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                  }`}
+                  title={
+                    activity.isArchived
+                      ? 'Pulihkan dari Arsip ke Dashboard Utama'
+                      : 'Pindahkan ke Arsip Kegiatan'
+                  }
+                >
+                  {activity.isArchived ? (
+                    <ArchiveRestore className="w-4 h-4" />
+                  ) : (
+                    <Archive className="w-4 h-4" />
+                  )}
+                </button>
+              )}
               {onDelete && (
                 <button
                   type="button"
@@ -203,6 +241,35 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
 
           {/* Scrollable Content Body */}
           <div className="p-4 sm:p-6 space-y-6 overflow-y-auto">
+            {activity.isArchived && (
+              <div className="bg-amber-50 border border-amber-200/90 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                    <Archive className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs">
+                    <span className="font-bold block text-slate-900">
+                      Kegiatan Berada di Kategori Arsip
+                    </span>
+                    <span className="text-amber-800">
+                      Kegiatan ini telah selesai dilaksanakan{' '}
+                      {activity.archivedAt ? `(${activity.archivedAt})` : ''} dan tidak memenuhi dashboard utama.
+                    </span>
+                  </div>
+                </div>
+                {onToggleArchive && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleArchive(activity)}
+                    className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                  >
+                    <ArchiveRestore className="w-3.5 h-3.5" />
+                    <span>Pulihkan ke Dashboard</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Main Visual Display */}
             {currentMainPhoto ? (
               <div className="space-y-2">
@@ -505,6 +572,30 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                 <Share2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Kirim WhatsApp</span>
               </button>
+
+              {onToggleArchive && (
+                <button
+                  type="button"
+                  onClick={() => onToggleArchive(activity)}
+                  className={`px-3.5 py-2 border rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    activity.isArchived
+                      ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200'
+                  }`}
+                >
+                  {activity.isArchived ? (
+                    <>
+                      <ArchiveRestore className="w-3.5 h-3.5 text-amber-700" />
+                      <span>Pulihkan dari Arsip</span>
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="w-3.5 h-3.5 text-indigo-700" />
+                      <span>Pindahkan ke Arsip</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             <button

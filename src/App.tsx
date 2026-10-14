@@ -28,6 +28,7 @@ import { LaporanKegiatanView } from './components/workspace/LaporanKegiatanView'
 import { JadwalKegiatanView } from './components/workspace/JadwalKegiatanView';
 import { AsetOrganisasiView } from './components/workspace/AsetOrganisasiView';
 import { InventarisAssetView } from './components/workspace/InventarisAssetView';
+import { ArsipKegiatanView } from './components/workspace/ArsipKegiatanView';
 import { DatabaseGoogleDriveView } from './components/workspace/DatabaseGoogleDriveView';
 import { FirebaseConfigModal } from './components/workspace/FirebaseConfigModal';
 import { LoginModal } from './components/auth/LoginModal';
@@ -96,12 +97,28 @@ function AppContent() {
     const rawMenus = Array.isArray(user.allowedMenus) ? user.allowedMenus : (defaultUser.allowedMenus || []);
     // Ensure core tabs like 'beranda' and 'surat' are always accessible to users
     const allowedMenus = Array.from(new Set([...rawMenus, 'beranda', 'surat']));
+    if (allowedMenus.includes('ringkasan') && !allowedMenus.includes('arsip_kegiatan')) {
+      allowedMenus.push('arsip_kegiatan');
+    }
     return {
       ...defaultUser,
       ...user,
       avatar: resolveAssetUrl(user?.avatar || defaultUser.avatar),
       allowedMenus,
     };
+  };
+
+  const isTabAllowedForUser = (tab: WorkspaceTab, user?: UserAccount | null): boolean => {
+    if (!user) return true;
+    if (tab === 'beranda' || tab === 'surat' || user.isSuperAdmin) return true;
+    const allowed = Array.isArray(user.allowedMenus) ? user.allowedMenus : [];
+    if (tab === 'arsip_kegiatan') {
+      return allowed.includes('ringkasan') || allowed.includes('arsip_kegiatan');
+    }
+    if (tab === 'tambah_berita' || tab === 'kategori' || tab === 'galeri') {
+      return allowed.includes('berita') || allowed.includes('tambah_berita');
+    }
+    return allowed.includes(tab);
   };
 
   // Authentication & Access Control state (Local persistence)
@@ -243,6 +260,102 @@ function AppContent() {
     showToast('Berita kegiatan berhasil dihapus.');
   };
 
+  const handleToggleArchiveActivity = async (act: ActivityItem, reason?: string) => {
+    const isNowArchived = !act.isArchived;
+    const nowStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const updatedAct: ActivityItem = {
+      ...act,
+      isArchived: isNowArchived,
+      archivedAt: isNowArchived ? (act.archivedAt || nowStr) : undefined,
+      archiveReason: isNowArchived
+        ? reason || act.archiveReason || 'Kegiatan telah selesai dilaksanakan'
+        : undefined,
+    };
+
+    const updated = activities.map((a) => (a.id === act.id ? updatedAct : a));
+    setActivities(updated);
+
+    if (selectedActivity?.id === act.id) {
+      setSelectedActivity(updatedAct);
+    }
+
+    try {
+      localStorage.setItem('kt_news_v1', JSON.stringify(updated));
+      localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Storage save error:', e);
+    }
+
+    saveNewsToFirestore(updatedAct).catch((err) => console.warn('Firestore news write:', err));
+    pushLocalDataToCloud(
+      isNowArchived ? `Arsipkan kegiatan: ${act.title}` : `Pulihkan kegiatan: ${act.title}`,
+      currentUser.name
+    ).catch(() => {});
+    notifyLocalDataChanged('Pembaruan Arsip Kegiatan');
+
+    if (isNowArchived) {
+      showToast(`Kegiatan "${act.title}" berhasil dipindahkan ke Arsip Kegiatan.`);
+      addNotification({
+        title: 'Kegiatan Diarsipkan',
+        message: `"${act.title}" dipindahkan ke Arsip Kegiatan agar tidak memenuhi dashboard utama.`,
+        type: 'kegiatan',
+        linkTab: 'arsip_kegiatan',
+        actionLabel: 'Buka Arsip',
+      });
+    } else {
+      showToast(`Kegiatan "${act.title}" berhasil dipulihkan ke dashboard utama.`);
+      addNotification({
+        title: 'Kegiatan Dipulihkan',
+        message: `"${act.title}" dikembalikan ke daftar kegiatan aktif di dashboard.`,
+        type: 'kegiatan',
+        linkTab: 'ringkasan',
+        actionLabel: 'Lihat Kegiatan',
+      });
+    }
+  };
+
+  const handleAutoArchivePastActivities = async () => {
+    let count = 0;
+    const nowStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    const updated = activities.map((act) => {
+      if (!act.isArchived) {
+        count++;
+        return {
+          ...act,
+          isArchived: true,
+          archivedAt: nowStr,
+          archiveReason: 'Kegiatan lampau yang telah selesai dilaksanakan',
+        };
+      }
+      return act;
+    });
+
+    if (count === 0) {
+      showToast('Seluruh kegiatan lampau sudah berada di kategori arsip.');
+      return;
+    }
+
+    setActivities(updated);
+    try {
+      localStorage.setItem('kt_news_v1', JSON.stringify(updated));
+      localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
+    } catch {}
+
+    pushLocalDataToCloud(`Arsipkan ${count} kegiatan lampau`, currentUser.name).catch(() => {});
+    notifyLocalDataChanged('Pembaruan Arsip Kegiatan');
+    showToast(`${count} kegiatan lampau berhasil dipindahkan ke Arsip Kegiatan!`);
+  };
+
   // Listen for real-time news update events from Firestore listener
   useEffect(() => {
     const handleNewsUpdate = (e: any) => {
@@ -322,6 +435,10 @@ function AppContent() {
     );
   });
 
+  const archivedActivitiesCount = activities.filter((a) => a.isArchived === true).length;
+  // Dashboard & kegiatan aktif: kegiatan yang belum diarsipkan
+  const activeActivities = filteredActivities.filter((act) => !act.isArchived);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased font-sans selection:bg-blue-600 selection:text-white">
       {/* Top Header - Matches the photo */}
@@ -338,8 +455,7 @@ function AppContent() {
         onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
         onDownloadApk={() => setShowApkModal(true)}
         onNavigateToTab={(tab) => {
-          const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (Array.isArray(currentUser.allowedMenus) && currentUser.allowedMenus.includes(tab));
-          if (isAllowed) {
+          if (isTabAllowedForUser(tab, currentUser)) {
             setCurrentTab(tab);
           } else {
             showToast(`Akses Dibatasi: Menu tersebut belum dicentang pada izin akun Anda.`);
@@ -368,14 +484,14 @@ function AppContent() {
           <Sidebar
             currentTab={currentTab}
             currentUser={currentUser}
+            archivedCount={archivedActivitiesCount}
             allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
             onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
             onOpenLoginModal={() => setShowLoginModal(true)}
             onLogout={handleLogout}
             onDownloadApk={() => setShowApkModal(true)}
             onSelectTab={(tab) => {
-              const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
-              if (isAllowed) {
+              if (isTabAllowedForUser(tab, currentUser)) {
                 setCurrentTab(tab);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
@@ -396,6 +512,7 @@ function AppContent() {
               <Sidebar
                 currentTab={currentTab}
                 currentUser={currentUser}
+                archivedCount={archivedActivitiesCount}
                 allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
                 onClose={() => setMobileMenuOpen(false)}
                 onOpenFirebaseConfig={() => {
@@ -415,8 +532,7 @@ function AppContent() {
                   setShowApkModal(true);
                 }}
                 onSelectTab={(tab) => {
-                  const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
-                  if (isAllowed) {
+                  if (isTabAllowedForUser(tab, currentUser)) {
                     setCurrentTab(tab);
                     setMobileMenuOpen(false);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -432,7 +548,7 @@ function AppContent() {
         {/* Center / Right Main Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
           {/* Permission Guard: Check if current tab is allowed for current user */}
-          {currentTab !== 'beranda' && currentTab !== 'surat' && !currentUser.isSuperAdmin && !(currentUser.allowedMenus || []).includes(currentTab) ? (
+          {!isTabAllowedForUser(currentTab, currentUser) ? (
             <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 max-w-xl mx-auto mt-8 animate-fadeIn">
               <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-inner">
                 <Lock className="w-8 h-8" />
@@ -505,8 +621,7 @@ function AppContent() {
               {currentTab === 'beranda' && (
                 <BerandaView
                   onNavigate={(tab) => {
-                    const isAllowed = tab === 'beranda' || tab === 'surat' || currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes(tab));
-                    if (isAllowed) {
+                    if (isTabAllowedForUser(tab, currentUser)) {
                       setCurrentTab(tab);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     } else {
@@ -520,19 +635,35 @@ function AppContent() {
                   }}
                   onToast={showToast}
                   onSelectActivity={(act) => setSelectedActivity(act)}
-                  activities={filteredActivities}
+                  activities={activeActivities}
+                  archivedCount={archivedActivitiesCount}
                   onDownloadApk={() => setShowApkModal(true)}
+                  currentUser={currentUser}
                 />
               )}
 
               {/* 4b. View: Kegiatan (Workspace Program Kerja dengan Visualisasi Recharts) */}
               {currentTab === 'ringkasan' && (
                 <KegiatanView
-                  activities={filteredActivities}
+                  activities={activeActivities}
                   onSelectActivity={(act) => setSelectedActivity(act)}
                   onAddActivity={() => setShowAddNews(true)}
                   onExploreCalendar={() => setCurrentTab('jadwal')}
                   onViewAllNews={() => setCurrentTab('berita')}
+                  onToast={showToast}
+                  onOpenArchive={() => setCurrentTab('arsip_kegiatan')}
+                  archivedCount={archivedActivitiesCount}
+                />
+              )}
+
+              {/* 4c. Subview: Arsip Kegiatan (Program Kerja & Dokumentasi yang telah selesai) */}
+              {currentTab === 'arsip_kegiatan' && (
+                <ArsipKegiatanView
+                  activities={activities}
+                  onSelectActivity={(act) => setSelectedActivity(act)}
+                  onToggleArchive={handleToggleArchiveActivity}
+                  onAutoArchivePast={handleAutoArchivePastActivities}
+                  onBackToActivities={() => setCurrentTab('ringkasan')}
                   onToast={showToast}
                 />
               )}
@@ -585,6 +716,7 @@ function AppContent() {
                   onAddNews={() => setCurrentTab('tambah_berita')}
                   onToast={showToast}
                   onDeleteActivity={handleDeleteActivity}
+                  onToggleArchive={handleToggleArchiveActivity}
                 />
               )}
 
@@ -727,6 +859,7 @@ function AppContent() {
           onClose={() => setSelectedActivity(null)}
           onToast={showToast}
           onDelete={handleDeleteActivity}
+          onToggleArchive={handleToggleArchiveActivity}
         />
       )}
 
@@ -817,7 +950,7 @@ function AppContent() {
         onLogin={handleLoginUser}
         usersList={usersList}
         onClose={() => setShowLoginModal(false)}
-        canDismiss={true}
+        canDismiss={false}
       />
 
       {/* Modal: Kelola Akun & Ganti Database Firebase (firebase.google.com) */}

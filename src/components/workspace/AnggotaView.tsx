@@ -56,6 +56,9 @@ import {
   memberToUserAccount,
 } from '../../data/membersData';
 import { resolveAssetUrl } from '../../utils/assetUrl';
+import { OfficialKopSurat } from './surat/OfficialKopSurat';
+import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
+import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
 
 export type { DetailedMember } from '../../data/membersData';
 
@@ -166,12 +169,134 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
   const [showQrModal, setShowQrModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportScope, setExportScope] = useState<'semua' | 'aktif' | 'filter' | 'pilihan'>('semua');
+  const [exportTab, setExportTab] = useState<'excel' | 'pdf'>('excel');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [isKtaDownloaded, setIsKtaDownloaded] = useState(false);
 
   // File input refs
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const excelFileRef = useRef<HTMLInputElement | null>(null);
+  const bukuIndukPrintRef = useRef<HTMLDivElement | null>(null);
+  const ktaCardRef = useRef<HTMLDivElement | null>(null);
+  const [isExportingKta, setIsExportingKta] = useState(false);
+
+  const getTargetMembersForExport = (): DetailedMember[] => {
+    if (exportScope === 'aktif') {
+      return members.filter((m) => m.status === 'Aktif');
+    }
+    if (exportScope === 'filter') {
+      return filteredMembers;
+    }
+    if (exportScope === 'pilihan' && selectedRowIds.length > 0) {
+      return members.filter((m) => selectedRowIds.includes(m.id));
+    }
+    return members;
+  };
+
+  const handleExportMembersCsv = (targetList: DetailedMember[] = getTargetMembersForExport()) => {
+    if (targetList.length === 0) {
+      onToast('Tidak ada data anggota untuk diekspor.');
+      return;
+    }
+
+    const headers = [
+      'No',
+      'No. Anggota / KTA',
+      'NIK',
+      'Nama Lengkap',
+      'Nama Panggilan',
+      'Tempat Lahir',
+      'Tanggal Lahir',
+      'Jenis Kelamin',
+      'Jabatan',
+      'Divisi / Seksi',
+      'Lingkungan RW',
+      'Alamat Lengkap',
+      'No. Handphone / WA',
+      'Email',
+      'Pendidikan Terakhir',
+      'Pekerjaan',
+      'Perusahaan / Instansi',
+      'Keahlian',
+      'Minat / Hobi',
+      'Kontak Darurat',
+      'Username Portal',
+      'Status Keaktifan',
+      'Periode Kepengurusan',
+    ];
+
+    const rows = targetList.map((m, idx) => [
+      idx + 1,
+      `"${(m.noAnggota || '').replace(/"/g, '""')}"`,
+      `"\t${(m.nik || '').replace(/"/g, '""')}"`,
+      `"${(m.name || '').replace(/"/g, '""')}"`,
+      `"${(m.nickname || '').replace(/"/g, '""')}"`,
+      `"${(m.birthPlace || '').replace(/"/g, '""')}"`,
+      `"${m.birthDate || ''}"`,
+      `"${m.gender || ''}"`,
+      `"${(m.jabatan || '').replace(/"/g, '""')}"`,
+      `"${(m.divisi || '').replace(/"/g, '""')}"`,
+      `"${m.rw || ''}"`,
+      `"${(m.address || '').replace(/"/g, '""')}"`,
+      `"\t${(m.phone || '').replace(/"/g, '""')}"`,
+      `"${m.email || ''}"`,
+      `"${m.education || ''}"`,
+      `"${(m.job || '').replace(/"/g, '""')}"`,
+      `"${(m.company || '').replace(/"/g, '""')}"`,
+      `"${(m.skills || '').replace(/"/g, '""')}"`,
+      `"${(m.interests || '').replace(/"/g, '""')}"`,
+      `"${(m.emergencyContact || '').replace(/"/g, '""')}"`,
+      `"${m.username || ''}"`,
+      `"${m.status || ''}"`,
+      `"${m.period || '2024 - 2027'}"`,
+    ]);
+
+    const csvContent =
+      '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const filename = `Buku_Induk_Anggota_Karang_Taruna_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    onToast(`Berhasil mengekspor ${targetList.length} data anggota format Excel/CSV.`);
+  };
+
+  const handleDownloadBukuIndukPdf = async () => {
+    if (!bukuIndukPrintRef.current) return;
+    try {
+      setIsExportingPdf(true);
+      onToast('Menyiapkan file PDF Buku Induk Anggota...');
+      const success = await downloadElementAsPdf(
+        bukuIndukPrintRef.current,
+        `Buku_Induk_Anggota_Karang_Taruna_Manis_Jaya.pdf`,
+        (status) => onToast(status)
+      );
+      if (success) {
+        onToast('Buku Induk Anggota PDF berhasil diunduh!');
+        setShowExportModal(false);
+      }
+    } catch {
+      onToast('Gagal membuat PDF. Coba gunakan fitur Cetak Dokumen.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const handlePrintBukuInduk = () => {
+    if (!bukuIndukPrintRef.current) return;
+    printElementDirectly(bukuIndukPrintRef.current);
+    setShowExportModal(false);
+    onToast('Membuka dialog cetak Buku Induk Anggota...');
+  };
 
   // Save members list and synchronize with user accounts
   const saveMembersList = (newList: DetailedMember[]) => {
@@ -394,18 +519,37 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
     onToast('Penyaringan data anggota berhasil direset.');
   };
 
-  // Download e-KTA Digital as Printable Document
-  const handleDownloadKTA = () => {
+  // Download e-KTA Digital as High-Resolution PDF / Card
+  const handleDownloadKTA = async () => {
     setIsKtaDownloaded(true);
-    const textContent = `KARTU TANDA ANGGOTA (e-KTA)\n\nNama: ${selectedMember.name}\nNo. Anggota: ${selectedMember.noAnggota}\nNIK: ${selectedMember.nik}\nJabatan: ${selectedMember.jabatan}\nDivisi: ${selectedMember.divisi}\nRW: ${selectedMember.rw}\nUsername: ${selectedMember.username}\nStatus: ${selectedMember.status}\nKelurahan Manis Jaya, Tangerang`;
-    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `KTA_${selectedMember.noAnggota}_${selectedMember.name.replace(/\s+/g, '_')}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-    onToast(`e-KTA Digital ${selectedMember.name} (${selectedMember.noAnggota}) berhasil diunduh!`);
+    if (ktaCardRef.current) {
+      try {
+        setIsExportingKta(true);
+        onToast(`Menyiapkan e-KTA Digital untuk ${selectedMember.name}...`);
+        const filename = `KTA_${selectedMember.noAnggota}_${selectedMember.name.replace(/\s+/g, '_')}.pdf`;
+        const success = await downloadElementAsPdf(ktaCardRef.current, filename, (status) => onToast(status));
+        if (success) {
+          onToast(`e-KTA Digital resmi ${selectedMember.name} (${selectedMember.noAnggota}) berhasil diunduh!`);
+          return;
+        }
+      } catch (err) {
+        console.warn('PDF export error for KTA:', err);
+      } finally {
+        setIsExportingKta(false);
+      }
+    }
+
+    // Direct printable fallback
+    if (ktaCardRef.current) {
+      printElementDirectly(ktaCardRef.current);
+      onToast(`Membuka dialog cetak e-KTA untuk ${selectedMember.name}...`);
+    }
+  };
+
+  const handlePrintKTA = () => {
+    if (!ktaCardRef.current) return;
+    printElementDirectly(ktaCardRef.current);
+    onToast(`Membuka dialog cetak kartu e-KTA ${selectedMember.name}...`);
   };
 
   return (
@@ -507,57 +651,67 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
 
             {/* Button: Import Excel */}
             <button
-              onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors"
+              onClick={() => excelFileRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+              title="Unggah Berkas Spreadsheet Data Anggota"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               <span>Import Excel</span>
+            </button>
+
+            {/* Button: Ekspor Data Anggota */}
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-700 text-xs font-bold shadow-2xs transition-all cursor-pointer"
+              title="Ekspor Data Anggota ke Excel/CSV atau Cetak Buku Induk PDF Resmi"
+            >
+              <Download className="w-4 h-4 text-blue-600" />
+              <span>Ekspor Data</span>
             </button>
 
             {/* Button: More Options */}
             <div className="relative">
               <button
                 onClick={() => setShowOptionsDropdown(!showOptionsDropdown)}
-                className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-slate-800 shadow-2xs"
+                className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-slate-800 shadow-2xs cursor-pointer"
+                title="Opsi Lainnya"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </button>
 
               {showOptionsDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-fadeIn text-xs">
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-fadeIn text-xs">
                   <button
                     onClick={() => {
-                      window.print();
+                      setShowExportModal(true);
+                      setExportTab('pdf');
                       setShowOptionsDropdown(false);
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 font-semibold flex items-center gap-2 text-slate-700"
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 font-semibold flex items-center gap-2 text-slate-700 cursor-pointer"
                   >
                     <Printer className="w-4 h-4 text-blue-600" />
-                    <span>Cetak Buku Induk Anggota</span>
+                    <span>Cetak Buku Induk Anggota (PDF)</span>
                   </button>
                   <button
                     onClick={() => {
-                      const csvContent =
-                        'data:text/csv;charset=utf-8,' +
-                        [
-                          'No,No. Anggota,NIK,Nama,Username,Kata Sandi,Jabatan,Divisi,RW,No. HP,Status',
-                          ...members.map(
-                            (m, i) =>
-                              `${i + 1},${m.noAnggota},${m.nik},"${m.name}",${m.username},"${m.password}",${m.jabatan},${m.divisi},${m.rw},${m.phone},${m.status}`
-                          ),
-                        ].join('\n');
-                      const encodedUri = encodeURI(csvContent);
-                      const link = document.createElement('a');
-                      link.setAttribute('href', encodedUri);
-                      link.setAttribute('download', 'buku_induk_dan_sandi_karang_taruna.csv');
-                      link.click();
+                      handleExportMembersCsv(members);
                       setShowOptionsDropdown(false);
-                      onToast('Mengekspor Buku Induk Anggota format CSV...');
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 font-semibold flex items-center gap-2 text-slate-700"
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 font-semibold flex items-center gap-2 text-slate-700 cursor-pointer"
                   >
                     <FileDown className="w-4 h-4 text-emerald-600" />
-                    <span>Ekspor Data ke CSV</span>
+                    <span>Ekspor Lengkap ke Excel/CSV</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowExportModal(true);
+                      setExportTab('excel');
+                      setShowOptionsDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 font-semibold flex items-center gap-2 text-slate-700 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-indigo-600" />
+                    <span>Buka Opsi Ekspor Terperinci</span>
                   </button>
                 </div>
               )}
@@ -730,13 +884,47 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                     <Users className="w-4 h-4 text-blue-600" />
                     <h3 className="font-bold text-sm text-slate-900">Daftar Anggota Karang Taruna</h3>
                   </div>
-                  <span className="text-xs text-slate-500 font-semibold">{filteredMembers.length} Orang</span>
+                  <div className="flex items-center gap-2">
+                    {selectedRowIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExportScope('pilihan');
+                          setShowExportModal(true);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer border border-blue-200/60"
+                        title="Ekspor Anggota Terpilih"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Ekspor ({selectedRowIds.length})</span>
+                      </button>
+                    )}
+                    <span className="text-xs text-slate-500 font-semibold">{filteredMembers.length} Orang</span>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
                       <tr>
+                        <th className="py-3 px-2 w-8 text-center">
+                          <input
+                            type="checkbox"
+                            checked={
+                              filteredMembers.length > 0 &&
+                              filteredMembers.every((m) => selectedRowIds.includes(m.id))
+                            }
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedRowIds(filteredMembers.map((m) => m.id));
+                              } else {
+                                setSelectedRowIds([]);
+                              }
+                            }}
+                            className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            title="Pilih Semua Anggota di Tabel"
+                          />
+                        </th>
                         <th className="py-3 px-3">Anggota</th>
                         <th className="py-3 px-2">Jabatan & RW</th>
                         <th className="py-3 px-2 text-center">Status</th>
@@ -755,6 +943,20 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                               isSelected ? 'bg-blue-50/70 font-medium' : 'hover:bg-slate-50/60'
                             }`}
                           >
+                            <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedRowIds.includes(m.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedRowIds([...selectedRowIds, m.id]);
+                                  } else {
+                                    setSelectedRowIds(selectedRowIds.filter((id) => id !== m.id));
+                                  }
+                                }}
+                                className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              />
+                            </td>
                             <td className="py-3 px-3">
                               <div className="flex items-center gap-2.5">
                                 <img
@@ -1272,7 +1474,10 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
               </div>
 
               {/* CARD PREVIEW */}
-              <div className="relative rounded-2xl overflow-hidden p-4 bg-gradient-to-br from-[#0a192f] via-[#102a45] to-[#0d3b66] text-white shadow-lg space-y-3">
+              <div
+                ref={ktaCardRef}
+                className="relative rounded-2xl overflow-hidden p-4 bg-gradient-to-br from-[#0a192f] via-[#102a45] to-[#0d3b66] text-white shadow-lg space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <BrandLogo size="sm" />
@@ -1334,19 +1539,37 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
               </div>
 
               <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={handleDownloadKTA}
-                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Unduh e-KTA Digital</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadKTA}
+                    disabled={isExportingKta}
+                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    title="Unduh e-KTA Digital format PDF"
+                  >
+                    {isExportingKta ? (
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>Unduh PDF</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePrintKTA}
+                    className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    title="Cetak Fisik e-KTA Digital"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak Kartu</span>
+                  </button>
+                </div>
 
                 <button
                   type="button"
                   onClick={() => handleOpenAksesModal(selectedMember)}
-                  className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                  className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
                   <span>Kelola Sandi & Hak Akses</span>
@@ -1697,6 +1920,383 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* --------------------------------------------------------------------- */}
+      {/* 5. MODAL EKSPOR DATA ANGGOTA (EXCEL / CSV & BUKU INDUK RESMI PDF)      */}
+      {/* --------------------------------------------------------------------- */}
+      {showExportModal && (() => {
+        const targetList = getTargetMembersForExport();
+        const activeCount = members.filter((m) => m.status === 'Aktif').length;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fadeIn">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-scaleUp">
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                    <Download className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">
+                      Ekspor & Cetak Data Keanggotaan
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Karang Taruna Kelurahan Manis Jaya · Periode 2024 - 2027
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scope Selector Bar */}
+              <div className="p-4 bg-slate-100/80 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700 shrink-0">Cakupan Data:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setExportScope('semua')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        exportScope === 'semua'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Semua Anggota ({members.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportScope('aktif')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        exportScope === 'aktif'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Anggota Aktif ({activeCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExportScope('filter')}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        exportScope === 'filter'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      Hasil Filter ({filteredMembers.length})
+                    </button>
+                    {selectedRowIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setExportScope('pilihan')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          exportScope === 'pilihan'
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        Dicentang ({selectedRowIds.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tab Switcher: Excel vs PDF */}
+                <div className="flex items-center bg-slate-200/80 p-1 rounded-xl shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setExportTab('excel')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      exportTab === 'excel'
+                        ? 'bg-white text-emerald-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Excel / CSV</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExportTab('pdf')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      exportTab === 'pdf'
+                        ? 'bg-white text-blue-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Printer className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Buku Induk (PDF)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-50 space-y-5">
+                {exportTab === 'excel' ? (
+                  <div className="space-y-4 max-w-2xl mx-auto py-4">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 text-emerald-950 space-y-2">
+                      <div className="flex items-center gap-2 font-bold text-emerald-900 text-sm">
+                        <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
+                        <span>Ekspor Format Spreadsheet (.csv berstandar Excel)</span>
+                      </div>
+                      <p className="text-xs text-emerald-800 leading-relaxed">
+                        Berkas akan diekspor dengan <strong>UTF-8 BOM</strong> sehingga otomatis terbaca rapi di Microsoft Excel, Google Sheets, dan LibreOffice tanpa teks berantakan. Kolom NIK dan Nomor HP diformat agar angka tidak berubah menjadi notasi ilmiah.
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+                      <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                        Ringkasan Data yang Akan Diekspor ({targetList.length} Anggota):
+                      </h4>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Nomor Anggota & NIK Lengkap</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Nama Lengkap & Panggilan</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Jabatan, Divisi & Wilayah RW</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Nomor HP/WhatsApp & Email</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Tempat & Tanggal Lahir</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Pendidikan & Pekerjaan</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Keahlian & Minat Kepemudaan</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>Kontak Darurat & Periode</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <div className="pt-2 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleExportMembersCsv(targetList);
+                          setShowExportModal(false);
+                        }}
+                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-600/30 flex items-center gap-2 transition-all transform active:scale-95 cursor-pointer"
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        <span>Unduh Spreadsheet Sekarang ({targetList.length} Anggota)</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-3 sm:p-4 text-blue-950">
+                      <div className="text-xs leading-relaxed">
+                        <span className="font-bold block text-blue-900">
+                          Buku Induk Anggota Resmi (Format A4 Dokumen Negara)
+                        </span>
+                        <span>
+                          Menampilkan kop surat resmi Kelurahan & Karang Taruna, tabel keanggotaan terstruktur, serta legalitas tanda tangan dan pengesahan.
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleDownloadBukuIndukPdf}
+                          disabled={isExportingPdf}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          {isExportingPdf ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span>Menyiapkan PDF...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Unduh PDF</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePrintBukuInduk}
+                          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          <span>Cetak Dokumen</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Live Document Preview Sheet */}
+                    <div className="bg-slate-200/60 p-4 sm:p-6 rounded-2xl overflow-x-auto flex justify-center">
+                      <div
+                        ref={bukuIndukPrintRef}
+                        className="bg-white p-8 sm:p-10 rounded-2xl shadow-md border border-slate-300 w-full max-w-[210mm] min-w-[650px] text-slate-900 font-sans"
+                      >
+                        <OfficialKopSurat />
+
+                        <div className="text-center my-6 space-y-1">
+                          <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 underline decoration-slate-900 decoration-1">
+                            BUKU INDUK & REGISTER KEANGGOTAAN RESMI
+                          </h2>
+                          <p className="text-xs text-slate-600 font-semibold tracking-wide">
+                            Nomor Dokumen: 002/REG-ANGGOTA/KT-MJ/{new Date().getFullYear()}
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            Periode Bakti Kepengurusan: 2024 - 2027 · Kelurahan Manis Jaya, Kota Tangerang
+                          </p>
+                        </div>
+
+                        <div className="mb-4 text-xs text-slate-700 leading-relaxed text-justify">
+                          Berikut ini adalah daftar rekapitulasi keanggotaan dan susunan pengurus Karang Taruna Kelurahan Manis Jaya yang terdaftar secara sah pada basis data organisasi:
+                        </div>
+
+                        {/* Statistik Singkat */}
+                        <div className="grid grid-cols-4 gap-2 text-center text-[10px] my-3">
+                          <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                            <span className="text-slate-500 block">Total Register</span>
+                            <span className="font-bold text-slate-900 text-xs">{targetList.length} Orang</span>
+                          </div>
+                          <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                            <span className="text-slate-500 block">Status Aktif</span>
+                            <span className="font-bold text-emerald-600 text-xs">
+                              {targetList.filter((m) => m.status === 'Aktif').length} Orang
+                            </span>
+                          </div>
+                          <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                            <span className="text-slate-500 block">Laki-laki</span>
+                            <span className="font-bold text-blue-600 text-xs">
+                              {targetList.filter((m) => m.gender === 'Laki-laki').length}
+                            </span>
+                          </div>
+                          <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                            <span className="text-slate-500 block">Perempuan</span>
+                            <span className="font-bold text-rose-600 text-xs">
+                              {targetList.filter((m) => m.gender === 'Perempuan').length}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Table of Members */}
+                        <div className="overflow-x-auto my-4">
+                          <table className="w-full text-[10px] border-collapse border border-slate-300">
+                            <thead>
+                              <tr className="bg-slate-100 text-slate-800">
+                                <th className="border border-slate-300 px-2 py-2 text-center w-8">No</th>
+                                <th className="border border-slate-300 px-2.5 py-2 text-left">No. KTA / NIK</th>
+                                <th className="border border-slate-300 px-2.5 py-2 text-left">Nama Lengkap</th>
+                                <th className="border border-slate-300 px-2 py-2 text-left">Jabatan / Amanah</th>
+                                <th className="border border-slate-300 px-2 py-2 text-center">Divisi / RW</th>
+                                <th className="border border-slate-300 px-2 py-2 text-left">Kontak / WA</th>
+                                <th className="border border-slate-300 px-2 py-2 text-center">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {targetList.map((m, idx) => (
+                                <tr key={m.id} className="hover:bg-slate-50/50">
+                                  <td className="border border-slate-300 px-2 py-1.5 text-center font-bold">
+                                    {idx + 1}
+                                  </td>
+                                  <td className="border border-slate-300 px-2.5 py-1.5 whitespace-nowrap">
+                                    <div className="font-mono font-semibold text-slate-900">{m.noAnggota}</div>
+                                    <div className="text-[9px] text-slate-500 font-mono">{m.nik}</div>
+                                  </td>
+                                  <td className="border border-slate-300 px-2.5 py-1.5">
+                                    <div className="font-bold text-slate-900">{m.name}</div>
+                                    <div className="text-[9px] text-slate-500">
+                                      {m.gender} · {m.birthPlace ? `${m.birthPlace}, ` : ''}{m.birthDate || ''}
+                                    </div>
+                                  </td>
+                                  <td className="border border-slate-300 px-2 py-1.5 font-semibold text-slate-800">
+                                    {m.jabatan}
+                                  </td>
+                                  <td className="border border-slate-300 px-2 py-1.5 text-center whitespace-nowrap">
+                                    <div className="font-medium text-slate-700">{m.divisi}</div>
+                                    <div className="text-[9px] font-bold text-blue-600">{m.rw}</div>
+                                  </td>
+                                  <td className="border border-slate-300 px-2 py-1.5 font-mono whitespace-nowrap">
+                                    {m.phone}
+                                  </td>
+                                  <td className="border border-slate-300 px-2 py-1.5 text-center">
+                                    <span
+                                      className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                        m.status === 'Aktif'
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : 'bg-slate-100 text-slate-600'
+                                      }`}
+                                    >
+                                      {m.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div className="mt-4 text-[10px] text-slate-600 leading-relaxed space-y-1">
+                          <p>
+                            • Dokumen Buku Induk ini diterbitkan secara sah sebagai bukti register keanggotaan Karang Taruna Kelurahan Manis Jaya.
+                          </p>
+                          <p>
+                            • Tanggal Pengesahan Dokumen: <strong>{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                          </p>
+                        </div>
+
+                        {/* Signatures */}
+                        <div className="mt-8">
+                          <OfficialSignatureBlock
+                            ketuaTitle="Ketua Karang Taruna"
+                            ketuaName="Iik Andriyana"
+                            sekretarisTitle="Sekretaris Karang Taruna"
+                            sekretarisName="Anisa Rahmawati"
+                            organizationName="Karang Taruna Kelurahan Manis Jaya"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                <span className="text-xs text-slate-500">
+                  Total {targetList.length} data anggota siap diproses
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(false)}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

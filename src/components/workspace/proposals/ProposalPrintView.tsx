@@ -15,12 +15,24 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
   const currentYear = new Date().getFullYear();
   const printDocRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [downloadReadyUrl, setDownloadReadyUrl] = useState<string | null>(null);
+  const [downloadReadyName, setDownloadReadyName] = useState<string>('');
+  const [printerBanner, setPrinterBanner] = useState<string | null>(null);
 
   const handleDownloadPdf = async () => {
     if (!printDocRef.current) return;
     setIsExportingPdf(true);
+    setDownloadReadyUrl(null);
     const cleanNomor = (proposal.nomorProposal || 'proposal').replace(/[^a-zA-Z0-9_-]/g, '_');
     const filename = `Proposal_${cleanNomor}.pdf`;
+
+    const handleReady = (e: any) => {
+      if (e.detail?.blobUrl) {
+        setDownloadReadyUrl(e.detail.blobUrl);
+        setDownloadReadyName(e.detail.filename || filename);
+      }
+    };
+    window.addEventListener('kt_pdf_download_ready', handleReady, { once: true });
 
     const success = await downloadElementAsPdf(printDocRef.current, filename);
     setIsExportingPdf(false);
@@ -34,6 +46,8 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
   const handlePrint = () => {
     if (printDocRef.current) {
       printElementDirectly(printDocRef.current);
+      setPrinterBanner('Dialog printer telah dibuka. Pastikan printer Anda terhubung atau gunakan opsi "Simpan sebagai PDF". Anda juga dapat menekan Ctrl + P.');
+      onToast('Membuka koneksi printer sistem...');
     } else {
       window.print();
     }
@@ -81,6 +95,40 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
           </button>
         </div>
       </div>
+
+      {/* Notifikasi Download Langsung & Panduan Printer */}
+      {(downloadReadyUrl || printerBanner) && (
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs text-white print:hidden animate-fadeIn">
+          {downloadReadyUrl ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>File PDF Proposal siap! Jika download otomatis tidak muncul di perangkat Anda:</span>
+              <a
+                href={downloadReadyUrl}
+                download={downloadReadyName}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center gap-1 shadow-sm transition-transform active:scale-95"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Klik di Sini untuk Unduh File Proposal</span>
+              </a>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-slate-300">
+              <Printer className="w-4 h-4 text-blue-400 shrink-0" />
+              <span>{printerBanner}</span>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              setDownloadReadyUrl(null);
+              setPrinterBanner(null);
+            }}
+            className="text-slate-400 hover:text-white text-[11px] underline ml-auto cursor-pointer"
+          >
+            Tutup Info
+          </button>
+        </div>
+      )}
 
       {/* Official A4 Document Container */}
       <div

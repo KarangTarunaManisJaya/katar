@@ -686,12 +686,32 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
 
             <button
               type="button"
-              onClick={handlePrint}
+              onClick={() => setShowPrintModal(true)}
               className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Cetak lembar inventaris"
+              title="Pratinjau & Cetak Dokumen PDF Resmi (A4)"
             >
               <Printer className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden sm:inline">Cetak</span>
+              <span>Cetak PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              title="Unduh Berkas PDF Rekapitulasi Inventaris Aset (.pdf)"
+            >
+              {isExportingPdf ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
+                  <span className="hidden sm:inline">Membuat PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline">Unduh PDF</span>
+                </>
+              )}
             </button>
 
             <div className="border-l border-slate-200 h-6 mx-1" />
@@ -1531,6 +1551,261 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
           </div>
         </div>
       )}
+      {/* ===================================================================== */}
+      {/* 7. MODAL PRATINJAU CETAK DOKUMEN REKAPITULASI ASET (A4 RESMI)        */}
+      {/* ===================================================================== */}
+      {showPrintModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border border-slate-300 flex flex-col max-h-[95vh] my-auto">
+            {/* Modal Toolbar Header */}
+            <div className="p-4 bg-slate-900 text-white border-b border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white">
+                  <Printer className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">
+                    Pratinjau Dokumen Rekapitulasi Inventaris Aset
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {exportStatus || 'Format standar baku A4 resmi Karang Taruna Manis Jaya'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={isExportingPdf}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  {isExportingPdf ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyiapkan PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>Unduh PDF (.pdf)</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePrintPdf}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Dokumen</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPrintModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors cursor-pointer ml-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Sheet Preview Container */}
+            <div className="p-4 sm:p-6 overflow-y-auto bg-slate-100 flex justify-center">
+              <div className="bg-white shadow-xl rounded-lg p-6 sm:p-8 w-full max-w-[794px] text-slate-900 font-serif border border-slate-300">
+                <OfficialKopSurat isCompact={false} />
+
+                <div className="text-center my-6 space-y-1">
+                  <h1 className="text-base font-extrabold uppercase tracking-wide border-b-2 border-black inline-block pb-0.5">
+                    BERITA ACARA & DAFTAR REKAPITULASI INVENTARIS ASET
+                  </h1>
+                  <p className="text-[11px] font-mono tracking-wider text-slate-700">
+                    Nomor: 004/INV-ASET/KT-MJ/{new Date().getFullYear()}
+                  </p>
+                </div>
+
+                <div className="mb-4 text-[11px] text-slate-800 space-y-1">
+                  <p>
+                    Pada hari ini, tanggal <strong>{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>, telah dilakukan pencatatan dan verifikasi fisik terhadap seluruh barang aset dan inventaris milik Karang Taruna Kelurahan Manis Jaya, Kecamatan Jatiuwung, Kota Tangerang sebagai berikut:
+                  </p>
+                </div>
+
+                {/* Table */}
+                <table className="w-full border-collapse border border-black text-[10px] my-4">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold text-center">
+                      <th className="border border-black p-1.5 w-8">No</th>
+                      <th className="border border-black p-1.5 w-24">Kode Aset</th>
+                      <th className="border border-black p-1.5 text-left">Nama Barang / Merk</th>
+                      <th className="border border-black p-1.5 w-20">Kategori</th>
+                      <th className="border border-black p-1.5 w-14">Jumlah</th>
+                      <th className="border border-black p-1.5 w-20">Kondisi</th>
+                      <th className="border border-black p-1.5 text-left w-28">Lokasi Penyimpanan</th>
+                      <th className="border border-black p-1.5 text-left w-24">PIC</th>
+                      <th className="border border-black p-1.5 text-right w-24">Estimasi Nilai</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAssets.map((item, idx) => (
+                      <tr key={item.id} className="text-center align-top">
+                        <td className="border border-black p-1">{idx + 1}</td>
+                        <td className="border border-black p-1 font-mono">{item.kodeAsset}</td>
+                        <td className="border border-black p-1 text-left font-semibold">
+                          {item.namaAsset}
+                          {item.merkType && item.merkType !== '-' && (
+                            <span className="block text-[9px] font-normal text-slate-600">
+                              Merk: {item.merkType}
+                            </span>
+                          )}
+                        </td>
+                        <td className="border border-black p-1">{item.kategori}</td>
+                        <td className="border border-black p-1 font-bold">
+                          {item.jumlah || 1} {item.satuan || 'Unit'}
+                        </td>
+                        <td className="border border-black p-1 font-semibold">{item.kondisi}</td>
+                        <td className="border border-black p-1 text-left">{item.lokasi}</td>
+                        <td className="border border-black p-1 text-left">{item.penanggungJawab}</td>
+                        <td className="border border-black p-1 text-right font-mono">
+                          {item.hargaPerolehan > 0 ? `Rp ${item.hargaPerolehan.toLocaleString('id-ID')}` : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100 font-bold">
+                      <td colSpan={4} className="border border-black p-1.5 text-right">
+                        TOTAL REKAPITULASI:
+                      </td>
+                      <td className="border border-black p-1.5 text-center font-bold">
+                        {stats.totalUnit} Unit
+                      </td>
+                      <td colSpan={3} className="border border-black p-1.5 text-left text-[9px]">
+                        Baik: {stats.baikCount} | Rusak: {stats.rusakCount} | Dipinjam: {stats.dipinjamCount}
+                      </td>
+                      <td className="border border-black p-1.5 text-right font-mono text-[10px]">
+                        Rp {stats.totalNilai.toLocaleString('id-ID')}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                <div className="text-[10px] text-slate-600 my-4 leading-relaxed">
+                  <p>
+                    * Seluruh aset yang tertera di atas berada dalam pengawasan dan tanggung jawab pengurus Karang Taruna Kelurahan Manis Jaya serta siap digunakan untuk mendukung pelayanan dan kegiatan kemasyarakatan.
+                  </p>
+                </div>
+
+                <OfficialSignatureBlock
+                  ketuaTitle="Ketua Karang Taruna"
+                  ketuaName="Iik Andriyana"
+                  sekretarisTitle="Koordinator Sie Aset & Logistik"
+                  sekretarisName="Bagus Tri Prakoso"
+                  organizationName="Karang Taruna Kelurahan Manis Jaya"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 8. HIDDEN STANDALONE SHEET (ALWAYS ACCESSIBLE TO downloadElementAsPdf) */}
+      {/* ===================================================================== */}
+      <div className="fixed -left-[9999px] -top-[9999px] w-[794px] bg-white text-slate-900 pointer-events-none" aria-hidden="true">
+        <div ref={printAssetSheetRef} className="p-8 bg-white text-black font-serif text-[12px] leading-normal">
+          <OfficialKopSurat isCompact={false} />
+
+          <div className="text-center my-6 space-y-1">
+            <h1 className="text-base font-extrabold uppercase tracking-wide border-b-2 border-black inline-block pb-0.5">
+              BERITA ACARA & DAFTAR REKAPITULASI INVENTARIS ASET
+            </h1>
+            <p className="text-[11px] font-mono tracking-wider">
+              Nomor: 004/INV-ASET/KT-MJ/{new Date().getFullYear()}
+            </p>
+          </div>
+
+          <div className="mb-4 text-[11px] space-y-1">
+            <p>
+              Pada hari ini, tanggal <strong>{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>, telah dilakukan pencatatan dan verifikasi fisik terhadap seluruh barang aset dan inventaris milik Karang Taruna Kelurahan Manis Jaya, Kecamatan Jatiuwung, Kota Tangerang sebagai berikut:
+            </p>
+          </div>
+
+          {/* Table */}
+          <table className="w-full border-collapse border border-black text-[10px] my-4">
+            <thead>
+              <tr className="bg-slate-100 font-bold text-center">
+                <th className="border border-black p-1.5 w-8">No</th>
+                <th className="border border-black p-1.5 w-24">Kode Aset</th>
+                <th className="border border-black p-1.5 text-left">Nama Barang / Merk</th>
+                <th className="border border-black p-1.5 w-20">Kategori</th>
+                <th className="border border-black p-1.5 w-14">Jumlah</th>
+                <th className="border border-black p-1.5 w-20">Kondisi</th>
+                <th className="border border-black p-1.5 text-left w-28">Lokasi Penyimpanan</th>
+                <th className="border border-black p-1.5 text-left w-24">PIC</th>
+                <th className="border border-black p-1.5 text-right w-24">Estimasi Nilai</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAssets.map((item, idx) => (
+                <tr key={item.id} className="text-center align-top">
+                  <td className="border border-black p-1">{idx + 1}</td>
+                  <td className="border border-black p-1 font-mono">{item.kodeAsset}</td>
+                  <td className="border border-black p-1 text-left font-semibold">
+                    {item.namaAsset}
+                    {item.merkType && item.merkType !== '-' && (
+                      <span className="block text-[9px] font-normal text-slate-600">
+                        Merk: {item.merkType}
+                      </span>
+                    )}
+                  </td>
+                  <td className="border border-black p-1">{item.kategori}</td>
+                  <td className="border border-black p-1 font-bold">
+                    {item.jumlah || 1} {item.satuan || 'Unit'}
+                  </td>
+                  <td className="border border-black p-1 font-semibold">{item.kondisi}</td>
+                  <td className="border border-black p-1 text-left">{item.lokasi}</td>
+                  <td className="border border-black p-1 text-left">{item.penanggungJawab}</td>
+                  <td className="border border-black p-1 text-right font-mono">
+                    {item.hargaPerolehan > 0 ? `Rp ${item.hargaPerolehan.toLocaleString('id-ID')}` : '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-100 font-bold">
+                <td colSpan={4} className="border border-black p-1.5 text-right">
+                  TOTAL REKAPITULASI:
+                </td>
+                <td className="border border-black p-1.5 text-center font-bold">
+                  {stats.totalUnit} Unit
+                </td>
+                <td colSpan={3} className="border border-black p-1.5 text-left text-[9px]">
+                  Baik: {stats.baikCount} | Rusak: {stats.rusakCount} | Dipinjam: {stats.dipinjamCount}
+                </td>
+                <td className="border border-black p-1.5 text-right font-mono text-[10px]">
+                  Rp {stats.totalNilai.toLocaleString('id-ID')}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div className="text-[10px] text-slate-600 my-4 leading-relaxed">
+            <p>
+              * Seluruh aset yang tertera di atas berada dalam pengawasan dan tanggung jawab pengurus Karang Taruna Kelurahan Manis Jaya serta siap digunakan untuk mendukung pelayanan dan kegiatan kemasyarakatan.
+            </p>
+          </div>
+
+          <OfficialSignatureBlock
+            ketuaTitle="Ketua Karang Taruna"
+            ketuaName="Iik Andriyana"
+            sekretarisTitle="Koordinator Sie Aset & Logistik"
+            sekretarisName="Bagus Tri Prakoso"
+            organizationName="Karang Taruna Kelurahan Manis Jaya"
+          />
+        </div>
+      </div>
     </div>
   );
 };

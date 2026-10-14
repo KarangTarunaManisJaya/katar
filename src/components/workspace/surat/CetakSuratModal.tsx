@@ -38,15 +38,28 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
   const printDocRef = useRef<HTMLDivElement>(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportStatus, setExportStatus] = useState('');
+  const [downloadReadyUrl, setDownloadReadyUrl] = useState<string | null>(null);
+  const [downloadReadyName, setDownloadReadyName] = useState<string>('');
+  const [printerBanner, setPrinterBanner] = useState<string | null>(null);
 
   const handleDownloadPdf = async () => {
     if (!printDocRef.current) return;
     setIsExportingPdf(true);
+    setDownloadReadyUrl(null);
     const rawNomor = suratKeluar?.nomorSurat || lembarDisposisi?.nomorDisposisi || 'dokumen';
     const cleanNomor = rawNomor.replace(/[^a-zA-Z0-9_-]/g, '_');
     const filename = suratKeluar
       ? `Surat_${cleanNomor}.pdf`
       : `Disposisi_${cleanNomor}.pdf`;
+
+    // Listen for custom event with blobUrl
+    const handleReady = (e: any) => {
+      if (e.detail?.blobUrl) {
+        setDownloadReadyUrl(e.detail.blobUrl);
+        setDownloadReadyName(e.detail.filename || filename);
+      }
+    };
+    window.addEventListener('kt_pdf_download_ready', handleReady, { once: true });
 
     const success = await downloadElementAsPdf(
       printDocRef.current,
@@ -57,7 +70,7 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
     setIsExportingPdf(false);
     setExportStatus('');
     if (success) {
-      onToast(`File PDF "${filename}" berhasil diunduh!`);
+      onToast(`File PDF "${filename}" berhasil diproses!`);
     } else {
       onToast('Gagal membuat file PDF. Silakan gunakan tombol Cetak.');
     }
@@ -66,7 +79,8 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
   const handlePrint = () => {
     if (printDocRef.current) {
       printElementDirectly(printDocRef.current);
-      onToast('Membuka dialog cetak lembar resmi...');
+      setPrinterBanner('Dialog printer telah diaktifkan. Pilih printer Anda di daftar perangkat atau pilih "Simpan ke PDF". Anda juga dapat menekan Ctrl + P.');
+      onToast('Membuka koneksi printer sistem...');
     } else {
       window.print();
     }
@@ -149,6 +163,40 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Notifikasi Download Langsung & Panduan Printer */}
+        {(downloadReadyUrl || printerBanner) && (
+          <div className="bg-slate-800 border-b border-slate-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-white print:hidden">
+            {downloadReadyUrl ? (
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>File PDF siap! Jika download otomatis tidak muncul di perangkat Anda:</span>
+                <a
+                  href={downloadReadyUrl}
+                  download={downloadReadyName}
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center gap-1 shadow-sm transition-transform active:scale-95"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Klik di Sini untuk Simpan File PDF</span>
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-slate-300">
+                <Printer className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{printerBanner}</span>
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setDownloadReadyUrl(null);
+                setPrinterBanner(null);
+              }}
+              className="text-slate-400 hover:text-white text-[11px] underline ml-auto"
+            >
+              Tutup Info
+            </button>
+          </div>
+        )}
 
         {/* Paper Document Container */}
         <div className="p-4 sm:p-8 overflow-y-auto flex-1 bg-slate-100 flex justify-center print:p-0 print:m-0 print:bg-white print:overflow-visible print:block">

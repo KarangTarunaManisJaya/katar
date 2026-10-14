@@ -329,13 +329,22 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
       {/* 1. TOP BANNER - Matches the screenshot */}
       <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#eef6ff] via-[#e5f0fe] to-[#f2f7fe] border border-blue-100 shadow-sm p-6 sm:p-8 lg:p-10">
         {/* Right 3D Mechanism Gears / Cogs Illustration */}
-        <div className="absolute top-0 right-0 w-2/5 h-full hidden md:block pointer-events-none opacity-95">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#eef6ff] via-[#e5f0fe]/70 to-transparent z-10" />
+        <div className="absolute top-0 right-0 w-2/5 h-full pointer-events-none opacity-40 md:opacity-95 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#eef6ff] via-[#e5f0fe]/80 md:via-[#e5f0fe]/70 to-transparent z-10" />
           <img
             src={resolveAssetUrl('/src/assets/images/settings_banner_gears_1790645443277.jpg')}
             alt="Pengaturan Sistem Illustration"
-            referrerPolicy="no-referrer"
             className="w-full h-full object-cover object-center"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.dataset.tried) {
+                target.dataset.tried = '1';
+                target.src = resolveAssetUrl('/assets/images/settings_banner_gears_1790645443277.jpg');
+              } else if (target.dataset.tried === '1') {
+                target.dataset.tried = '2';
+                target.src = resolveAssetUrl('/settings_banner_gears_1790645443277.jpg');
+              }
+            }}
           />
         </div>
 

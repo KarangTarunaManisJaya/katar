@@ -199,16 +199,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <strong>Catatan Otorisasi:</strong> Hak akses menu dan aplikasi dibuka/ditutup secara otomatis sesuai wewenang akun yang ditetapkan oleh Pengurus.
             </p>
           </div>
-
-          {canDismiss && onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full text-center text-xs text-slate-400 hover:text-slate-600 font-medium pt-1"
-            >
-              Tutup Jendela Login
-            </button>
-          )}
         </div>
       </div>
     </div>

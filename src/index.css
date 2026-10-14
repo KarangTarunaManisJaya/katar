@@ -219,3 +219,55 @@ html.dark table:not(.print-sheet *) tr:hover {
     max-width: 100% !important;
   }
 }
+
+/* ========================================================================= */
+/* DEDICATED PRINT MOUNT POINT & PRINT ENGINE ISOLATION                      */
+/* ========================================================================= */
+#print-mount-point {
+  display: none;
+}
+
+@media print {
+  /* Saat print-mode-active aktif, sembunyikan seluruh UI aplikasi (#root) */
+  html.print-mode-active #root,
+  body.print-mode-active #root {
+    display: none !important;
+  }
+
+  html.print-mode-active,
+  body.print-mode-active {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  html.print-mode-active #print-mount-point,
+  body.print-mode-active #print-mount-point {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  body.print-mode-active #print-mount-point .print-sheet,
+  body.print-mode-active #print-mount-point > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}
+

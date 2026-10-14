@@ -25,6 +25,8 @@ import {
   Video,
   Paperclip,
   Trash2,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 
@@ -34,6 +36,7 @@ interface SemuaBeritaViewProps {
   onAddNews: () => void;
   onToast: (msg: string) => void;
   onDeleteActivity?: (id: string) => void;
+  onToggleArchive?: (activity: ActivityItem) => void;
 }
 
 export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
@@ -42,6 +45,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
   onAddNews,
   onToast,
   onDeleteActivity,
+  onToggleArchive,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
@@ -58,6 +62,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
     'Pendidikan',
     'Kesenian & Budaya',
     'Dokumentasi',
+    'Arsip Kegiatan',
   ];
 
   // Filtering and sorting logic
@@ -70,6 +75,13 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
         act.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (act.subtitle && act.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (act.tags && act.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+
+      if (selectedCategory === 'Arsip Kegiatan') {
+        return matchSearch && act.isArchived === true;
+      }
+
+      // If other categories or Semua, by default show active non-archived activities
+      if (act.isArchived) return false;
 
       const matchCategory =
         selectedCategory === 'Semua' ||
@@ -442,6 +454,31 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                     >
                       <Share2 className="w-3.5 h-3.5" />
                     </button>
+                    {onToggleArchive && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleArchive(act);
+                        }}
+                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                          act.isArchived
+                            ? 'text-amber-600 hover:text-amber-800 hover:bg-white'
+                            : 'text-slate-400 hover:text-indigo-600 hover:bg-white'
+                        }`}
+                        title={
+                          act.isArchived
+                            ? 'Pulihkan dari Arsip ke Dashboard'
+                            : 'Pindahkan ke Arsip Kegiatan'
+                        }
+                      >
+                        {act.isArchived ? (
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                        ) : (
+                          <Archive className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
                     {onDeleteActivity && (
                       <button
                         type="button"

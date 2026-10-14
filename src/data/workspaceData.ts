@@ -55,6 +55,9 @@ export interface ActivityItem {
   tags?: string[];
   metaDescription?: string;
   socialCaption?: string;
+  isArchived?: boolean;
+  archivedAt?: string;
+  archiveReason?: string;
 }
 
 export interface WorkspaceMember {

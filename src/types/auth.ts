@@ -43,6 +43,12 @@ export const ALL_MENU_DEFINITIONS: MenuItemDefinition[] = [
     description: 'Statistik grafik harian/bulanan/tahunan dan katalog kegiatan pemuda.',
   },
   {
+    id: 'arsip_kegiatan',
+    label: 'Arsip Kegiatan Lampau',
+    category: 'Kegiatan',
+    description: 'Penyimpanan arsip program kerja yang telah selesai agar tidak memenuhi dashboard utama.',
+  },
+  {
     id: 'surat',
     label: 'Surat Menyurat',
     category: 'Administrasi',

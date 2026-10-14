@@ -26,6 +26,7 @@ import {
 import firebaseConfig from '../../firebase-applet-config.json';
 import { ActivityItem, ACTIVITIES_DATA } from '../data/workspaceData';
 import { AssetItem } from '../data/assetData';
+import { VotingItem } from '../types/voting';
 
 export interface FirebaseConfig {
   projectId: string;
@@ -277,6 +278,7 @@ export const SYNC_KEYS = [
   'kt_users_list_v3',
   'kt_news_v1',
   'kt_activities_v1',
+  'kt_votings_v1',
   'kt_categories_v1',
   'kt_org_name',
   'kt_org_address',
@@ -430,9 +432,80 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
         }
       }
     }
+    // Sync Votings & Pengambilan Keputusan Real-Time
+    const votingsList = localData['kt_votings_v1'];
+    if (Array.isArray(votingsList) && votingsList.length > 0) {
+      for (const v of votingsList.slice(0, 50)) {
+        if (v?.id) {
+          const docRef = doc(collection(orgDoc, 'votings'), String(v.id));
+          await setDoc(docRef, { ...v, updatedAt: new Date().toISOString() }, { merge: true });
+        }
+      }
+    }
   } catch (err) {
     // Non-blocking for offline / permissions
     console.debug('Granular subcollections sync handled:', err);
+  }
+};
+
+/**
+ * Direct real-time save of a single voting item to Firestore collection
+ */
+export const saveVotingToFirestore = async (item: VotingItem): Promise<void> => {
+  try {
+    const docRef = doc(db, 'organizations', 'manisjaya', 'votings', String(item.id));
+    await setDoc(
+      docRef,
+      {
+        ...item,
+        updatedAt: new Date().toISOString(),
+        deviceId: DEVICE_ID,
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('saveVotingToFirestore notice:', err);
+  }
+};
+
+/**
+ * Direct deletion of a voting item from Firestore collection
+ */
+export const deleteVotingFromFirestore = async (itemId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, 'organizations', 'manisjaya', 'votings', String(itemId));
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn('deleteVotingFromFirestore notice:', err);
+  }
+};
+
+/**
+ * Real-time listener for votings collection from Firestore
+ */
+export const subscribeVotingsFromFirestore = (
+  callback: (votings: VotingItem[]) => void
+): (() => void) => {
+  try {
+    const colRef = collection(db, 'organizations', 'manisjaya', 'votings');
+    const unsub = onSnapshot(
+      colRef,
+      (snapshot) => {
+        const remoteList: VotingItem[] = [];
+        snapshot.forEach((d) => {
+          remoteList.push({ id: d.id, ...d.data() } as VotingItem);
+        });
+        if (remoteList.length > 0) {
+          callback(remoteList);
+        }
+      },
+      (err) => {
+        console.debug('subscribeVotings notice:', err);
+      }
+    );
+    return unsub;
+  } catch {
+    return () => {};
   }
 };
 

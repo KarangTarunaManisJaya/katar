@@ -1,17 +1,22 @@
 import React from 'react';
-import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon, Archive } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
+import { resolveAssetUrl } from '../../utils/assetUrl';
 
 interface RecentActivitiesProps {
   activities: ActivityItem[];
   onSelectActivity: (activity: ActivityItem) => void;
   onViewAllClick?: () => void;
+  onOpenArchive?: () => void;
+  archivedCount?: number;
 }
 
 export const RecentActivities: React.FC<RecentActivitiesProps> = ({
   activities,
   onSelectActivity,
   onViewAllClick,
+  onOpenArchive,
+  archivedCount = 0,
 }) => {
   const getBadgeStyle = (color: ActivityItem['badgeColor']) => {
     switch (color) {
@@ -62,13 +67,26 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={onViewAllClick}
-          className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-blue-600 hover:text-blue-700 text-xs font-semibold shadow-sm transition-all"
-        >
-          <span>Lihat Semua</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {onOpenArchive && archivedCount > 0 && (
+            <button
+              onClick={onOpenArchive}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+              title="Buka Arsip Kegiatan yang telah selesai"
+            >
+              <Archive className="w-3.5 h-3.5 text-amber-600" />
+              <span>Arsip ({archivedCount})</span>
+            </button>
+          )}
+
+          <button
+            onClick={onViewAllClick}
+            className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 text-blue-600 hover:text-blue-700 text-xs font-semibold shadow-sm transition-all cursor-pointer"
+          >
+            <span>Lihat Semua</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Cards Grid or Empty State */}
@@ -94,8 +112,19 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
                   <img
                     src={item.image}
                     alt={item.title}
-                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.dataset.triedFallback && item.image) {
+                        target.dataset.triedFallback = '1';
+                        const filename = item.image.split('/').pop() || '';
+                        target.src = resolveAssetUrl(`/assets/images/${filename}`);
+                      } else if (target.dataset.triedFallback === '1' && item.image) {
+                        target.dataset.triedFallback = '2';
+                        const filename = item.image.split('/').pop() || '';
+                        target.src = resolveAssetUrl(`/${filename}`);
+                      }
+                    }}
                   />
                 ) : (
                   /* Placeholder with subtle purple tone */

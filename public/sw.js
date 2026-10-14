@@ -41,10 +41,29 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
-
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
+
+  // Bypass all dev server requests, Vite internals, and non-GET requests immediately
+  if (
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/') ||
+    url.pathname.includes('.vite') ||
+    url.search.includes('?v=') ||
+    url.search.includes('?t=') ||
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.hostname.includes('.run.app') ||
+    url.hostname.includes('.ai.studio')
+  ) {
+    // If running in dev environment, self-unregister and don't touch network
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.includes('.run.app') || url.hostname.includes('.ai.studio')) {
+      self.registration.unregister().catch(() => {});
+    }
+    return;
+  }
 
   // Never intercept APK installers or ZIP downloads so browser natively downloads full binary files without size cutoff
   if (

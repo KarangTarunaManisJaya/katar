@@ -76,9 +76,18 @@ export const Hero: React.FC<HeroProps> = ({ onRegisterClick, onExploreAgendaClic
             <div className="relative rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl bg-slate-800 group">
               <img
                 src={resolveAssetUrl('/src/assets/images/hero_karang_taruna_1790587873230.jpg')}
-                alt="Semangat gotong royong pemuda Karang Taruna Bhakti Pertiwi"
-                referrerPolicy="no-referrer"
+                alt="Semangat gotong royong pemuda Karang Taruna Manis Jaya"
                 className="w-full aspect-[4/3] sm:aspect-[16/11] object-cover transition-transform duration-700 group-hover:scale-105"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.tried) {
+                    target.dataset.tried = '1';
+                    target.src = resolveAssetUrl('/assets/images/hero_karang_taruna_1790587873230.jpg');
+                  } else if (target.dataset.tried === '1') {
+                    target.dataset.tried = '2';
+                    target.src = resolveAssetUrl('/hero_karang_taruna_1790587873230.jpg');
+                  }
+                }}
               />
               
               {/* Bottom Scrim with Human Context */}
