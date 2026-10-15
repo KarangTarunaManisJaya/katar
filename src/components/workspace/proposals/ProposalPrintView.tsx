@@ -1,9 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { Printer, ArrowLeft, Download, ShieldCheck, Loader2 } from 'lucide-react';
+import { Printer, ArrowLeft, Download, ShieldCheck, Loader2, ExternalLink } from 'lucide-react';
 import { ProposalItem } from '../../../types/proposal';
 import { OfficialKopSurat } from '../surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from '../surat/OfficialSignatureBlock';
-import { downloadElementAsPdf, printElementDirectly } from '../../../utils/pdfExport';
+import { downloadElementAsPdf, printElementDirectly, openPrintInNewWindow } from '../../../utils/pdfExport';
 
 interface ProposalPrintViewProps {
   proposal: ProposalItem;
@@ -45,8 +45,8 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
 
   const handlePrint = () => {
     if (printDocRef.current) {
-      printElementDirectly(printDocRef.current);
-      setPrinterBanner('Dialog printer telah dibuka. Pastikan printer Anda terhubung atau gunakan opsi "Simpan sebagai PDF". Anda juga dapat menekan Ctrl + P.');
+      printElementDirectly(printDocRef.current, `Proposal ${proposal.judul || 'Karang Taruna'}`);
+      setPrinterBanner('Dialog printer telah dibuka. Pastikan printer Anda terhubung atau gunakan opsi "Simpan sebagai PDF". Anda juga dapat menekan tombol Tab Baru.');
       onToast('Membuka koneksi printer sistem...');
     } else {
       window.print();
@@ -92,6 +92,21 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
           >
             <Printer className="w-4 h-4" />
             <span>Cetak Dokumen</span>
+          </button>
+
+          {/* Tombol Buka di Tab Baru untuk Printer Fisik */}
+          <button
+            onClick={() => {
+              if (printDocRef.current) {
+                openPrintInNewWindow(printDocRef.current, `Proposal ${proposal.judul || 'Karang Taruna'}`);
+                onToast('Membuka dokumen di tab baru untuk koneksi printer...');
+              }
+            }}
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+            title="Buka dokumen di tab baru untuk koneksi langsung ke printer fisik"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Tab Baru</span>
           </button>
         </div>
       </div>

@@ -29,7 +29,7 @@ import {
 import { ActivityItem } from '../../data/workspaceData';
 import { OfficialKopSurat } from './surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
-import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
+import { downloadElementAsPdf, printElementDirectly, openPrintInNewWindow } from '../../utils/pdfExport';
 
 export interface LaporanKegiatanItem {
   id: string;
@@ -417,9 +417,6 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
   // Export handlers
   const handlePrint = () => {
     setShowPrintModal(true);
-    setTimeout(() => {
-      window.print();
-    }, 150);
   };
 
   const handleExportPDF = () => {
@@ -649,11 +646,29 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
       {/* ----------------------------------------------------------------------- */}
       {/* Export Action Buttons: Cetak PDF, Unduh PDF, Excel */}
       {/* ----------------------------------------------------------------------- */}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 flex-wrap">
+        <button
+          onClick={() => {
+            setShowPrintModal(true);
+            setTimeout(() => {
+              if (printDocRef.current) {
+                const filename = `Laporan_Kegiatan_${startDate}_sd_${endDate}.pdf`.replace(/[^a-zA-Z0-9_.-]/g, '_');
+                downloadElementAsPdf(printDocRef.current, filename);
+                onToast('Menyiapkan pembuatan file PDF dokumen laporan...');
+              }
+            }, 300);
+          }}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-emerald-600/30 flex items-center gap-1.5 transition-all cursor-pointer"
+          title="Unduh langsung sebagai File Dokumen PDF (A4)"
+        >
+          <Download className="w-4 h-4" />
+          <span>Unduh PDF</span>
+        </button>
+
         <button
           onClick={handlePrint}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
-          title="Cetak PDF Dokumen Laporan (A4)"
+          title="Pratinjau & Cetak PDF Dokumen Laporan (A4)"
         >
           <Printer className="w-4 h-4" />
           <span>Cetak PDF</span>
@@ -661,7 +676,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
 
         <button
           onClick={handleExportExcel}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-emerald-600/30 flex items-center gap-1.5 transition-all"
+          className="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
         >
           <FileSpreadsheet className="w-4 h-4" />
           <span>Excel</span>
@@ -1286,22 +1301,38 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                   )}
                 </button>
 
-                {/* Tombol Cetak PDF */}
+                {/* Tombol Cetak PDF ke Printer */}
                 <button
                   type="button"
                   onClick={() => {
                     if (printDocRef.current) {
-                      printElementDirectly(printDocRef.current);
-                      onToast('Membuka dialog cetak dokumen laporan resmi...');
+                      printElementDirectly(printDocRef.current, `Laporan Kegiatan Karang Taruna ${startDate} sd ${endDate}`);
+                      onToast('Membuka dialog koneksi printer sistem...');
                     } else {
                       window.print();
                     }
                   }}
                   className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                  title="Cetak Laporan ke PDF (A4)"
+                  title="Cetak Dokumen Laporan langsung ke Printer (A4)"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Cetak PDF</span>
+                </button>
+
+                {/* Tombol Buka di Tab Baru untuk Printer Fisik */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (printDocRef.current) {
+                      openPrintInNewWindow(printDocRef.current, `Laporan Kegiatan Karang Taruna ${startDate} sd ${endDate}`);
+                      onToast('Membuka dokumen di tab baru untuk koneksi printer...');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Buka dokumen di tab baru untuk koneksi langsung ke printer fisik (Canon, Epson, HP, dll)"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Tab Baru</span>
                 </button>
 
                 <button

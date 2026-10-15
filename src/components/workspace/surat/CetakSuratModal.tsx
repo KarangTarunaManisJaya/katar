@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Building,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import {
   SuratKeluarItem,
@@ -16,7 +17,7 @@ import {
 } from '../../../types/surat';
 import { OfficialKopSurat } from './OfficialKopSurat';
 import { OfficialSignatureBlock } from './OfficialSignatureBlock';
-import { downloadElementAsPdf, printElementDirectly } from '../../../utils/pdfExport';
+import { downloadElementAsPdf, printElementDirectly, openPrintInNewWindow } from '../../../utils/pdfExport';
 
 interface CetakSuratModalProps {
   isOpen: boolean;
@@ -78,8 +79,9 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
 
   const handlePrint = () => {
     if (printDocRef.current) {
-      printElementDirectly(printDocRef.current);
-      setPrinterBanner('Dialog printer telah diaktifkan. Pilih printer Anda di daftar perangkat atau pilih "Simpan ke PDF". Anda juga dapat menekan Ctrl + P.');
+      const docTitle = suratKeluar ? `Surat ${suratKeluar.nomorSurat}` : `Disposisi ${lembarDisposisi?.nomorDisposisi || ''}`;
+      printElementDirectly(printDocRef.current, docTitle);
+      setPrinterBanner('Dialog printer telah diaktifkan. Pilih printer Anda di daftar perangkat atau pilih "Simpan ke PDF". Anda juga dapat menekan tombol Tab Baru jika printer belum merespons.');
       onToast('Membuka koneksi printer sistem...');
     } else {
       window.print();
@@ -148,10 +150,27 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
               type="button"
               onClick={handlePrint}
               className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
-              title="Cetak Dokumen ke PDF (A4)"
+              title="Cetak Dokumen langsung ke Printer (A4)"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak PDF</span>
+            </button>
+
+            {/* Tombol Buka di Tab Baru untuk Printer Fisik */}
+            <button
+              type="button"
+              onClick={() => {
+                if (printDocRef.current) {
+                  const docTitle = suratKeluar ? `Surat ${suratKeluar.nomorSurat}` : `Disposisi ${lembarDisposisi?.nomorDisposisi || ''}`;
+                  openPrintInNewWindow(printDocRef.current, docTitle);
+                  onToast('Membuka jendela cetak terpisah...');
+                }
+              }}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-all cursor-pointer"
+              title="Buka dokumen di tab baru untuk koneksi langsung ke printer fisik"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Tab Baru</span>
             </button>
 
             <button
@@ -203,7 +222,7 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
           {suratKeluar && (
             <div
               ref={printDocRef}
-              className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[760px] p-6 sm:p-10 font-serif text-xs leading-relaxed flex flex-col justify-between print-sheet print:p-0 print:m-0 print:max-w-full print:min-h-0 print:border-none print:shadow-none print:text-black"
+              className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[760px] min-h-[1020px] p-6 sm:p-10 font-serif text-xs leading-relaxed flex flex-col justify-between print-sheet print:p-0 print:m-0 print:max-w-full print:min-h-0 print:border-none print:shadow-none print:text-black"
             >
               <div>
                 {/* 100% SAMA SEPERTI GAMBAR: OFFICIAL KOP SURAT */}

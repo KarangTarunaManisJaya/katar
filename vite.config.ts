@@ -74,8 +74,13 @@ export default defineConfig(() => {
                 res.setHeader('Content-Type', 'application/pdf');
                 res.setHeader('Content-Disposition', `attachment; filename="${item.filename}"`);
                 res.setHeader('Content-Length', item.buffer.length);
-                res.setHeader('Cache-Control', 'no-cache');
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
                 res.end(item.buffer);
+                return;
+              } else {
+                res.statusCode = 404;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'PDF file not found or download expired. Please click download again.' }));
                 return;
               }
             }

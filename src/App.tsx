@@ -948,8 +948,12 @@ function AppContent() {
       <LoginModal
         isOpen={showLoginModal}
         onLogin={handleLoginUser}
+        onRegisterUser={(newUser) => {
+          handleUpdateUsers([newUser, ...usersList]);
+          handleLoginUser(newUser);
+          showToast(`Akun ${newUser.name} berhasil didaftarkan dan diverifikasi! Selamat datang di Karang Taruna.`);
+        }}
         usersList={usersList}
-        onClose={() => setShowLoginModal(false)}
         canDismiss={false}
       />
 
