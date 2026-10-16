@@ -42,10 +42,12 @@ jobs:
         run: npm run build
         env:
           GITHUB_PAGES: 'true'
-          VITE_BASE: '/katar/'
+          VITE_BASE: './'
 
-      - name: Ensure .nojekyll exists
-        run: touch dist/.nojekyll
+      - name: Ensure .nojekyll and CNAME exist
+        run: |
+          touch dist/.nojekyll
+          echo "karangtarunamanisjaya.my.id" > dist/CNAME
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3

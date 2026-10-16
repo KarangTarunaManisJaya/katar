@@ -3,26 +3,35 @@
   <head>
     <meta charset="utf-8">
     <title>Manis Jaya — Workspace Karang Taruna</title>
-    <link rel="icon" type="image/svg+xml" href="/katar/logo.svg?v=2">
-    <link rel="icon" type="image/x-icon" href="/katar/favicon.ico?v=2">
-    <link rel="shortcut icon" href="/katar/favicon.ico?v=2">
+    <link rel="icon" type="image/svg+xml" href="./logo.svg?v=2">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=2">
+    <link rel="shortcut icon" href="./favicon.ico?v=2">
     <script>
-      // Single Page Application redirect for GitHub Pages
-      // Redirects 404s back to root index.html preserving URL parameters
+      // Single Page Application redirect for GitHub Pages and Custom Domains
       (function() {
         var path = window.location.pathname;
-        var repoName = '/katar/';
-        if (path.startsWith(repoName)) {
-          var subPath = path.slice(repoName.length);
-          window.location.replace(repoName + (subPath ? '#' + subPath : '') + window.location.search);
+        var hostname = window.location.hostname;
+        var isCustomDomain = !hostname.includes('github.io');
+
+        if (isCustomDomain) {
+          // Custom domain (karangtarunamanisjaya.my.id) is mounted at root /
+          var subPath = path.replace(/^\/+/, '');
+          window.location.replace('/' + (subPath ? '#' + subPath : '') + window.location.search);
         } else {
-          window.location.replace('/katar/');
+          // GitHub Pages subdirectory (/katar/)
+          var repoName = '/katar/';
+          if (path.startsWith(repoName)) {
+            var subPath = path.slice(repoName.length);
+            window.location.replace(repoName + (subPath ? '#' + subPath : '') + window.location.search);
+          } else {
+            window.location.replace('/katar/');
+          }
         }
       })();
     </script>
   </head>
   <body style="font-family: system-ui, sans-serif; text-align: center; padding: 40px; background: #f8fafc; color: #334155;">
     <h2>Memuat Halaman Karang Taruna Manis Jaya...</h2>
-    <p>Jika halaman tidak berpindah otomatis, <a href="/katar/" style="color: #2563eb; font-weight: bold;">klik di sini untuk membuka aplikasi</a>.</p>
+    <p>Jika halaman tidak berpindah otomatis, <a href="./" style="color: #2563eb; font-weight: bold;">klik di sini untuk membuka aplikasi</a>.</p>
   </body>
 </html>

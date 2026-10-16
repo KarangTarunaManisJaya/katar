@@ -50,6 +50,43 @@ import {
 } from './services/firestoreSyncService';
 import { addNotification } from './services/notificationService';
 
+// Clean Launch Purge - Membersihkan seluruh data uji/inputan sebelum peluncuran resmi sistem
+const LAUNCH_CLEAN_KEY = 'kt_launch_clean_2026_v1';
+if (typeof window !== 'undefined') {
+  try {
+    if (!localStorage.getItem(LAUNCH_CLEAN_KEY)) {
+      const keysToClear = [
+        'kt_news_v1',
+        'kt_activities_v1',
+        'kt_agenda_v1',
+        'kt_agenda_items_v1',
+        'kt_members_v3',
+        'kt_members_v2',
+        'kt_members_v1',
+        'kt_users_list_v3',
+        'kt_users_list_v2',
+        'kt_auth_user_v3',
+        'kt_auth_user_v2',
+        'kt_laporan_kegiatan_v1',
+        'kt_official_letters_v1',
+        'kt_proposals_v1',
+        'kt_assets_v1',
+        'kt_peminjaman_v1',
+        'kt_pengadaan_v1',
+        'kt_votings_v1',
+        'kt_umkm_v1',
+        'kt_aspirations_v1',
+      ];
+      keysToClear.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem('kt_users_list_v3', JSON.stringify(DEFAULT_USERS));
+      localStorage.setItem('kt_auth_user_v3', JSON.stringify(DEFAULT_USERS[0]));
+      localStorage.setItem(LAUNCH_CLEAN_KEY, 'done');
+    }
+  } catch (e) {
+    console.warn('Launch cleanup notice:', e);
+  }
+}
+
 function AppContent() {
   const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState<WorkspaceTab>('beranda');
@@ -158,7 +195,17 @@ function AppContent() {
   };
 
   const handleUpdateUsers = (updated: UserAccount[]) => {
-    const sanitizedList = updated.map((u) => sanitizeUser(u));
+    // Selalu pastikan akun Administrator Super Admin khusus tetap ada dan tidak terhapus
+    const adminUser =
+      usersList.find(
+        (u) => u.isSuperAdmin || u.id === 'usr-administrator' || (u.username && u.username.toLowerCase() === 'administrator')
+      ) || DEFAULT_USERS[0];
+    const hasAdmin = updated.some(
+      (u) => u.isSuperAdmin || u.id === 'usr-administrator' || (u.username && u.username.toLowerCase() === 'administrator')
+    );
+    const fullList = hasAdmin ? updated : [adminUser, ...updated];
+    const sanitizedList = fullList.map((u) => sanitizeUser(u));
+
     setUsersList(sanitizedList);
     try {
       localStorage.setItem('kt_users_list_v3', JSON.stringify(sanitizedList));

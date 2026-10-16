@@ -26,7 +26,7 @@ import {
   Key,
   HelpCircle,
 } from 'lucide-react';
-import { UserAccount, ALL_MENU_DEFINITIONS } from '../../types/auth';
+import { UserAccount, ALL_MENU_DEFINITIONS, DEFAULT_USERS } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
 
 interface AksesPenggunaViewProps {
@@ -74,7 +74,7 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
     'berita',
   ]);
 
-  const selectedUser = usersList.find((u) => u.id === selectedUserId) || usersList[0];
+  const selectedUser = usersList.find((u) => u.id === selectedUserId) || usersList[0] || DEFAULT_USERS[0];
 
   // Copy password to clipboard
   const handleCopyPassword = (userId: string, pass: string) => {

@@ -19,11 +19,8 @@ export function resolveAssetUrl(url: string | undefined | null): string {
     if (hostname.includes('github.io') && pathname.startsWith('/katar')) {
       base = '/katar/';
     }
-  } else if (
-    typeof process !== 'undefined' &&
-    (process.env?.GITHUB_ACTIONS === 'true' || process.env?.GITHUB_PAGES === 'true')
-  ) {
-    base = '/katar/';
+  } else if (typeof process !== 'undefined' && process.env?.VITE_BASE) {
+    base = process.env.VITE_BASE;
   }
 
   // Remove leading './' or '/'

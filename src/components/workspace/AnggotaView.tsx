@@ -48,11 +48,12 @@ import {
 } from 'lucide-react';
 import { useBranding } from '../../context/BrandingContext';
 import { BrandLogo } from './BrandLogo';
-import { UserAccount, ALL_MENU_DEFINITIONS } from '../../types/auth';
+import { UserAccount, ALL_MENU_DEFINITIONS, DEFAULT_USERS } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
 import {
   DetailedMember,
   INITIAL_MEMBERS,
+  EMPTY_MEMBER,
   memberToUserAccount,
 } from '../../data/membersData';
 import { resolveAssetUrl } from '../../utils/assetUrl';
@@ -107,7 +108,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
   // Top sub-view mode: 'direktori' (Data & KTA) OR 'akses_sandi' (Akses Pengguna & Kata Sandi Anggota)
   const [mainViewMode, setMainViewMode] = useState<'direktori' | 'akses_sandi'>('direktori');
 
-  const [selectedMember, setSelectedMember] = useState<DetailedMember>(members[0] || INITIAL_MEMBERS[0]);
+  const [selectedMember, setSelectedMember] = useState<DetailedMember>(members[0] || EMPTY_MEMBER);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
   // Filter States
@@ -121,35 +122,35 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
   const [formTab, setFormTab] = useState<'utama' | 'tambahan' | 'dokumen' | 'akses'>('utama');
 
   // Form Fields (Controlled)
-  const [formNoAnggota, setFormNoAnggota] = useState(selectedMember.noAnggota);
-  const [formNik, setFormNik] = useState(selectedMember.nik);
-  const [formName, setFormName] = useState(selectedMember.name);
-  const [formNickname, setFormNickname] = useState(selectedMember.nickname);
-  const [formBirthPlace, setFormBirthPlace] = useState(selectedMember.birthPlace);
-  const [formBirthDate, setFormBirthDate] = useState(selectedMember.birthDate || '1998-08-12');
-  const [formGender, setFormGender] = useState<'Laki-laki' | 'Perempuan'>(selectedMember.gender);
-  const [formAddress, setFormAddress] = useState(selectedMember.address);
-  const [formAvatar, setFormAvatar] = useState(selectedMember.avatar);
-  const [formPhone, setFormPhone] = useState(selectedMember.phone);
-  const [formEmail, setFormEmail] = useState(selectedMember.email);
+  const [formNoAnggota, setFormNoAnggota] = useState(selectedMember?.noAnggota || '');
+  const [formNik, setFormNik] = useState(selectedMember?.nik || '');
+  const [formName, setFormName] = useState(selectedMember?.name || '');
+  const [formNickname, setFormNickname] = useState(selectedMember?.nickname || '');
+  const [formBirthPlace, setFormBirthPlace] = useState(selectedMember?.birthPlace || '');
+  const [formBirthDate, setFormBirthDate] = useState(selectedMember?.birthDate || '2000-01-01');
+  const [formGender, setFormGender] = useState<'Laki-laki' | 'Perempuan'>(selectedMember?.gender || 'Laki-laki');
+  const [formAddress, setFormAddress] = useState(selectedMember?.address || '');
+  const [formAvatar, setFormAvatar] = useState(selectedMember?.avatar || '');
+  const [formPhone, setFormPhone] = useState(selectedMember?.phone || '');
+  const [formEmail, setFormEmail] = useState(selectedMember?.email || '');
 
   // Additional form fields for "Data Tambahan" tab
-  const [formEducation, setFormEducation] = useState(selectedMember.education || 'S1');
-  const [formJob, setFormJob] = useState(selectedMember.job || 'Karyawan Swasta');
-  const [formCompany, setFormCompany] = useState(selectedMember.company || 'PT. Maju Bersama');
-  const [formSkills, setFormSkills] = useState(selectedMember.skills || 'Komunikasi, IT');
-  const [formInterests, setFormInterests] = useState(selectedMember.interests || 'Sosial, Kepemudaan');
-  const [formEmergencyContact, setFormEmergencyContact] = useState(selectedMember.emergencyContact || '0812 9876 5432');
-  const [formJabatan, setFormJabatan] = useState(selectedMember.jabatan || 'Ketua');
-  const [formDivisi, setFormDivisi] = useState(selectedMember.divisi || 'Pengurus Harian');
-  const [formRw, setFormRw] = useState(selectedMember.rw || 'RW 03');
+  const [formEducation, setFormEducation] = useState(selectedMember?.education || 'SMA/SMK');
+  const [formJob, setFormJob] = useState(selectedMember?.job || 'Pelajar / Mahasiswa');
+  const [formCompany, setFormCompany] = useState(selectedMember?.company || '-');
+  const [formSkills, setFormSkills] = useState(selectedMember?.skills || '-');
+  const [formInterests, setFormInterests] = useState(selectedMember?.interests || '-');
+  const [formEmergencyContact, setFormEmergencyContact] = useState(selectedMember?.emergencyContact || '-');
+  const [formJabatan, setFormJabatan] = useState(selectedMember?.jabatan || 'Anggota');
+  const [formDivisi, setFormDivisi] = useState(selectedMember?.divisi || 'Umum');
+  const [formRw, setFormRw] = useState(selectedMember?.rw || 'RW 01');
 
   // Account Access & Password form fields (Tab 4: Akses & Sandi)
-  const [formUsername, setFormUsername] = useState(selectedMember.username || 'admin');
-  const [formPassword, setFormPassword] = useState(selectedMember.password || 'admin123');
-  const [formIsSuperAdmin, setFormIsSuperAdmin] = useState(selectedMember.isSuperAdmin || false);
+  const [formUsername, setFormUsername] = useState(selectedMember?.username || '');
+  const [formPassword, setFormPassword] = useState(selectedMember?.password || '');
+  const [formIsSuperAdmin, setFormIsSuperAdmin] = useState(selectedMember?.isSuperAdmin || false);
   const [formAllowedMenus, setFormAllowedMenus] = useState<WorkspaceTab[]>(
-    selectedMember.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita']
+    selectedMember?.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita']
   );
   const [showFormPassword, setShowFormPassword] = useState(false);
 
@@ -305,8 +306,16 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       localStorage.setItem('kt_members_v3', JSON.stringify(newList));
     } catch (e) {}
 
-    // Convert members to user accounts and synchronize
-    const updatedUsers = newList.map(memberToUserAccount);
+    // Convert members to user accounts and synchronize (always preserve dedicated Administrator account)
+    const memberAccounts = newList.map(memberToUserAccount);
+    const adminUser =
+      (usersList || []).find(
+        (u) => u.isSuperAdmin || u.id === 'usr-administrator' || (u.username && u.username.toLowerCase() === 'administrator')
+      ) || DEFAULT_USERS[0];
+    const updatedUsers = [
+      adminUser,
+      ...memberAccounts.filter((m) => m.id !== adminUser.id && (m.username || '').toLowerCase() !== 'administrator'),
+    ];
     if (onUpdateUsers) {
       onUpdateUsers(updatedUsers);
     }
@@ -932,17 +941,28 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {filteredMembers.map((m) => {
-                        const isSelected = selectedMember.id === m.id;
+                      {filteredMembers.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-slate-400">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <Users className="w-8 h-8 text-slate-300" />
+                              <p className="font-semibold text-xs text-slate-600">Belum ada data anggota terdaftar</p>
+                              <p className="text-[11px] text-slate-400">Silakan klik tombol <strong>+ Tambah Anggota</strong> untuk mendaftarkan anggota baru Karang Taruna.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredMembers.map((m) => {
+                          const isSelected = selectedMember?.id === m.id;
 
-                        return (
-                          <tr
-                            key={m.id}
-                            onClick={() => handleSelectMember(m)}
-                            className={`cursor-pointer transition-colors ${
-                              isSelected ? 'bg-blue-50/70 font-medium' : 'hover:bg-slate-50/60'
-                            }`}
-                          >
+                          return (
+                            <tr
+                              key={m.id}
+                              onClick={() => handleSelectMember(m)}
+                              className={`cursor-pointer transition-colors ${
+                                isSelected ? 'bg-blue-50/70 font-medium' : 'hover:bg-slate-50/60'
+                              }`}
+                            >
                             <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="checkbox"
@@ -1027,7 +1047,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                             </td>
                           </tr>
                         );
-                      })}
+                      }))}
                     </tbody>
                   </table>
                 </div>
@@ -1468,113 +1488,129 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
             <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/80 shadow-2xs p-5 space-y-4">
               <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
                 <h4 className="font-extrabold text-sm text-slate-900">e-KTA Digital</h4>
-                <span className="text-[10px] font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">
-                  {selectedMember.noAnggota}
-                </span>
+                {selectedMember?.noAnggota && (
+                  <span className="text-[10px] font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">
+                    {selectedMember.noAnggota}
+                  </span>
+                )}
               </div>
 
               {/* CARD PREVIEW */}
-              <div
-                ref={ktaCardRef}
-                className="relative rounded-2xl overflow-hidden p-4 bg-gradient-to-br from-[#0a192f] via-[#102a45] to-[#0d3b66] text-white shadow-lg space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <BrandLogo size="sm" />
-                    <div>
-                      <p className="text-[11px] font-black uppercase tracking-wider leading-none">Karang Taruna</p>
-                      <p className="text-[9px] text-blue-200 leading-none mt-0.5">Manis Jaya</p>
+              {!selectedMember || !selectedMember.id ? (
+                <div className="rounded-2xl p-6 bg-slate-50 border border-slate-200 text-center space-y-2 flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <QrCode className="w-6 h-6" />
+                  </div>
+                  <p className="font-bold text-xs text-slate-700">Belum Ada Anggota Terdaftar</p>
+                  <p className="text-[11px] text-slate-400">
+                    Setelah anggota ditambahkan, e-KTA Digital resmi dan kredensial aksesnya akan tampil di sini.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div
+                    ref={ktaCardRef}
+                    className="relative rounded-2xl overflow-hidden p-4 bg-gradient-to-br from-[#0a192f] via-[#102a45] to-[#0d3b66] text-white shadow-lg space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <BrandLogo size="sm" />
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-wider leading-none">Karang Taruna</p>
+                          <p className="text-[9px] text-blue-200 leading-none mt-0.5">Manis Jaya</p>
+                        </div>
+                      </div>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-mono">
+                        {selectedMember.status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-1">
+                      <img
+                        src={selectedMember.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                        alt={selectedMember.name}
+                        className="w-14 h-14 rounded-xl object-cover border-2 border-white/60 shadow-md"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-black text-sm text-white truncate leading-tight">{selectedMember.name}</p>
+                        <p className="text-[11px] text-blue-300 font-medium leading-tight mt-0.5">
+                          {selectedMember.jabatan}
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-mono leading-tight mt-1">{selectedMember.rw}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-mono text-slate-300">
+                      <span>NIK: {(selectedMember.nik || '---').slice(0, 10)}•••</span>
+                      <span>Masa: {selectedMember.period || '2024 - 2027'}</span>
                     </div>
                   </div>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-mono">
-                    {selectedMember.status}
-                  </span>
-                </div>
 
-                <div className="flex items-center gap-3 pt-1">
-                  <img
-                    src={selectedMember.avatar}
-                    alt={selectedMember.name}
-                    className="w-14 h-14 rounded-xl object-cover border-2 border-white/60 shadow-md"
-                  />
-                  <div className="min-w-0">
-                    <p className="font-black text-sm text-white truncate leading-tight">{selectedMember.name}</p>
-                    <p className="text-[11px] text-blue-300 font-medium leading-tight mt-0.5">
-                      {selectedMember.jabatan}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-mono leading-tight mt-1">{selectedMember.rw}</p>
+                  {/* Quick Credentials Info */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Username:</span>
+                      <span className="font-mono font-bold text-slate-800">@{selectedMember.username}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Kata Sandi:</span>
+                      <span className="font-mono text-slate-700 flex items-center gap-1">
+                        <span>{selectedMember.password}</span>
+                        <button
+                          onClick={() => handleCopyPass(selectedMember.id, selectedMember.password)}
+                          className="text-slate-400 hover:text-slate-600"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-[11px]">Hak Akses:</span>
+                      <span className="font-bold text-blue-600 text-[11px]">
+                        {selectedMember.isSuperAdmin ? 'Akses Penuh (14)' : `${(selectedMember.allowedMenus || []).length} Menu`}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[10px] font-mono text-slate-300">
-                  <span>NIK: {selectedMember.nik.slice(0, 10)}•••</span>
-                  <span>Masa: {selectedMember.period}</span>
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadKTA}
+                        disabled={isExportingKta}
+                        className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        title="Unduh e-KTA Digital format PDF"
+                      >
+                        {isExportingKta ? (
+                          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span>Unduh PDF</span>
+                      </button>
 
-              {/* Quick Credentials Info */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-[11px]">Username:</span>
-                  <span className="font-mono font-bold text-slate-800">@{selectedMember.username}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-[11px]">Kata Sandi:</span>
-                  <span className="font-mono text-slate-700 flex items-center gap-1">
-                    <span>{selectedMember.password}</span>
+                      <button
+                        type="button"
+                        onClick={handlePrintKTA}
+                        className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                        title="Cetak Fisik e-KTA Digital"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Cetak Kartu</span>
+                      </button>
+                    </div>
+
                     <button
-                      onClick={() => handleCopyPass(selectedMember.id, selectedMember.password)}
-                      className="text-slate-400 hover:text-slate-600"
+                      type="button"
+                      onClick={() => handleOpenAksesModal(selectedMember)}
+                      className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
-                      <Copy className="w-3 h-3" />
+                      <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Kelola Sandi & Hak Akses</span>
                     </button>
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-[11px]">Hak Akses:</span>
-                  <span className="font-bold text-blue-600 text-[11px]">
-                    {selectedMember.isSuperAdmin ? 'Akses Penuh (14)' : `${(selectedMember.allowedMenus || []).length} Menu`}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleDownloadKTA}
-                    disabled={isExportingKta}
-                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    title="Unduh e-KTA Digital format PDF"
-                  >
-                    {isExportingKta ? (
-                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Download className="w-3.5 h-3.5" />
-                    )}
-                    <span>Unduh PDF</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handlePrintKTA}
-                    className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    title="Cetak Fisik e-KTA Digital"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Cetak Kartu</span>
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleOpenAksesModal(selectedMember)}
-                  className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Kelola Sandi & Hak Akses</span>
-                </button>
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -1632,9 +1668,20 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredMembers.map((m) => {
-                    const isVisible = showPassMap[m.id];
-                    const isSuper = m.isSuperAdmin || m.id === 'm-1' || m.username === 'admin';
+                  {filteredMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Users className="w-8 h-8 text-slate-300" />
+                          <p className="font-semibold text-xs text-slate-600">Belum ada akun anggota terdaftar</p>
+                          <p className="text-[11px] text-slate-400">Akun anggota yang dibuat akan otomatis tersinkronisasi di tabel ini.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredMembers.map((m) => {
+                      const isVisible = showPassMap[m.id];
+                      const isSuper = m.isSuperAdmin;
 
                     return (
                       <tr key={m.id} className="hover:bg-slate-50/80 transition-colors">
@@ -1751,7 +1798,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                         </td>
                       </tr>
                     );
-                  })}
+                  }))}
                 </tbody>
               </table>
             </div>

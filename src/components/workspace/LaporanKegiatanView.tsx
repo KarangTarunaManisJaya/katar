@@ -50,236 +50,28 @@ export interface LaporanKegiatanItem {
   kegiatanStatus: 'Berjalan' | 'Selesai';
 }
 
-const INITIAL_LAPORAN_DATA: LaporanKegiatanItem[] = [
-  {
-    id: 'lap-1',
-    no: 1,
-    tanggal: '15/01/2025',
-    rawDate: '2025-01-15',
-    judul: 'Bakti Sosial Pembagian Sembako',
-    kategori: 'Sosial',
-    jenis: 'Kegiatan',
-    lokasi: 'Kp. Manis Jaya',
-    lokasiSpesifik: 'Kp. Manis Jaya, Desa Manis Jaya',
-    status: 'Terbit',
-    peserta: '50 Orang',
-    penyelenggara: 'Karang Taruna Manis Jaya',
-    penanggungJawab: 'Andi Pratama',
-    ringkasan:
-      'Kegiatan bakti sosial berupa pembagian sembako kepada warga kurang mampu di wilayah Kp. Manis Jaya sebagai bentuk kepedulian sosial Karang Taruna Manis Jaya.',
-    foto: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Selesai',
-  },
-  {
-    id: 'lap-2',
-    no: 2,
-    tanggal: '10/02/2025',
-    rawDate: '2025-02-10',
-    judul: 'Pengajian Rutin Remaja',
-    kategori: 'Keagamaan',
-    jenis: 'Kegiatan',
-    lokasi: 'Masjid Al-Ikhlas',
-    lokasiSpesifik: 'Masjid Al-Ikhlas RW 02, Manis Jaya',
-    status: 'Terbit',
-    peserta: '85 Orang',
-    penyelenggara: 'Divisi Rohani Karang Taruna',
-    penanggungJawab: 'Ust. Fajar Shiddiq',
-    ringkasan:
-      'Kajian keislaman dan silaturahmi bulanan pemuda-pemudi untuk memperkuat akhlak dan ukhuwah islamiyah generasi muda.',
-    foto: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Selesai',
-  },
-  {
-    id: 'lap-3',
-    no: 3,
-    tanggal: '22/02/2025',
-    rawDate: '2025-02-22',
-    judul: 'Turnamen Futsal Pemuda',
-    kategori: 'Olahraga',
-    jenis: 'Kegiatan',
-    lokasi: 'Lapangan Desa',
-    lokasiSpesifik: 'Lapangan Futsal Gelora Manis Jaya',
-    status: 'Terbit',
-    peserta: '120 Orang',
-    penyelenggara: 'Divisi Olahraga Karang Taruna',
-    penanggungJawab: 'Budi Santoso',
-    ringkasan:
-      'Kompetisi futsal persahabatan antar-RW se-Kelurahan Manis Jaya untuk mempererat sportivitas pemuda.',
-    foto: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Selesai',
-  },
-  {
-    id: 'lap-4',
-    no: 4,
-    tanggal: '15/03/2025',
-    rawDate: '2025-03-15',
-    judul: 'Pelatihan UMKM & Digital Marketing',
-    kategori: 'Ekonomi/UMKM',
-    jenis: 'Kegiatan',
-    lokasi: 'Aula Desa',
-    lokasiSpesifik: 'Aula Kelurahan Manis Jaya Lt. 2',
-    status: 'Draft',
-    peserta: '40 Pelaku Usaha',
-    penyelenggara: 'Karang Taruna & Dinas Koperasi',
-    penanggungJawab: 'Rina Handayani',
-    ringkasan:
-      'Workshop peningkatan kapasitas promosi digital dan foto produk bagi wirausahawan muda lokal Kelurahan Manis Jaya.',
-    foto: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Berjalan',
-  },
-  {
-    id: 'lap-5',
-    no: 5,
-    tanggal: '05/04/2025',
-    rawDate: '2025-04-05',
-    judul: 'Kerja Bakti Lingkungan',
-    kategori: 'Lingkungan',
-    jenis: 'Kegiatan',
-    lokasi: 'Kp. Cokel',
-    lokasiSpesifik: 'Sepanjang Saluran Drainase Kp. Cokel RW 04',
-    status: 'Terbit',
-    peserta: '95 Orang',
-    penyelenggara: 'Karang Taruna Sub Unit RW 04',
-    penanggungJawab: 'Hendra Setiawan',
-    ringkasan:
-      'Pembersihan saluran drainase air pemukiman dan normalisasi bantaran sungai menjelang musim penghujan.',
-    foto: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Selesai',
-  },
-  {
-    id: 'lap-6',
-    no: 6,
-    tanggal: '18/04/2025',
-    rawDate: '2025-04-18',
-    judul: 'Peringatan Hari Kartini',
-    kategori: 'Kepemudaan',
-    jenis: 'Kegiatan',
-    lokasi: 'Balai Desa',
-    lokasiSpesifik: 'Pendopo Balai Warga Kelurahan',
-    status: 'Terbit',
-    peserta: '110 Orang',
-    penyelenggara: 'Srikandi Karang Taruna Manis Jaya',
-    penanggungJawab: 'Dewi Lestari',
-    ringkasan:
-      'Pentas seni, seminar perempuan inspiratif, dan lomba busana adat untuk meneladani perjuangan Ibu R.A. Kartini.',
-    foto: 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Selesai',
-  },
-  {
-    id: 'lap-7',
-    no: 7,
-    tanggal: '20/05/2025',
-    rawDate: '2025-05-20',
-    judul: 'Santunan Anak Yatim',
-    kategori: 'Sosial',
-    jenis: 'Kegiatan',
-    lokasi: 'Masjid Al-Ikhlas',
-    lokasiSpesifik: 'Aula Masjid Al-Ikhlas RW 02',
-    status: 'Terbit',
-    peserta: '60 Anak Yatim',
-    penyelenggara: 'Karang Taruna Peduli',
-    penanggungJawab: 'Iik Andriyana',
-    ringkasan:
-      'Pemberian santunan dana pendidikan dan bingkisan perlengkapan sekolah bagi anak yatim dan dhuafa binaan.',
-    foto: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Berjalan',
-  },
-  {
-    id: 'lap-8',
-    no: 8,
-    tanggal: '12/06/2025',
-    rawDate: '2025-06-12',
-    judul: 'Lomba 17 Agustus',
-    kategori: 'Kepemudaan',
-    jenis: 'Kegiatan',
-    lokasi: 'Lapangan Desa',
-    lokasiSpesifik: 'Kompleks Lapangan Utama Manis Jaya',
-    status: 'Draft',
-    peserta: '250 Orang',
-    penyelenggara: 'Panitia HUT RI Karang Taruna',
-    penanggungJawab: 'Dimas Kurniawan',
-    ringkasan:
-      'Rangkaian lomba rakyat tradisional panjat pinang, balap karung, dan tarik tambang perayaan HUT Kemerdekaan.',
-    foto: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Berjalan',
-  },
-  {
-    id: 'lap-9',
-    no: 9,
-    tanggal: '25/06/2025',
-    rawDate: '2025-06-25',
-    judul: 'Penyuluhan Narkoba',
-    kategori: 'Pendidikan',
-    jenis: 'Kegiatan',
-    lokasi: 'Aula Desa',
-    lokasiSpesifik: 'Gedung Pertemuan Kelurahan',
-    status: 'Terbit',
-    peserta: '75 Pelajar & Pemuda',
-    penyelenggara: 'Karang Taruna & BNN Kota',
-    penanggungJawab: 'AKP (Purn) Suryanto / Iik A.',
-    ringkasan:
-      'Edukasi pencegahan bahaya narkoba dan pergaulan bebas untuk melindungi masa depan generasi penerus bangsa.',
-    foto: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Berjalan',
-  },
-  {
-    id: 'lap-10',
-    no: 10,
-    tanggal: '10/07/2025',
-    rawDate: '2025-07-10',
-    judul: 'Penanaman Pohon',
-    kategori: 'Lingkungan',
-    jenis: 'Kegiatan',
-    lokasi: 'Kp. Cokel',
-    lokasiSpesifik: 'Kawasan Ruang Terbuka Hijau RW 05',
-    status: 'Arsip',
-    peserta: '65 Orang',
-    penyelenggara: 'Karang Taruna Hijau',
-    penanggungJawab: 'Taufik Hidayat',
-    ringkasan:
-      'Aksi tanam 500 bibit pohon buah dan peneduh guna menjaga kelestarian lingkungan dan cadangan resapan air tanah.',
-    foto: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Berjalan',
-  },
-  {
-    id: 'lap-11',
-    no: 11,
-    tanggal: '18/08/2025',
-    rawDate: '2025-08-18',
-    judul: 'Malam Tirakatan & Pentas Budaya',
-    kategori: 'Kepemudaan',
-    jenis: 'Kegiatan',
-    lokasi: 'Balai Desa',
-    lokasiSpesifik: 'Panggung Utama Kelurahan Manis Jaya',
-    status: 'Terbit',
-    peserta: '300 Warga',
-    penyelenggara: 'Pengurus Karang Taruna',
-    penanggungJawab: 'Andi Pratama',
-    ringkasan:
-      'Malam syukuran kemerdekaan dan doa bersama disertai penampilan kreasi tari dan musik anak-anak muda.',
-    foto: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Berjalan',
-  },
-  {
-    id: 'lap-12',
-    no: 12,
-    tanggal: '05/09/2025',
-    rawDate: '2025-09-05',
-    judul: 'Bazar Pemuda Kreatif Manis Jaya',
-    kategori: 'Ekonomi/UMKM',
-    jenis: 'Kegiatan',
-    lokasi: 'Lapangan Desa',
-    lokasiSpesifik: 'Area Parkir Lapangan Olahraga',
-    status: 'Terbit',
-    peserta: '45 Stand UMKM',
-    penyelenggara: 'Bidang Kewirausahaan Karang Taruna',
-    penanggungJawab: 'Rina Handayani',
-    ringkasan:
-      'Pameran produk kuliner, kriya, dan fashion karya pemuda Karang Taruna untuk menggairahkan ekonomi lokal.',
-    foto: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=800&auto=format&fit=crop',
-    kegiatanStatus: 'Berjalan',
-  },
-];
+export const EMPTY_LAPORAN_ITEM: LaporanKegiatanItem = {
+  id: '',
+  no: 1,
+  tanggal: '',
+  rawDate: '',
+  judul: '',
+  kategori: 'Sosial',
+  jenis: 'Kegiatan',
+  lokasi: '',
+  lokasiSpesifik: '',
+  status: 'Draft',
+  peserta: '',
+  penyelenggara: 'Karang Taruna Manis Jaya',
+  penanggungJawab: '',
+  ringkasan: '',
+  foto: '',
+  kegiatanStatus: 'Selesai',
+};
+
+// Data laporan kegiatan: Bersih & kosong saat peluncuran sistem
+const INITIAL_LAPORAN_DATA: LaporanKegiatanItem[] = [];
+
 
 interface LaporanKegiatanViewProps {
   onNavigateToTab?: (tab: any) => void;
@@ -341,8 +133,8 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
-  // Selected Detail Item (Defaults to Item #1 from image)
-  const [selectedItem, setSelectedItem] = useState<LaporanKegiatanItem>(() => laporanList[0] || INITIAL_LAPORAN_DATA[0]);
+  // Selected Detail Item
+  const [selectedItem, setSelectedItem] = useState<LaporanKegiatanItem>(() => laporanList[0] || EMPTY_LAPORAN_ITEM);
 
   // Modal Detail State
   const [detailModalOpen, setDetailModalOpen] = useState(false);
@@ -961,109 +753,123 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
             </h3>
           </div>
 
-          {/* Activity Banner Photo matching the screenshot */}
-          <div className="relative w-full h-44 rounded-xl overflow-hidden shadow-xs border border-slate-200 bg-slate-100">
-            <img
-              src={selectedItem.foto}
-              alt={selectedItem.judul}
-              className="w-full h-full object-cover"
-            />
-          </div>
-
-          {/* Title & Status Badge */}
-          <div className="flex items-start justify-between gap-2">
-            <h4 className="text-base font-black text-slate-900 leading-snug">
-              {selectedItem.judul}
-            </h4>
-            <span
-              className={`shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                selectedItem.status === 'Terbit'
-                  ? 'bg-emerald-600 text-white'
-                  : selectedItem.status === 'Draft'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-500 text-white'
-              }`}
-            >
-              {selectedItem.status}
-            </span>
-          </div>
-
-          {/* Key-Value Details List matching screenshot format */}
-          <div className="space-y-2 text-xs border-y border-slate-100 py-3">
-            <div className="flex items-center text-slate-600">
-              <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
-                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                Tanggal Kegiatan
-              </span>
-              <span className="font-semibold text-slate-800">: {selectedItem.tanggal}</span>
+          {!selectedItem || !selectedItem.id ? (
+            <div className="py-12 px-4 text-center space-y-3 flex flex-col items-center justify-center">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <FileText className="w-6 h-6" />
+              </div>
+              <p className="font-bold text-xs text-slate-700">Belum Ada Kegiatan Terpilih</p>
+              <p className="text-[11px] text-slate-400">
+                Pilih salah satu kegiatan dari daftar atau buat kegiatan baru untuk melihat rincian laporan.
+              </p>
             </div>
+          ) : (
+            <>
+              {/* Activity Banner Photo matching the screenshot */}
+              <div className="relative w-full h-44 rounded-xl overflow-hidden shadow-xs border border-slate-200 bg-slate-100">
+                <img
+                  src={selectedItem.foto || 'https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=800&auto=format&fit=crop'}
+                  alt={selectedItem.judul}
+                  className="w-full h-full object-cover"
+                />
+              </div>
 
-            <div className="flex items-center text-slate-600">
-              <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
-                <Tag className="w-3.5 h-3.5 text-slate-400" />
-                Kategori
-              </span>
-              <span className="font-semibold text-slate-800">: {selectedItem.kategori}</span>
-            </div>
+              {/* Title & Status Badge */}
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-base font-black text-slate-900 leading-snug">
+                  {selectedItem.judul}
+                </h4>
+                <span
+                  className={`shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedItem.status === 'Terbit'
+                      ? 'bg-emerald-600 text-white'
+                      : selectedItem.status === 'Draft'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-500 text-white'
+                  }`}
+                >
+                  {selectedItem.status}
+                </span>
+              </div>
 
-            <div className="flex items-center text-slate-600">
-              <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
-                <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                Jenis
-              </span>
-              <span className="font-semibold text-slate-800">: {selectedItem.jenis}</span>
-            </div>
+              {/* Key-Value Details List matching screenshot format */}
+              <div className="space-y-2 text-xs border-y border-slate-100 py-3">
+                <div className="flex items-center text-slate-600">
+                  <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    Tanggal Kegiatan
+                  </span>
+                  <span className="font-semibold text-slate-800">: {selectedItem.tanggal}</span>
+                </div>
 
-            <div className="flex items-center text-slate-600">
-              <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                Lokasi
-              </span>
-              <span className="font-semibold text-slate-800 truncate">: {selectedItem.lokasiSpesifik}</span>
-            </div>
+                <div className="flex items-center text-slate-600">
+                  <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
+                    <Tag className="w-3.5 h-3.5 text-slate-400" />
+                    Kategori
+                  </span>
+                  <span className="font-semibold text-slate-800">: {selectedItem.kategori}</span>
+                </div>
 
-            <div className="flex items-center text-slate-600">
-              <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
-                <Users className="w-3.5 h-3.5 text-slate-400" />
-                Penyelenggara
-              </span>
-              <span className="font-semibold text-slate-800">: {selectedItem.penyelenggara}</span>
-            </div>
+                <div className="flex items-center text-slate-600">
+                  <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
+                    <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                    Jenis
+                  </span>
+                  <span className="font-semibold text-slate-800">: {selectedItem.jenis}</span>
+                </div>
 
-            <div className="flex items-center text-slate-600">
-              <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                Peserta
-              </span>
-              <span className="font-semibold text-slate-800">: {selectedItem.peserta}</span>
-            </div>
+                <div className="flex items-center text-slate-600">
+                  <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    Lokasi
+                  </span>
+                  <span className="font-semibold text-slate-800 truncate">: {selectedItem.lokasiSpesifik}</span>
+                </div>
 
-            <div className="flex items-center text-slate-600">
-              <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                Penanggung Jawab
-              </span>
-              <span className="font-semibold text-slate-800">: {selectedItem.penanggungJawab}</span>
-            </div>
-          </div>
+                <div className="flex items-center text-slate-600">
+                  <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
+                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                    Penyelenggara
+                  </span>
+                  <span className="font-semibold text-slate-800">: {selectedItem.penyelenggara}</span>
+                </div>
 
-          {/* Ringkasan */}
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-900 block">Ringkasan</span>
-            <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-              {selectedItem.ringkasan}
-            </p>
-          </div>
+                <div className="flex items-center text-slate-600">
+                  <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    Peserta
+                  </span>
+                  <span className="font-semibold text-slate-800">: {selectedItem.peserta}</span>
+                </div>
 
-          {/* Full Details Button */}
-          <button
-            type="button"
-            onClick={() => setDetailModalOpen(true)}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center justify-center gap-2 transition-all"
-          >
-            <Eye className="w-4 h-4" />
-            <span>Lihat Detail Lengkap</span>
-          </button>
+                <div className="flex items-center text-slate-600">
+                  <span className="w-36 flex items-center gap-1.5 font-medium text-slate-500">
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    Penanggung Jawab
+                  </span>
+                  <span className="font-semibold text-slate-800">: {selectedItem.penanggungJawab}</span>
+                </div>
+              </div>
+
+              {/* Ringkasan */}
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-slate-900 block">Ringkasan</span>
+                <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                  {selectedItem.ringkasan || 'Belum ada ringkasan kegiatan.'}
+                </p>
+              </div>
+
+              {/* Full Details Button */}
+              <button
+                type="button"
+                onClick={() => setDetailModalOpen(true)}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Lihat Detail Lengkap</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
