@@ -79,19 +79,19 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
   const [customLogoUrl, setCustomLogoUrl] = useState<string>(() => logoUrl || localStorage.getItem('kt_custom_logo') || '');
   const [kopFileName, setKopFileName] = useState<string>(() => globalKopFileName || localStorage.getItem('kt_kop_filename') || '');
   const [orgName, setOrgName] = useState(() => localStorage.getItem('kt_org_name') || 'Karang Taruna Manis Jaya');
-  const [address, setAddress] = useState(() => localStorage.getItem('kt_org_address') || 'Jl. Manis Jaya No. 12, Kec. Sukamaju, Kota Tangerang');
+  const [address, setAddress] = useState(() => localStorage.getItem('kt_org_address') || 'Jl. Pajajaran No. 12, Kel. Manis Jaya, Kec. Jatiuwung, Kota Tangerang');
   const [kelurahan, setKelurahan] = useState(() => localStorage.getItem('kt_org_kelurahan') || 'Manis Jaya');
-  const [kecamatan, setKecamatan] = useState(() => localStorage.getItem('kt_org_kecamatan') || 'Sukamaju');
-  const [kota, setKota] = useState(() => localStorage.getItem('kt_org_kota') || 'Tangerang');
+  const [kecamatan, setKecamatan] = useState(() => localStorage.getItem('kt_org_kecamatan') || 'Jatiuwung');
+  const [kota, setKota] = useState(() => localStorage.getItem('kt_org_kota') || 'Kota Tangerang');
   const [provinsi, setProvinsi] = useState(() => localStorage.getItem('kt_org_provinsi') || 'Banten');
 
   // 2. Kontak & Media Sosial
   const [email, setEmail] = useState(() => localStorage.getItem('kt_email') || 'karangtarunamanisjaya@gmail.com');
-  const [telepon, setTelepon] = useState(() => localStorage.getItem('kt_telepon') || '0812 3456 7890');
-  const [website, setWebsite] = useState(() => localStorage.getItem('kt_website') || 'https://manisjaya.or.id');
+  const [telepon, setTelepon] = useState(() => localStorage.getItem('kt_telepon') || '0812 8912 3456');
+  const [website, setWebsite] = useState(() => localStorage.getItem('kt_website') || 'https://karangtarunamanisjaya.my.id');
   const [facebook, setFacebook] = useState(() => localStorage.getItem('kt_facebook') || 'Karang Taruna Manis Jaya');
-  const [instagram, setInstagram] = useState(() => localStorage.getItem('kt_instagram') || '@karangtaruna.manisjaya');
-  const [youtube, setYoutube] = useState(() => localStorage.getItem('kt_youtube') || 'Karang Taruna Manis Jaya');
+  const [instagram, setInstagram] = useState(() => localStorage.getItem('kt_instagram') || '@karangtarunamanisjaya');
+  const [youtube, setYoutube] = useState(() => localStorage.getItem('kt_youtube') || 'Karang Taruna Manis Jaya Official');
 
   // 3. Preferensi Aplikasi
   const [itemsPerPage, setItemsPerPage] = useState(() => localStorage.getItem('kt_per_page') || '20');

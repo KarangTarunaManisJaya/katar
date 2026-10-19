@@ -60,6 +60,56 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'administrasi' | 'kegiatan' | 'sistem'>('all');
 
+  // Dynamic counts from localStorage / state
+  const membersCount = (() => {
+    try {
+      const saved = localStorage.getItem('kt_members_v3');
+      return saved ? JSON.parse(saved).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const lettersCount = (() => {
+    try {
+      const saved = localStorage.getItem('kt_surat_items_v2');
+      return saved ? JSON.parse(saved).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const proposalsCount = (() => {
+    try {
+      const saved = localStorage.getItem('kt_proposals_v2');
+      return saved ? JSON.parse(saved).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const assetsCount = (() => {
+    try {
+      const saved = localStorage.getItem('kt_assets_v1');
+      return saved ? JSON.parse(saved).length : 0;
+    } catch {
+      return 0;
+    }
+  })();
+
+  const realAgendasList = (() => {
+    try {
+      const saved = localStorage.getItem('kt_agenda_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  })();
+
+  const agendaCount = realAgendasList.length;
+
   // Menu items with rich metadata for the Button Menu
   const menuButtons = [
     {
@@ -69,7 +119,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Visualisasi grafik kegiatan per hari, per bulan, dan per tahun',
       icon: Briefcase,
       color: 'from-blue-600 to-indigo-600',
-      badge: 'Grafik Aktif',
+      badge: `${activities.length} Kegiatan`,
       badgeColor: 'bg-blue-100 text-blue-700',
       bgLight: 'bg-blue-50/60 hover:bg-blue-50 border-blue-200/80',
     },
@@ -80,7 +130,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Buat surat resmi, undangan, surat tugas & arsip dokumen',
       icon: Mail,
       color: 'from-amber-500 to-orange-600',
-      badge: '4 Dokumen',
+      badge: `${lettersCount} Dokumen`,
       badgeColor: 'bg-amber-100 text-amber-800',
       bgLight: 'bg-amber-50/60 hover:bg-amber-50 border-amber-200/80',
     },
@@ -91,7 +141,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Direktori pemuda, verifikasi NIK, status RW & cetak KTA digital',
       icon: Users,
       color: 'from-emerald-500 to-teal-600',
-      badge: '34 Anggota',
+      badge: `${membersCount} Anggota`,
       badgeColor: 'bg-emerald-100 text-emerald-800',
       bgLight: 'bg-emerald-50/60 hover:bg-emerald-50 border-emerald-200/80',
     },
@@ -102,7 +152,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Pengajuan proposal bantuan dana & persetujuan program kerja',
       icon: FileText,
       color: 'from-violet-500 to-purple-600',
-      badge: '3 Disetujui',
+      badge: `${proposalsCount} Proposal`,
       badgeColor: 'bg-violet-100 text-violet-800',
       bgLight: 'bg-violet-50/60 hover:bg-violet-50 border-violet-200/80',
     },
@@ -113,7 +163,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Rekapitulasi transparansi anggaran masuk, keluar dan SPJ',
       icon: BarChart3,
       color: 'from-cyan-500 to-blue-600',
-      badge: '100% Akuntabel',
+      badge: 'Transparan',
       badgeColor: 'bg-cyan-100 text-cyan-800',
       bgLight: 'bg-cyan-50/60 hover:bg-cyan-50 border-cyan-200/80',
     },
@@ -124,7 +174,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Peminjaman sound system, tenda, alat olahraga & sarana sekretariat',
       icon: Package,
       color: 'from-rose-500 to-pink-600',
-      badge: '12 Inventaris',
+      badge: `${assetsCount} Aset`,
       badgeColor: 'bg-rose-100 text-rose-800',
       bgLight: 'bg-rose-50/60 hover:bg-rose-50 border-rose-200/80',
     },
@@ -135,7 +185,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Agenda rapat pemuda, gotong royong, dan jadwal turnamen',
       icon: Calendar,
       color: 'from-fuchsia-500 to-indigo-600',
-      badge: 'Pekan Ini',
+      badge: `${agendaCount} Agenda`,
       badgeColor: 'bg-fuchsia-100 text-fuchsia-800',
       bgLight: 'bg-fuchsia-50/60 hover:bg-fuchsia-50 border-fuchsia-200/80',
     },
@@ -146,7 +196,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       desc: 'Rilis pers, galeri foto liputan dan publikasi prestasi pemuda',
       icon: Megaphone,
       color: 'from-sky-500 to-blue-700',
-      badge: 'Publikasi',
+      badge: `${activities.length} Rilis`,
       badgeColor: 'bg-sky-100 text-sky-800',
       bgLight: 'bg-sky-50/60 hover:bg-sky-50 border-sky-200/80',
     },
@@ -189,33 +239,15 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
     ? menuButtons
     : menuButtons.filter((m) => m.category === selectedFilter);
 
-  // Upcoming highlight agendas for Beranda
-  const upcomingAgendas = [
-    {
-      id: 'ag-1',
-      title: 'Rapat Koordinasi Persiapan Bulan Pemuda',
-      time: 'Sabtu, 04 Okt 2026 • 19:30 WIB',
-      loc: 'Sekretariat Karang Taruna RW 03',
-      badge: 'Rapat Rutin',
-      badgeColor: 'bg-blue-100 text-blue-700',
-    },
-    {
-      id: 'ag-2',
-      title: 'Bakti Lingkungan & Gotong Royong RW 01 - RW 05',
-      time: 'Minggu, 05 Okt 2026 • 07:00 WIB',
-      loc: 'Taman Kelurahan Manis Jaya',
-      badge: 'Sosial',
-      badgeColor: 'bg-emerald-100 text-emerald-700',
-    },
-    {
-      id: 'ag-3',
-      title: 'Pelatihan Kewirausahaan Sablon & Sabun Herbal',
-      time: 'Rabu, 08 Okt 2026 • 13:00 WIB',
-      loc: 'Aula Kelurahan Manis Jaya',
-      badge: 'Pemberdayaan',
-      badgeColor: 'bg-purple-100 text-purple-700',
-    },
-  ];
+  // Upcoming highlight agendas for Beranda from real agenda state
+  const upcomingAgendas = realAgendasList.slice(0, 3).map((ag: any) => ({
+    id: ag.id || String(Math.random()),
+    title: ag.namaKegiatan || ag.title || 'Agenda Kegiatan',
+    time: `${ag.tanggalMulai || ag.date || 'Hari ini'} • ${ag.waktuMulai || ag.time || 'WIB'}`,
+    loc: ag.lokasiKegiatan || ag.location || 'Kelurahan Manis Jaya',
+    badge: ag.kategori || ag.badge || 'Kegiatan',
+    badgeColor: 'bg-blue-100 text-blue-700',
+  }));
 
   return (
     <div className="space-y-7 animate-fadeIn pb-12">
@@ -223,6 +255,9 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
       <Banner
         onAddNewsClick={onAddNews}
         onExploreClick={() => onNavigate('jadwal')}
+        membersCount={membersCount}
+        activitiesCount={activities.length}
+        lettersCount={lettersCount}
       />
 
       {/* 2. SEMUA BERITA & DOKUMENTASI KEGIATAN (PERSIS DI BAWAH BERITA KEGIATAN) */}
@@ -342,23 +377,23 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
           <div className="lg:w-80 shrink-0 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-5 text-white space-y-3.5 shadow-inner">
             <div className="flex items-center justify-between pb-3 border-b border-white/10 text-xs">
               <span className="font-semibold text-slate-300">Ringkasan Hari Ini</span>
-              <span className="text-[11px] font-bold text-sky-300 bg-sky-500/20 px-2 py-0.5 rounded-full">
-                Senin, 28 Sep 2026
+              <span className="text-[11px] font-bold text-sky-300 bg-sky-500/20 px-2.5 py-0.5 rounded-full capitalize">
+                {new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="bg-slate-900/40 p-2.5 rounded-xl border border-white/5">
-                <span className="text-xl font-black text-white block">34</span>
+                <span className="text-xl font-black text-white block">{membersCount}</span>
                 <span className="text-[10px] text-slate-300">Total Anggota</span>
               </div>
               <div className="bg-slate-900/40 p-2.5 rounded-xl border border-white/5">
-                <span className="text-xl font-black text-emerald-400 block">4</span>
+                <span className="text-xl font-black text-emerald-400 block">{lettersCount}</span>
                 <span className="text-[10px] text-slate-300">Surat Aktif</span>
               </div>
               <div className="bg-slate-900/40 p-2.5 rounded-xl border border-white/5">
-                <span className="text-xl font-black text-amber-300 block">8</span>
-                <span className="text-[10px] text-slate-300">Agenda Bulan Ini</span>
+                <span className="text-xl font-black text-amber-300 block">{agendaCount}</span>
+                <span className="text-[10px] text-slate-300">Agenda Kegiatan</span>
               </div>
               <div className="bg-slate-900/40 p-2.5 rounded-xl border border-white/5">
                 <span className="text-xl font-black text-cyan-300 block">100%</span>
@@ -367,8 +402,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
             </div>
 
             <button
-              onClick={() => onToast('Mengunduh laporan rekapitulasi harian...')}
-              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+              onClick={() => onToast('Mencetak rekapitulasi status organisasi...')}
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak Ringkasan Eksekutif</span>
@@ -627,35 +662,50 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
               </button>
             </div>
 
-            <div className="divide-y divide-slate-100 mt-2 space-y-1">
-              {upcomingAgendas.map((agenda) => (
-                <div key={agenda.id} className="pt-3 pb-2 flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${agenda.badgeColor}`}>
-                      {agenda.badge}
-                    </span>
-                    <h4 className="text-xs font-bold text-slate-900">{agenda.title}</h4>
-                    <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      {agenda.time}
-                    </p>
-                    <p className="text-[11px] text-slate-500">📍 {agenda.loc}</p>
+            {upcomingAgendas.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 space-y-2">
+                <Calendar className="w-8 h-8 mx-auto text-slate-300" />
+                <p className="text-xs font-bold text-slate-600">Belum Ada Agenda Terdekat</p>
+                <p className="text-[11px] text-slate-400">Jadwal kegiatan pemuda yang dibuat akan otomatis tampil di sini.</p>
+                <button
+                  onClick={() => onNavigate('jadwal')}
+                  className="mt-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Tambah Agenda</span>
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 mt-2 space-y-1">
+                {upcomingAgendas.map((agenda) => (
+                  <div key={agenda.id} className="pt-3 pb-2 flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${agenda.badgeColor}`}>
+                        {agenda.badge}
+                      </span>
+                      <h4 className="text-xs font-bold text-slate-900">{agenda.title}</h4>
+                      <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        {agenda.time}
+                      </p>
+                      <p className="text-[11px] text-slate-500">📍 {agenda.loc}</p>
+                    </div>
+                    <button
+                      onClick={() => onToast(`Melihat detail: ${agenda.title}`)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg shrink-0 transition-colors cursor-pointer"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => onToast(`Melihat detail: ${agenda.title}`)}
-                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg shrink-0 transition-colors"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100">
             <button
               onClick={() => onNavigate('jadwal')}
-              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+              className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
               <span>Buka Kalender Lengkap</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -678,35 +728,50 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
               </div>
               <button
                 onClick={() => onNavigate('ringkasan')}
-                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
               >
                 Ke Menu Kegiatan <ArrowRight className="w-3 h-3" />
               </button>
             </div>
 
-            <div className="divide-y divide-slate-100 mt-2 space-y-1">
-              {activities.slice(0, 3).map((act) => (
-                <div
-                  key={act.id}
-                  onClick={() => onSelectActivity(act)}
-                  className="pt-3 pb-2 flex items-center justify-between gap-3 cursor-pointer group hover:bg-slate-50/80 rounded-xl px-2 transition-colors"
+            {activities.length === 0 ? (
+              <div className="py-8 text-center text-slate-400 space-y-2">
+                <Briefcase className="w-8 h-8 mx-auto text-slate-300" />
+                <p className="text-xs font-bold text-slate-600">Belum Ada Kegiatan Terbit</p>
+                <p className="text-[11px] text-slate-400">Dokumentasi kegiatan yang diterbitkan akan tampil di sini.</p>
+                <button
+                  onClick={onAddNews}
+                  className="mt-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                        {act.badge}
-                      </span>
-                      <span className="text-[10px] text-slate-400">{act.date}</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Buat Berita Pertama</span>
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 mt-2 space-y-1">
+                {activities.slice(0, 3).map((act) => (
+                  <div
+                    key={act.id}
+                    onClick={() => onSelectActivity(act)}
+                    className="pt-3 pb-2 flex items-center justify-between gap-3 cursor-pointer group hover:bg-slate-50/80 rounded-xl px-2 transition-colors"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                          {act.badge}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{act.date}</span>
+                      </div>
+                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                        {act.title}
+                      </h4>
+                      <p className="text-[11px] text-slate-500 line-clamp-1">{act.location}</p>
                     </div>
-                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                      {act.title}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 line-clamp-1">{act.location}</p>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100">

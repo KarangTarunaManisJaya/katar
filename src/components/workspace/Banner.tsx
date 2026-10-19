@@ -5,10 +5,56 @@ import { resolveAssetUrl } from '../../utils/assetUrl';
 interface BannerProps {
   onAddNewsClick: () => void;
   onExploreClick?: () => void;
+  membersCount?: number;
+  activitiesCount?: number;
+  lettersCount?: number;
 }
 
-export const Banner: React.FC<BannerProps> = ({ onAddNewsClick, onExploreClick }) => {
+export const Banner: React.FC<BannerProps> = ({
+  onAddNewsClick,
+  onExploreClick,
+  membersCount,
+  activitiesCount,
+  lettersCount,
+}) => {
   const [activeDot, setActiveDot] = useState(1);
+
+  // Dynamic values with fallback to local storage
+  const activeMembers =
+    typeof membersCount === 'number'
+      ? membersCount
+      : (() => {
+          try {
+            const saved = localStorage.getItem('kt_members_v3');
+            return saved ? JSON.parse(saved).length : 0;
+          } catch {
+            return 0;
+          }
+        })();
+
+  const activeActivities =
+    typeof activitiesCount === 'number'
+      ? activitiesCount
+      : (() => {
+          try {
+            const saved = localStorage.getItem('kt_news_v1') || localStorage.getItem('kt_activities_v1');
+            return saved ? JSON.parse(saved).length : 0;
+          } catch {
+            return 0;
+          }
+        })();
+
+  const activeLetters =
+    typeof lettersCount === 'number'
+      ? lettersCount
+      : (() => {
+          try {
+            const saved = localStorage.getItem('kt_surat_items_v2');
+            return saved ? JSON.parse(saved).length : 0;
+          } catch {
+            return 0;
+          }
+        })();
 
   return (
     <div className="w-full">
@@ -50,7 +96,7 @@ export const Banner: React.FC<BannerProps> = ({ onAddNewsClick, onExploreClick }
 
             <button
               onClick={onExploreClick}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 text-xs font-semibold shadow-sm transition-all shrink-0 hover:border-blue-300"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/95 hover:bg-white text-slate-700 border border-slate-200 text-xs font-semibold shadow-sm transition-all shrink-0 hover:border-blue-300 cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5 text-blue-600" />
               <span>Selamat berkarya!</span>
@@ -71,14 +117,14 @@ export const Banner: React.FC<BannerProps> = ({ onAddNewsClick, onExploreClick }
 
           {/* Stat Cards Row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mt-6">
-            {/* Card 1: 12 Anggota Aktif */}
+            {/* Card 1: Anggota Aktif */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3.5 border border-slate-200/80 shadow-sm flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                 <Users className="w-4 h-4" />
               </div>
               <div>
                 <div className="text-base font-black text-slate-900 leading-none">
-                  12
+                  {activeMembers}
                 </div>
                 <div className="text-[11px] font-medium text-slate-500 mt-1 leading-none">
                   Anggota Aktif
@@ -86,32 +132,32 @@ export const Banner: React.FC<BannerProps> = ({ onAddNewsClick, onExploreClick }
               </div>
             </div>
 
-            {/* Card 2: 8 Kegiatan Bulan Ini */}
+            {/* Card 2: Kegiatan Bulan Ini */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3.5 border border-slate-200/80 shadow-sm flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
                 <Calendar className="w-4 h-4" />
               </div>
               <div>
                 <div className="text-base font-black text-slate-900 leading-none">
-                  8
+                  {activeActivities}
                 </div>
                 <div className="text-[11px] font-medium text-slate-500 mt-1 leading-none">
-                  Kegiatan Bulan Ini
+                  Kegiatan Terdata
                 </div>
               </div>
             </div>
 
-            {/* Card 3: 5 Dokumen Terbaru */}
+            {/* Card 3: Dokumen Keluar/Masuk */}
             <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3.5 border border-slate-200/80 shadow-sm flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                 <FileText className="w-4 h-4" />
               </div>
               <div>
                 <div className="text-base font-black text-slate-900 leading-none">
-                  5
+                  {activeLetters}
                 </div>
                 <div className="text-[11px] font-medium text-slate-500 mt-1 leading-none">
-                  Dokumen Terbaru
+                  Dokumen Surat
                 </div>
               </div>
             </div>

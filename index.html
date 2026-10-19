@@ -8,8 +8,8 @@
     <meta property="og:title" content="Manis Jaya — Workspace Karang Taruna" />
     <meta property="og:description" content="Platform manajemen organisasi modern untuk anggota, surat menyurat, proposal, laporan, dan kegiatan Karang Taruna Manis Jaya, Kelurahan Manis Jaya, Kota Tangerang." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://karangtarunamanisjaya.github.io/katar/logo.png?v=2" />
-    <meta property="og:image:secure_url" content="https://karangtarunamanisjaya.github.io/katar/logo.png?v=2" />
+    <meta property="og:image" content="https://karangtarunamanisjaya.my.id/logo.png?v=2" />
+    <meta property="og:image:secure_url" content="https://karangtarunamanisjaya.my.id/logo.png?v=2" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
@@ -17,7 +17,7 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Manis Jaya — Workspace Karang Taruna" />
     <meta name="twitter:description" content="Platform manajemen organisasi modern untuk anggota, surat menyurat, proposal, laporan, dan kegiatan Karang Taruna Manis Jaya." />
-    <meta name="twitter:image" content="https://karangtarunamanisjaya.github.io/katar/logo.png?v=2" />
+    <meta name="twitter:image" content="https://karangtarunamanisjaya.my.id/logo.png?v=2" />
     <meta name="theme-color" content="#2563eb" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -29,13 +29,13 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-512.png?v=2" />
     <link rel="manifest" href="./manifest.json?v=2" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
     <script>
       // Clean up any stale service workers in development / preview iframe to avoid blank screens
       if ('serviceWorker' in navigator) {
-        const isProdGithub = window.location.hostname.includes('github.io');
-        if (!isProdGithub) {
+        const isProdSite = window.location.hostname.includes('github.io') || window.location.hostname.includes('karangtarunamanisjaya.my.id');
+        if (!isProdSite) {
           navigator.serviceWorker.getRegistrations().then((registrations) => {
             for (const registration of registrations) {
               registration.unregister();

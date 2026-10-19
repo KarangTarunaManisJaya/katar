@@ -34,7 +34,7 @@ import { FirebaseConfigModal } from './components/workspace/FirebaseConfigModal'
 import { LoginModal } from './components/auth/LoginModal';
 import { resolveAssetUrl } from './utils/assetUrl';
 import { DEFAULT_USERS, UserAccount } from './types/auth';
-import { Lock, ArrowLeft } from 'lucide-react';
+import { Lock, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import {
   ACTIVITIES_DATA,
   ActivityItem,
@@ -79,7 +79,6 @@ if (typeof window !== 'undefined') {
       ];
       keysToClear.forEach((k) => localStorage.removeItem(k));
       localStorage.setItem('kt_users_list_v3', JSON.stringify(DEFAULT_USERS));
-      localStorage.setItem('kt_auth_user_v3', JSON.stringify(DEFAULT_USERS[0]));
       localStorage.setItem(LAUNCH_CLEAN_KEY, 'done');
     }
   } catch (e) {
@@ -182,13 +181,16 @@ function AppContent() {
         return sanitizeUser(JSON.parse(savedAuth));
       }
     } catch (e) {}
-    try {
-      localStorage.setItem('kt_auth_user_v3', JSON.stringify(DEFAULT_USERS[0]));
-    } catch (e) {}
     return DEFAULT_USERS[0];
   });
 
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(() => {
+    try {
+      return !localStorage.getItem('kt_auth_user_v3');
+    } catch {
+      return true;
+    }
+  });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -264,6 +266,9 @@ function AppContent() {
   };
 
   const handleLogout = () => {
+    try {
+      localStorage.removeItem('kt_auth_user_v3');
+    } catch (e) {}
     showToast('Sesi ditutup. Silakan login kembali.');
     setShowLoginModal(true);
   };
@@ -808,31 +813,36 @@ function AppContent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[
-                      { name: 'Sosial', count: 12, desc: 'Bakti sosial, santunan yatim, donor darah, dan bantuan sembako warga.', color: 'from-blue-500 to-indigo-600' },
-                      { name: 'Keagamaan', count: 8, desc: 'Peringatan hari besar Islam, pengajian pemuda, dan bersih-bersih masjid.', color: 'from-emerald-500 to-teal-600' },
-                      { name: 'Olahraga', count: 15, desc: 'Turnamen futsal antar-RW, bulutangkis, senam sehat, dan e-sports.', color: 'from-amber-500 to-orange-600' },
-                      { name: 'Lingkungan', count: 9, desc: 'Kerja bakti gotong royong, pilah sampah, dan penanaman pohon.', color: 'from-green-500 to-emerald-700' },
-                      { name: 'Pendidikan & Pelatihan', count: 6, desc: 'Bimbingan belajar, pelatihan digital skill, dan seminar wirausaha.', color: 'from-purple-500 to-violet-700' },
-                      { name: 'Kesenian & Budaya', count: 5, desc: 'Pentas seni kemerdekaan, kreasi tari tradisional, dan musik pemuda.', color: 'from-rose-500 to-pink-600' },
-                    ].map((kat) => (
-                      <div key={kat.name} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className={`px-3 py-1 rounded-full text-white text-xs font-bold bg-gradient-to-r ${kat.color}`}>
-                            {kat.name}
-                          </span>
-                          <span className="text-xs font-bold text-slate-500">{kat.count} Agenda</span>
+                      { name: 'Sosial', desc: 'Bakti sosial, santunan yatim, donor darah, dan bantuan sembako warga.', color: 'from-blue-500 to-indigo-600' },
+                      { name: 'Keagamaan', desc: 'Peringatan hari besar Islam, pengajian pemuda, dan bersih-bersih masjid.', color: 'from-emerald-500 to-teal-600' },
+                      { name: 'Olahraga', desc: 'Turnamen futsal antar-RW, bulutangkis, senam sehat, dan e-sports.', color: 'from-amber-500 to-orange-600' },
+                      { name: 'Lingkungan', desc: 'Kerja bakti gotong royong, pilah sampah, dan penanaman pohon.', color: 'from-green-500 to-emerald-700' },
+                      { name: 'Pendidikan & Pelatihan', desc: 'Bimbingan belajar, pelatihan digital skill, dan seminar wirausaha.', color: 'from-purple-500 to-violet-700' },
+                      { name: 'Kesenian & Budaya', desc: 'Pentas seni kemerdekaan, kreasi tari tradisional, dan musik pemuda.', color: 'from-rose-500 to-pink-600' },
+                    ].map((kat) => {
+                      const count = activities.filter((a) =>
+                        (a.category || a.type || a.title || '').toLowerCase().includes(kat.name.toLowerCase())
+                      ).length;
+                      return (
+                        <div key={kat.name} className="bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className={`px-3 py-1 rounded-full text-white text-xs font-bold bg-gradient-to-r ${kat.color}`}>
+                              {kat.name}
+                            </span>
+                            <span className="text-xs font-bold text-slate-500">{count} Agenda</span>
+                          </div>
+                          <p className="text-xs text-slate-600 leading-relaxed">{kat.desc}</p>
+                          <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                            <button
+                              onClick={() => setCurrentTab('berita')}
+                              className="font-bold text-blue-600 hover:underline"
+                            >
+                              Lihat Kegiatan →
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-600 leading-relaxed">{kat.desc}</p>
-                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                          <button
-                            onClick={() => setCurrentTab('berita')}
-                            className="font-bold text-blue-600 hover:underline"
-                          >
-                            Lihat Kegiatan →
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -856,17 +866,35 @@ function AppContent() {
                       + Upload Foto Baru
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                    {activities.flatMap((a) => a.photos.map((p, idx) => ({ photo: p, title: a.title, date: a.date, id: `${a.id}-${idx}` }))).map((item) => (
-                      <div key={item.id} className="group relative rounded-2xl overflow-hidden shadow-xs border border-slate-200 aspect-square">
-                        <img src={item.photo} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end text-white">
-                          <p className="text-xs font-bold line-clamp-1">{item.title}</p>
-                          <p className="text-[10px] text-slate-300">{item.date}</p>
-                        </div>
+                  {activities.flatMap((a) => (a.photos || []).map((p, idx) => ({ photo: p, title: a.title, date: a.date, id: `${a.id}-${idx}` }))).length === 0 ? (
+                    <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-3">
+                      <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                        <ImageIcon className="w-7 h-7" />
                       </div>
-                    ))}
-                  </div>
+                      <h4 className="font-bold text-slate-800 text-sm">Belum Ada Foto Dokumentasi di Galeri</h4>
+                      <p className="text-xs text-slate-400 max-w-md mx-auto">
+                        Foto yang diunggah saat menambahkan berita atau dokumentasi kegiatan akan otomatis tampil rapi dan tersusun di album galeri ini.
+                      </p>
+                      <button
+                        onClick={() => setCurrentTab('tambah_berita')}
+                        className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/25 transition-all inline-flex items-center gap-2"
+                      >
+                        + Tambah Berita & Unggah Foto
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                      {activities.flatMap((a) => (a.photos || []).map((p, idx) => ({ photo: p, title: a.title, date: a.date, id: `${a.id}-${idx}` }))).map((item) => (
+                        <div key={item.id} className="group relative rounded-2xl overflow-hidden shadow-xs border border-slate-200 aspect-square">
+                          <img src={item.photo} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end text-white">
+                            <p className="text-xs font-bold line-clamp-1">{item.title}</p>
+                            <p className="text-[10px] text-slate-300">{item.date}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
