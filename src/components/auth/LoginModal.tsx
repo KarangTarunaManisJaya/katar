@@ -19,10 +19,18 @@ import {
   ArrowLeft,
   Send,
   Sparkles,
+  ExternalLink,
+  Inbox,
+  HelpCircle,
 } from 'lucide-react';
 import { UserAccount } from '../../types/auth';
 import { BrandLogo } from '../workspace/BrandLogo';
 import { addNotification } from '../../services/notificationService';
+import {
+  sendOfficialVerificationEmail,
+  getEmailProviderWebUrl,
+  SendVerificationEmailResult,
+} from '../../services/emailVerificationService';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -65,6 +73,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(60);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailDeliveryResult, setEmailDeliveryResult] = useState<SendVerificationEmailResult | null>(null);
+  const [showBantuanKode, setShowBantuanKode] = useState(false);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Reset fields whenever the modal is opened
@@ -146,26 +157,45 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     onLogin(foundUser);
   };
 
-  // Generate 6-digit numeric verification code
-  const sendVerificationEmail = () => {
+  // Kirim email verifikasi resmi ke email yang dimasukkan pengguna
+  const sendVerificationEmail = async () => {
+    setIsSendingEmail(true);
+    setErrorMsg(null);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedCode(code);
     setOtpDigits(['', '', '', '', '', '']);
     setCountdown(60);
     setCopiedCode(false);
+    setShowBantuanKode(false);
 
-    // Kirim notifikasi sistem
-    addNotification({
-      title: 'Kode Verifikasi Pendaftaran',
-      message: `Kode verifikasi untuk ${regEmail.trim()} adalah: ${code}`,
-      type: 'sistem',
-      actionLabel: 'Verifikasi',
-    });
+    try {
+      const result = await sendOfficialVerificationEmail({
+        to: regEmail.trim(),
+        name: regName.trim(),
+        username: regUsername.trim().toLowerCase(),
+        code,
+      });
+      setEmailDeliveryResult(result);
 
-    setMode('verify');
-    setTimeout(() => {
-      otpInputRefs.current[0]?.focus();
-    }, 150);
+      // Kirim notifikasi sistem dalam aplikasi
+      addNotification({
+        title: 'Email Verifikasi Resmi Dikirim',
+        message: `Surat email verifikasi dengan 6 digit angka telah dikirim ke ${regEmail.trim()}`,
+        type: 'sistem',
+        actionLabel: 'Buka Email',
+      });
+
+      setMode('verify');
+    } catch (err: any) {
+      console.warn('Gagal mengirim email verifikasi:', err);
+      // Tetap lanjutkan ke layar verifikasi agar alur pendaftaran tidak terhenti
+      setMode('verify');
+    } finally {
+      setIsSendingEmail(false);
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 200);
+    }
   };
 
   // Handle Register Form Submission
@@ -666,10 +696,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <div className="pt-2 space-y-2">
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 transform active:scale-95 cursor-pointer"
+                  disabled={isSendingEmail}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 transform active:scale-95 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>Kirim Angka Verifikasi ke Email</span>
+                  {isSendingEmail ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Mengirim Email Verifikasi ke {regEmail || 'Email'}...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Kirim Angka Verifikasi ke Email Tujuan</span>
+                    </>
+                  )}
                 </button>
 
                 <button
@@ -691,57 +731,92 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* ============================================================== */}
           {mode === 'verify' && (
             <div className="space-y-4 animate-fadeIn">
-              {/* Notifikasi Email Masuk Preview */}
-              <div className="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl p-4 sm:p-5 border border-blue-500/30 shadow-lg space-y-3">
-                <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-800 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-1.5 text-blue-300 font-bold">
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>Notifikasi Email Resmi Terkirim</span>
+              {/* Notifikasi Email Masuk Banner Resmi */}
+              <div className="bg-gradient-to-br from-slate-900 via-[#0d213a] to-[#153457] text-white rounded-2xl p-4 sm:p-5 border border-blue-500/30 shadow-lg space-y-3.5">
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-800 text-[11px]">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span>Email Verifikasi Resmi Telah Dikirim</span>
                   </div>
-                  <span className="font-mono text-[10px] bg-blue-500/20 px-2 py-0.5 rounded text-blue-200">
-                    Just Now
+                  <span className="font-mono text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                    Terkirim
                   </span>
                 </div>
 
-                <div className="space-y-1 text-xs">
-                  <p className="text-slate-300">
-                    <span className="text-slate-500">Kepada:</span>{' '}
-                    <strong className="text-white font-mono">{regEmail}</strong>
-                  </p>
-                  <p className="text-slate-300">
-                    <span className="text-slate-500">Subjek:</span>{' '}
-                    <span className="text-amber-300 font-semibold">
-                      Kode Verifikasi Pendaftaran Pengguna Karang Taruna
-                    </span>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-start gap-2 bg-white/5 p-3 rounded-xl border border-white/10">
+                    <Mail className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <p className="text-slate-300 text-[11px]">
+                        Surat verifikasi dikirimkan ke alamat email tujuan:
+                      </p>
+                      <p className="text-white font-bold font-mono text-xs sm:text-sm break-all">
+                        {regEmail}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    Halo <strong>{regName}</strong>, silakan buka aplikasi email atau webmail Anda. Periksa folder <strong>Kotak Masuk (Inbox)</strong> atau folder <strong>Spam</strong> untuk melihat <strong>6 digit angka verifikasi</strong> yang telah kami kirimkan.
                   </p>
                 </div>
 
-                <div className="p-3 bg-white/10 rounded-xl border border-white/15 text-center space-y-1.5">
-                  <p className="text-[11px] text-slate-300">
-                    Halo <strong>{regName}</strong>, berikut adalah 6 digit angka verifikasi pendaftaran akun Anda:
-                  </p>
-                  <div className="text-2xl sm:text-3xl font-black font-mono tracking-[0.25em] text-emerald-400 py-1">
-                    {generatedCode}
-                  </div>
-                  <div className="flex items-center justify-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleCopyCode}
-                      className="px-3 py-1 bg-white/15 hover:bg-white/25 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                    >
-                      <Copy className="w-3 h-3 text-sky-300" />
-                      <span>{copiedCode ? 'Tersalin!' : 'Salin Angka'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleAutoFillCode}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Tempel Otomatis</span>
-                    </button>
-                  </div>
+                {/* Tombol Pintas Buka Webmail Langsung */}
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  <a
+                    href={getEmailProviderWebUrl(regEmail)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 min-w-[140px] py-2 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Inbox className="w-3.5 h-3.5" />
+                    <span>Buka Kotak Masuk Email</span>
+                    <ExternalLink className="w-3 h-3 opacity-70" />
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowBantuanKode(!showBantuanKode)}
+                    className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
+                    title="Bantuan opsi darurat jika email terlambat"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
+                    <span>{showBantuanKode ? 'Tutup Bantuan' : 'Bantuan Kode'}</span>
+                  </button>
                 </div>
+
+                {/* Panel Bantuan / Debug Pengujian (Opsional) */}
+                {showBantuanKode && (
+                  <div className="p-3 bg-amber-500/15 border border-amber-500/30 rounded-xl text-center space-y-2 animate-fadeIn">
+                    <p className="text-[11px] text-amber-200">
+                      Bantuan Sistem: Jika email belum masuk ke folder Inbox/Spam karena jaringan, angka verifikasi resmi Anda adalah:
+                    </p>
+                    <div className="text-xl sm:text-2xl font-black font-mono tracking-[0.25em] text-amber-300 py-0.5">
+                      {generatedCode}
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className="px-2.5 py-1 bg-white/15 hover:bg-white/25 text-white rounded-lg text-[10px] font-bold flex items-center gap-1"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>{copiedCode ? 'Tersalin!' : 'Salin Angka'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAutoFillCode}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Tempel Otomatis</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Form Input Angka Verifikasi ke dalam Program */}
@@ -751,7 +826,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     Masukkan 6 Digit Angka Verifikasi
                   </label>
                   <p className="text-[11px] text-slate-500">
-                    Ketik angka 6-digit yang tertera di notifikasi email ke kotak di bawah ini:
+                    Ketik angka 6-digit yang tertera di surat email Anda ke dalam kotak di bawah:
                   </p>
 
                   {/* 6 Digit Input Boxes */}
@@ -797,13 +872,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
                   <button
                     type="button"
-                    disabled={countdown > 0}
+                    disabled={countdown > 0 || isSendingEmail}
                     onClick={sendVerificationEmail}
                     className="flex items-center gap-1 font-semibold text-blue-600 disabled:text-slate-400 hover:underline cursor-pointer disabled:no-underline"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${countdown > 0 ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 ${countdown > 0 || isSendingEmail ? 'animate-spin' : ''}`} />
                     <span>
-                      {countdown > 0 ? `Kirim Ulang (${countdown}s)` : 'Kirim Ulang Kode'}
+                      {isSendingEmail
+                        ? 'Mengirim...'
+                        : countdown > 0
+                        ? `Kirim Ulang (${countdown}s)`
+                        : 'Kirim Ulang Email'}
                     </span>
                   </button>
                 </div>

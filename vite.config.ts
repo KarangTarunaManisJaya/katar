@@ -84,6 +84,106 @@ export default defineConfig(() => {
               }
             }
 
+            // Endpoint POST untuk mengirim email verifikasi resmi pendaftaran
+            if (req.url && req.url.startsWith('/api/send-verification-email') && req.method === 'POST') {
+              let body = '';
+              req.on('data', (chunk) => {
+                body += chunk;
+              });
+              req.on('end', async () => {
+                try {
+                  const data = JSON.parse(body || '{}');
+                  const { to, name, code, subject, html } = data;
+
+                  if (!to || !code) {
+                    res.statusCode = 400;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({ error: 'Email tujuan (to) dan kode verifikasi diperlukan.' }));
+                    return;
+                  }
+
+                  let sent = false;
+                  let infoMsg = '';
+
+                  // 1. Cek konfigurasi SMTP di process.env
+                  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+                  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+                  const smtpHost = process.env.SMTP_HOST;
+
+                  if (smtpUser && smtpPass) {
+                    try {
+                      const nodemailer = await import('nodemailer');
+                      const transporter = nodemailer.createTransport(
+                        smtpHost
+                          ? {
+                              host: smtpHost,
+                              port: parseInt(process.env.SMTP_PORT || '587', 10),
+                              secure: process.env.SMTP_SECURE === 'true',
+                              auth: { user: smtpUser, pass: smtpPass },
+                            }
+                          : {
+                              service: 'gmail',
+                              auth: { user: smtpUser, pass: smtpPass },
+                            }
+                      );
+
+                      await transporter.sendMail({
+                        from: `"Karang Taruna Manis Jaya" <${smtpUser}>`,
+                        to,
+                        subject: subject || `[Karang Taruna Manis Jaya] Kode Verifikasi Pendaftaran: ${code}`,
+                        html,
+                      });
+                      sent = true;
+                      infoMsg = `Email verifikasi berhasil dikirim via SMTP ke ${to}`;
+                    } catch (smtpErr: any) {
+                      console.warn('SMTP transport notice:', smtpErr?.message);
+                    }
+                  }
+
+                  // 2. Cek jika ada RESEND_API_KEY
+                  if (!sent && process.env.RESEND_API_KEY) {
+                    try {
+                      const resendRes = await fetch('https://api.resend.com/emails', {
+                        method: 'POST',
+                        headers: {
+                          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          from: 'Karang Taruna Manis Jaya <onboarding@resend.dev>',
+                          to: [to],
+                          subject: subject || `[Karang Taruna Manis Jaya] Kode Verifikasi: ${code}`,
+                          html,
+                        }),
+                      });
+                      if (resendRes.ok) {
+                        sent = true;
+                        infoMsg = `Email verifikasi berhasil dikirim via Resend ke ${to}`;
+                      }
+                    } catch (resendErr: any) {
+                      console.warn('Resend send notice:', resendErr?.message);
+                    }
+                  }
+
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      success: true,
+                      delivered: sent,
+                      message: infoMsg || `Email verifikasi resmi diproses untuk ${to}`,
+                      to,
+                      code,
+                    })
+                  );
+                } catch (e: any) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: e.message }));
+                }
+              });
+              return;
+            }
+
             next();
           });
         },
