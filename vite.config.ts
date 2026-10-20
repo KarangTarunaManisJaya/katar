@@ -104,22 +104,29 @@ export default defineConfig(() => {
 
                   let sent = false;
                   let infoMsg = '';
+                  let lastError = '';
 
-                  // 1. Cek konfigurasi SMTP di process.env
-                  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
-                  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
-                  const smtpHost = process.env.SMTP_HOST;
+                  // 1. Cek konfigurasi SMTP dari payload atau process.env
+                  const clientSmtp = data.smtpConfig;
+                  const defaultOfficialEmail = 'karangtarunamanisjaya@gmail.com';
+                  const smtpUser = (clientSmtp?.user || process.env.SMTP_USER || process.env.GMAIL_USER || defaultOfficialEmail).trim();
+                  const rawPass = (clientSmtp?.pass || process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '').trim();
+                  const smtpPass = rawPass.replace(/\s+/g, ''); // bersihkan spasi app password
+                  const smtpHost = (clientSmtp?.host || process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+                  const smtpPort = parseInt(clientSmtp?.port || process.env.SMTP_PORT || (smtpHost.includes('gmail') ? '465' : '587'), 10);
+                  const isSecure = smtpPort === 465 || clientSmtp?.secure || process.env.SMTP_SECURE === 'true';
 
                   if (smtpUser && smtpPass) {
                     try {
                       const nodemailer = await import('nodemailer');
                       const transporter = nodemailer.createTransport(
-                        smtpHost
+                        smtpHost && smtpHost !== 'smtp.gmail.com'
                           ? {
                               host: smtpHost,
-                              port: parseInt(process.env.SMTP_PORT || '587', 10),
-                              secure: process.env.SMTP_SECURE === 'true',
+                              port: smtpPort,
+                              secure: isSecure,
                               auth: { user: smtpUser, pass: smtpPass },
+                              tls: { rejectUnauthorized: false },
                             }
                           : {
                               service: 'gmail',
@@ -127,16 +134,17 @@ export default defineConfig(() => {
                             }
                       );
 
-                      await transporter.sendMail({
-                        from: `"Karang Taruna Manis Jaya" <${smtpUser}>`,
+                      const sendResult = await transporter.sendMail({
+                        from: `"Karang Taruna Manis Jaya" <${smtpUser || defaultOfficialEmail}>`,
                         to,
                         subject: subject || `[Karang Taruna Manis Jaya] Kode Verifikasi Pendaftaran: ${code}`,
                         html,
                       });
                       sent = true;
-                      infoMsg = `Email verifikasi berhasil dikirim via SMTP ke ${to}`;
+                      infoMsg = `Email verifikasi berhasil dikirim via SMTP (${smtpUser}) ke ${to}`;
                     } catch (smtpErr: any) {
-                      console.warn('SMTP transport notice:', smtpErr?.message);
+                      lastError = smtpErr?.message || String(smtpErr);
+                      console.warn('SMTP transport notice:', lastError);
                     }
                   }
 
@@ -165,16 +173,34 @@ export default defineConfig(() => {
                     }
                   }
 
+                  res.statusCode = 200;
                   res.setHeader('Content-Type', 'application/json');
-                  res.end(
-                    JSON.stringify({
-                      success: true,
-                      delivered: sent,
-                      message: infoMsg || `Email verifikasi resmi diproses untuk ${to}`,
-                      to,
-                      code,
-                    })
-                  );
+                  if (sent) {
+                    res.end(
+                      JSON.stringify({
+                        success: true,
+                        delivered: true,
+                        message: infoMsg || `Email verifikasi resmi berhasil dikirim ke ${to}`,
+                        to,
+                        code,
+                        sender: smtpUser,
+                      })
+                    );
+                  } else {
+                    res.end(
+                      JSON.stringify({
+                        success: false,
+                        delivered: false,
+                        reason: lastError ? 'smtp_error' : 'smtp_not_configured',
+                        error: lastError || 'Kredensial SMTP pengirim belum dikonfigurasi.',
+                        message: lastError
+                          ? `Gagal mengirim email via SMTP: ${lastError}`
+                          : `Server SMTP pengirim belum dihubungkan. Email otomatis ke ${to} belum terkirim.`,
+                        to,
+                        code,
+                      })
+                    );
+                  }
                 } catch (e: any) {
                   res.statusCode = 500;
                   res.setHeader('Content-Type', 'application/json');

@@ -148,6 +148,12 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
           return merged;
         });
         setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
+      } else {
+        setAssets([]);
+        try {
+          localStorage.setItem('kt_assets_v1', '[]');
+        } catch {}
+        setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
       }
     });
 

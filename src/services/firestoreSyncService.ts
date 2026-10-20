@@ -7,6 +7,7 @@ import {
   doc,
   getDoc,
   getDocFromServer,
+  getDocs,
   setDoc,
   deleteDoc,
   collection,
@@ -588,9 +589,7 @@ export const subscribeAssetsFromFirestore = (
         snapshot.forEach((d) => {
           remoteList.push({ id: d.id, ...d.data() } as AssetItem);
         });
-        if (remoteList.length > 0) {
-          callback(remoteList);
-        }
+        callback(remoteList);
       },
       (err) => {
         console.debug('subscribeAssets notice:', err);
@@ -599,6 +598,27 @@ export const subscribeAssetsFromFirestore = (
     return unsub;
   } catch {
     return () => {};
+  }
+};
+
+/**
+ * Membersihkan seluruh dokumen berita dan aset dari Firestore saat peluncuran sistem
+ */
+export const purgeCloudNewsAndAssets = async (): Promise<void> => {
+  try {
+    const newsCol = collection(db, 'organizations', 'manisjaya', 'news');
+    const newsSnap = await getDocs(newsCol);
+    for (const d of newsSnap.docs) {
+      await deleteDoc(doc(db, 'organizations', 'manisjaya', 'news', d.id));
+    }
+    const assetCol = collection(db, 'organizations', 'manisjaya', 'assets');
+    const assetSnap = await getDocs(assetCol);
+    for (const d of assetSnap.docs) {
+      await deleteDoc(doc(db, 'organizations', 'manisjaya', 'assets', d.id));
+    }
+    console.info('Cloud news & assets successfully purged for production launch.');
+  } catch (e) {
+    console.debug('Purge notice:', e);
   }
 };
 
@@ -824,13 +844,17 @@ export const startRealtimeSync = (
     newsColRef,
     (snapshot) => {
       if (snapshot.empty) {
-        // If Firestore news collection is empty, seed with local or default items
-        const localSaved = localStorage.getItem('kt_news_v1') || localStorage.getItem('kt_activities_v1');
-        const itemsToSeed = localSaved ? JSON.parse(localSaved) : ACTIVITIES_DATA;
-        if (Array.isArray(itemsToSeed) && itemsToSeed.length > 0) {
-          itemsToSeed.forEach((item) => {
-            saveNewsToFirestore(item).catch(() => {});
-          });
+        const currentStr = localStorage.getItem('kt_news_v1');
+        if (currentStr && currentStr !== '[]') {
+          localStorage.setItem('kt_news_v1', '[]');
+          localStorage.setItem('kt_activities_v1', '[]');
+          window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: [] } }));
+          window.dispatchEvent(
+            new CustomEvent('kt_cloud_sync_update', {
+              detail: { modifiedKeys: ['kt_news_v1', 'kt_activities_v1'] },
+            })
+          );
+          onRemoteUpdateReceived?.(['kt_news_v1', 'kt_activities_v1']);
         }
         return;
       }

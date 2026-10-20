@@ -47,11 +47,12 @@ import {
   deleteNewsFromFirestore,
   notifyLocalDataChanged,
   CloudSyncStatus,
+  purgeCloudNewsAndAssets,
 } from './services/firestoreSyncService';
 import { addNotification } from './services/notificationService';
 
-// Clean Launch Purge - Membersihkan seluruh data uji/inputan sebelum peluncuran resmi sistem
-const LAUNCH_CLEAN_KEY = 'kt_launch_clean_2026_v1';
+// Clean Launch Purge - Membersihkan seluruh data uji/inputan sebelum peluncuran resmi sistem (Semua aset & berita dikosongkan)
+const LAUNCH_CLEAN_KEY = 'kt_launch_clean_2026_v2';
 if (typeof window !== 'undefined') {
   try {
     if (!localStorage.getItem(LAUNCH_CLEAN_KEY)) {
@@ -60,26 +61,31 @@ if (typeof window !== 'undefined') {
         'kt_activities_v1',
         'kt_agenda_v1',
         'kt_agenda_items_v1',
-        'kt_members_v3',
-        'kt_members_v2',
-        'kt_members_v1',
-        'kt_users_list_v3',
-        'kt_users_list_v2',
-        'kt_auth_user_v3',
-        'kt_auth_user_v2',
         'kt_laporan_kegiatan_v1',
         'kt_official_letters_v1',
         'kt_proposals_v1',
         'kt_assets_v1',
+        'kt_asset_peminjaman_v1',
+        'kt_asset_mutasi_v1',
+        'kt_asset_pengadaan_v1',
+        'kt_asset_penghapusan_v1',
+        'kt_asset_stock_opname_v1',
+        'kt_asset_dokumen_v1',
         'kt_peminjaman_v1',
         'kt_pengadaan_v1',
         'kt_votings_v1',
         'kt_umkm_v1',
         'kt_aspirations_v1',
       ];
-      keysToClear.forEach((k) => localStorage.removeItem(k));
-      localStorage.setItem('kt_users_list_v3', JSON.stringify(DEFAULT_USERS));
+      keysToClear.forEach((k) => {
+        localStorage.removeItem(k);
+        localStorage.setItem(k, '[]');
+      });
+      localStorage.setItem('kt_news_v1', '[]');
+      localStorage.setItem('kt_activities_v1', '[]');
+      localStorage.setItem('kt_assets_v1', '[]');
       localStorage.setItem(LAUNCH_CLEAN_KEY, 'done');
+      purgeCloudNewsAndAssets().catch(() => {});
     }
   } catch (e) {
     console.warn('Launch cleanup notice:', e);
@@ -92,18 +98,17 @@ function AppContent() {
   const [activities, setActivities] = useState<ActivityItem[]>(() => {
     try {
       const savedNews = localStorage.getItem('kt_news_v1');
-      if (savedNews) return JSON.parse(savedNews);
+      if (savedNews) {
+        const parsed = JSON.parse(savedNews);
+        if (Array.isArray(parsed)) return parsed;
+      }
       const savedAct = localStorage.getItem('kt_activities_v1');
-      if (savedAct) return JSON.parse(savedAct);
-      const savedAgenda = localStorage.getItem('kt_agenda_v1');
-      if (savedAgenda) {
-        const parsed = JSON.parse(savedAgenda);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.badge) {
-          return parsed;
-        }
+      if (savedAct) {
+        const parsed = JSON.parse(savedAct);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
-    return ACTIVITIES_DATA;
+    return [];
   });
 
   useEffect(() => {
@@ -186,6 +191,12 @@ function AppContent() {
 
   const [showLoginModal, setShowLoginModal] = useState<boolean>(() => {
     try {
+      if (typeof window !== 'undefined' && window.location.search) {
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('action') === 'verify_email' || p.get('code') || p.get('verifyCode')) {
+          return true;
+        }
+      }
       return !localStorage.getItem('kt_auth_user_v3');
     } catch {
       return true;

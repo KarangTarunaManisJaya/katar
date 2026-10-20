@@ -133,6 +133,42 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
   const [emailNotifActive, setEmailNotifActive] = useState(true);
   const [waNotifActive, setWaNotifActive] = useState(true);
 
+  // SMTP Configuration State
+  const [smtpUser, setSmtpUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kt_smtp_config');
+      return saved ? JSON.parse(saved).user || 'karangtarunamanisjaya@gmail.com' : 'karangtarunamanisjaya@gmail.com';
+    } catch {
+      return 'karangtarunamanisjaya@gmail.com';
+    }
+  });
+  const [smtpPass, setSmtpPass] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kt_smtp_config');
+      return saved ? JSON.parse(saved).pass || '' : '';
+    } catch {
+      return '';
+    }
+  });
+  const [smtpHost, setSmtpHost] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kt_smtp_config');
+      return saved ? JSON.parse(saved).host || 'smtp.gmail.com' : 'smtp.gmail.com';
+    } catch {
+      return 'smtp.gmail.com';
+    }
+  });
+  const [smtpPort, setSmtpPort] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kt_smtp_config');
+      return saved ? JSON.parse(saved).port || '465' : '465';
+    } catch {
+      return '465';
+    }
+  });
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+
   // Logo upload handler
   const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1304,6 +1340,141 @@ export const PengaturanUmumView: React.FC<PengaturanUmumViewProps> = ({ onToast,
                 <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
                   waNotifActive ? 'translate-x-4' : 'translate-x-0'
                 }`} />
+              </button>
+            </div>
+          </div>
+
+          {/* KONFIGURASI SERVER EMAIL SMTP RESMI */}
+          <div className="p-5 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50/50 to-slate-50 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <Mail className="w-4 h-4 text-blue-600" />
+              <div>
+                <h4 className="font-bold text-slate-900 text-xs sm:text-sm">Server Pengiriman Email Otomatis (SMTP / Gmail)</h4>
+                <p className="text-[11px] text-slate-500">Konfigurasikan akun email untuk mengirim kode verifikasi pendaftaran & notifikasi surat secara langsung.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Email Pengirim Resmi *</label>
+                <input
+                  type="email"
+                  value={smtpUser}
+                  onChange={(e) => setSmtpUser(e.target.value)}
+                  placeholder="karangtarunamanisjaya@gmail.com"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Sandi Aplikasi / App Password *</label>
+                <div className="relative">
+                  <input
+                    type={showSmtpPass ? 'text' : 'password'}
+                    value={smtpPass}
+                    onChange={(e) => setSmtpPass(e.target.value)}
+                    placeholder="xxxx xxxx xxxx xxxx"
+                    className="w-full px-3 py-2 pr-9 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSmtpPass(!showSmtpPass)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showSmtpPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Host SMTP</label>
+                <input
+                  type="text"
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                  placeholder="smtp.gmail.com"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Port SMTP</label>
+                <input
+                  type="text"
+                  value={smtpPort}
+                  onChange={(e) => setSmtpPort(e.target.value)}
+                  placeholder="465 (SSL) atau 587 (TLS)"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="p-3 bg-blue-50 border border-blue-200/80 rounded-xl text-[11px] text-blue-900 leading-relaxed">
+              <strong>Tips Akun Gmail:</strong> Buat <em>Sandi Aplikasi (App Password)</em> 16-digit di menu Keamanan Akun Google (<a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-blue-700 font-bold underline">myaccount.google.com/apppasswords</a>) untuk pengiriman email otomatis tanpa terblokir sistem keamanan Google.
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const cfg = {
+                    user: smtpUser.trim(),
+                    pass: smtpPass.trim(),
+                    host: smtpHost.trim() || 'smtp.gmail.com',
+                    port: smtpPort.trim() || '465',
+                  };
+                  localStorage.setItem('kt_smtp_config', JSON.stringify(cfg));
+                  onToast('Konfigurasi pengiriman email berhasil disimpan!');
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan Konfigurasi Email</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isTestingSmtp}
+                onClick={async () => {
+                  if (!smtpUser.trim() || !smtpPass.trim()) {
+                    onToast('Silakan lengkapi Email Pengirim dan Sandi Aplikasi terlebih dahulu.');
+                    return;
+                  }
+                  setIsTestingSmtp(true);
+                  try {
+                    const res = await fetch('/api/send-verification-email', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        to: smtpUser.trim(),
+                        name: 'Pengurus Karang Taruna',
+                        code: Math.floor(100000 + Math.random() * 900000).toString(),
+                        subject: '[Uji Coba SMTP] Verifikasi Pengiriman Email Karang Taruna',
+                        html: '<p>Halo! Ini adalah email uji coba resmi Karang Taruna Kelurahan Manis Jaya.</p>',
+                        smtpConfig: {
+                          user: smtpUser.trim(),
+                          pass: smtpPass.trim(),
+                          host: smtpHost.trim() || 'smtp.gmail.com',
+                          port: smtpPort.trim() || '465',
+                        },
+                      }),
+                    });
+                    const d = await res.json();
+                    if (d.delivered) {
+                      onToast(`Sukses! Email uji coba berhasil dikirim ke ${smtpUser.trim()}`);
+                    } else {
+                      onToast(`Pengujian SMTP gagal: ${d.error || d.message || 'Periksa kembali email dan sandi aplikasi Anda'}`);
+                    }
+                  } catch (e: any) {
+                    onToast(`Error pengujian: ${e.message}`);
+                  } finally {
+                    setIsTestingSmtp(false);
+                  }
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{isTestingSmtp ? 'Menguji Kirim...' : 'Uji Kirim Email ke Akun Pengirim'}</span>
               </button>
             </div>
           </div>

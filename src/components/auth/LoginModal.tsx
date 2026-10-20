@@ -22,6 +22,9 @@ import {
   ExternalLink,
   Inbox,
   HelpCircle,
+  AlertTriangle,
+  Settings,
+  Key,
 } from 'lucide-react';
 import { UserAccount } from '../../types/auth';
 import { BrandLogo } from '../workspace/BrandLogo';
@@ -29,7 +32,12 @@ import { addNotification } from '../../services/notificationService';
 import {
   sendOfficialVerificationEmail,
   getEmailProviderWebUrl,
+  getDirectGmailComposeUrl,
   SendVerificationEmailResult,
+  OFFICIAL_SENDER_EMAIL,
+  validateEmailAddress,
+  processIncomingVerificationUrl,
+  listenToEmailVerification,
 } from '../../services/emailVerificationService';
 
 interface LoginModalProps {
@@ -76,7 +84,89 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailDeliveryResult, setEmailDeliveryResult] = useState<SendVerificationEmailResult | null>(null);
   const [showBantuanKode, setShowBantuanKode] = useState(false);
+  const [autoVerifiedByEmail, setAutoVerifiedByEmail] = useState(false);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Quick SMTP Setup States & Handlers
+  const [showSmtpSetup, setShowSmtpSetup] = useState(false);
+  const [smtpUser, setSmtpUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kt_smtp_config');
+      return saved ? JSON.parse(saved).user || OFFICIAL_SENDER_EMAIL : OFFICIAL_SENDER_EMAIL;
+    } catch {
+      return OFFICIAL_SENDER_EMAIL;
+    }
+  });
+  const [smtpPass, setSmtpPass] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kt_smtp_config');
+      return saved ? JSON.parse(saved).pass || '' : '';
+    } catch {
+      return '';
+    }
+  });
+  const [smtpHost, setSmtpHost] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kt_smtp_config');
+      return saved ? JSON.parse(saved).host || 'smtp.gmail.com' : 'smtp.gmail.com';
+    } catch {
+      return 'smtp.gmail.com';
+    }
+  });
+  const [isSavingSmtp, setIsSavingSmtp] = useState(false);
+  const [smtpFeedbackMsg, setSmtpFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleSaveAndSendSmtp = async () => {
+    if (!smtpUser.trim() || !smtpPass.trim()) {
+      setSmtpFeedbackMsg({ type: 'error', text: 'Email pengirim dan Sandi Aplikasi Google wajib diisi.' });
+      return;
+    }
+
+    setIsSavingSmtp(true);
+    setSmtpFeedbackMsg(null);
+    const cfg = {
+      user: smtpUser.trim(),
+      pass: smtpPass.trim().replace(/\s+/g, ''),
+      host: smtpHost.trim() || 'smtp.gmail.com',
+      port: '465',
+    };
+    try {
+      localStorage.setItem('kt_smtp_config', JSON.stringify(cfg));
+    } catch {}
+
+    // Jika sedang di layar verifikasi, langsung kirim email ke email tujuan!
+    if (regEmail.trim() && generatedCode) {
+      try {
+        const res = await sendOfficialVerificationEmail({
+          to: regEmail.trim(),
+          name: regName.trim(),
+          username: regUsername.trim().toLowerCase(),
+          code: generatedCode,
+        });
+        setEmailDeliveryResult(res);
+        if (res.delivered) {
+          setSmtpFeedbackMsg({ type: 'success', text: `Berhasil! Email verifikasi telah terkirim via SMTP ke ${regEmail.trim()}` });
+          setTimeout(() => setShowSmtpSetup(false), 1500);
+          addNotification({
+            title: 'Email Terkirim via SMTP',
+            message: `Email verifikasi berhasil dikirim ke ${regEmail.trim()}`,
+            type: 'sistem',
+            actionLabel: 'Buka Email',
+          });
+        } else {
+          setSmtpFeedbackMsg({ type: 'error', text: res.message || res.error || 'Gagal mengirim email via SMTP.' });
+        }
+      } catch (e: any) {
+        setSmtpFeedbackMsg({ type: 'error', text: e?.message || 'Gagal mengirim email.' });
+      } finally {
+        setIsSavingSmtp(false);
+      }
+    } else {
+      setIsSavingSmtp(false);
+      setSmtpFeedbackMsg({ type: 'success', text: 'Konfigurasi SMTP berhasil disimpan!' });
+      setTimeout(() => setShowSmtpSetup(false), 1200);
+    }
+  };
 
   // Reset fields whenever the modal is opened
   useEffect(() => {
@@ -100,6 +190,43 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
     return () => clearInterval(timer);
   }, [mode, countdown]);
+
+  // Deteksi tautan verifikasi email saat halaman dibuka / diklik dari email penerima
+  useEffect(() => {
+    const incoming = processIncomingVerificationUrl();
+    if (incoming && incoming.code) {
+      if (incoming.email) setRegEmail(incoming.email);
+      setGeneratedCode(incoming.code);
+      setOtpDigits(incoming.code.split(''));
+      setMode('verify');
+      setAutoVerifiedByEmail(true);
+      setErrorMsg(null);
+      addNotification({
+        title: 'Email Terverifikasi Otomatis',
+        message: 'Email verifikasi berhasil dibuka! Kode 6-digit terisi otomatis ke dalam sistem.',
+        type: 'sistem',
+      });
+    }
+  }, []);
+
+  // Mendengarkan secara realtime ketika email dibuka oleh penerima (di perangkat/tab mana saja)
+  useEffect(() => {
+    if (mode !== 'verify' || !regEmail.trim()) return;
+    const unsub = listenToEmailVerification(regEmail.trim(), (verifiedCode) => {
+      if (verifiedCode && verifiedCode.length === 6) {
+        setGeneratedCode(verifiedCode);
+        setOtpDigits(verifiedCode.split(''));
+        setAutoVerifiedByEmail(true);
+        setErrorMsg(null);
+        addNotification({
+          title: 'Email Dibuka oleh Penerima',
+          message: 'Surat email verifikasi berhasil dibuka! 6 digit kode otomatis terisi ke aplikasi.',
+          type: 'sistem',
+        });
+      }
+    });
+    return () => unsub();
+  }, [mode, regEmail]);
 
   if (!isOpen) return null;
 
@@ -177,18 +304,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       });
       setEmailDeliveryResult(result);
 
-      // Kirim notifikasi sistem dalam aplikasi
-      addNotification({
-        title: 'Email Verifikasi Resmi Dikirim',
-        message: `Surat email verifikasi dengan 6 digit angka telah dikirim ke ${regEmail.trim()}`,
-        type: 'sistem',
-        actionLabel: 'Buka Email',
-      });
+      if (result.delivered) {
+        addNotification({
+          title: 'Email Verifikasi Resmi Dikirim',
+          message: `Surat email verifikasi dengan 6 digit angka telah dikirim otomatis dari ${OFFICIAL_SENDER_EMAIL} ke ${regEmail.trim()}`,
+          type: 'sistem',
+          actionLabel: 'Buka Email',
+        });
+      } else {
+        addNotification({
+          title: 'Surat Verifikasi Dikirim ke Email',
+          message: `Surat verifikasi 6 digit telah dikirimkan ke alamat email ${regEmail.trim()}. Silakan periksa email Anda.`,
+          type: 'sistem',
+          actionLabel: 'Buka Email',
+        });
+      }
 
       setMode('verify');
     } catch (err: any) {
       console.warn('Gagal mengirim email verifikasi:', err);
-      // Tetap lanjutkan ke layar verifikasi agar alur pendaftaran tidak terhenti
+      setEmailDeliveryResult({
+        success: false,
+        delivered: false,
+        message: err?.message || 'Gagal mengirim email verifikasi',
+        channel: 'server_smtp',
+        timestamp: new Date().toISOString(),
+      });
       setMode('verify');
     } finally {
       setIsSendingEmail(false);
@@ -223,10 +364,38 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Email validation
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(regEmail.trim())) {
-      setErrorMsg('Format email tidak valid. Masukkan alamat email aktif untuk menerima kode verifikasi.');
+    // Email validation: Wajib mengisi email & validasi format data email
+    const trimmedEmail = regEmail.trim();
+    if (!trimmedEmail) {
+      const msg = 'Email wajib diisi! Silakan masukkan alamat email aktif Anda untuk menerima 6 digit kode verifikasi pendaftaran.';
+      setErrorMsg(msg);
+      addNotification({
+        title: 'Wajib Mengisi Email',
+        message: 'Alamat email wajib diisi untuk pendaftaran akun baru Karang Taruna.',
+        type: 'sistem',
+      });
+      return;
+    }
+
+    const emailCheck = validateEmailAddress(trimmedEmail);
+    if (!emailCheck.isValid) {
+      const msg = emailCheck.errorMessage || 'Data email tidak valid! Masukkan alamat email aktif yang benar (contoh: nama@gmail.com) untuk menerima kode verifikasi 6 digit.';
+      setErrorMsg(msg);
+      addNotification({
+        title: 'Data Email Tidak Valid',
+        message: 'Format data email yang Anda masukkan tidak valid. Contoh format: nama@gmail.com',
+        type: 'sistem',
+      });
+      return;
+    }
+
+    // Cek apakah email sudah pernah terdaftar
+    const lowerEmail = trimmedEmail.toLowerCase();
+    const emailExists = usersList.some(
+      (u) => (u.email || '').toLowerCase() === lowerEmail
+    );
+    if (emailExists) {
+      setErrorMsg(`Email "${trimmedEmail}" sudah terdaftar pada akun lain. Silakan gunakan alamat email lain atau masuk ke akun Anda.`);
       return;
     }
 
@@ -571,19 +740,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
-                    Alamat Email (Untuk Notifikasi) *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
+                      <span>Alamat Email Aktif</span>
+                      <span className="text-rose-500 font-black">* (Wajib Diisi)</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">Kode 6 Digit</span>
+                  </div>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       required
                       value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="email@gmail.com"
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      onChange={(e) => {
+                        setRegEmail(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      placeholder="nama@gmail.com"
+                      className={`w-full pl-9 pr-3 py-2 bg-slate-50 border rounded-xl text-xs text-slate-800 focus:bg-white focus:outline-none focus:ring-1 ${
+                        !regEmail.trim()
+                          ? 'border-slate-300 focus:ring-blue-500'
+                          : !validateEmailAddress(regEmail).isValid
+                          ? 'border-rose-400 bg-rose-50/20 focus:ring-rose-500'
+                          : 'border-emerald-400 bg-emerald-50/20 focus:ring-emerald-500'
+                      }`}
                     />
+                  </div>
+
+                  {/* Realtime Email Validation Feedback */}
+                  <div className="mt-1 text-[11px]">
+                    {!regEmail.trim() ? (
+                      <span className="text-amber-600 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                        <span>Wajib diisi untuk menerima email verifikasi 6 digit pendaftaran</span>
+                      </span>
+                    ) : !validateEmailAddress(regEmail).isValid ? (
+                      <span className="text-rose-600 font-semibold flex items-center gap-1 animate-fadeIn">
+                        <AlertCircle className="w-3 h-3 text-rose-500 shrink-0" />
+                        <span>Data email tidak valid! Masukkan format email yang benar (contoh: nama@gmail.com)</span>
+                      </span>
+                    ) : (
+                      <span className="text-emerald-700 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>Format email valid — verifikasi 6 digit dikirim dari <strong>{OFFICIAL_SENDER_EMAIL}</strong></span>
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -692,6 +894,93 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </div>
               </div>
 
+              {/* Quick indicator for SMTP */}
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] flex items-center justify-between gap-2">
+                <span className="flex items-center gap-1.5 text-slate-600">
+                  <span className={`w-2 h-2 rounded-full ${smtpUser && smtpPass ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                  <span className="truncate max-w-[190px]">
+                    {smtpUser && smtpPass ? `SMTP Aktif (${smtpUser.split('@')[0]})` : 'SMTP Pengirim Belum Diatur'}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowSmtpSetup(!showSmtpSetup)}
+                  className="text-blue-600 hover:text-blue-800 font-bold underline flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Settings className="w-3 h-3" />
+                  <span>{showSmtpSetup ? 'Tutup Pengaturan' : 'Atur Gmail Pengirim'}</span>
+                </button>
+              </div>
+
+              {/* Inline SMTP Setup Card */}
+              {showSmtpSetup && (
+                <div className="p-3.5 bg-slate-900 text-white rounded-2xl border border-slate-700 space-y-3 animate-fadeIn text-xs shadow-inner">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 font-bold text-blue-300">
+                    <span className="flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5" />
+                      <span>Koneksi Akun Gmail Pengirim (SMTP)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSmtpSetup(false)}
+                      className="text-slate-400 hover:text-white"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Masukkan akun Gmail resmi Karang Taruna dan 16-digit <em>Sandi Aplikasi (Google App Password)</em> agar notifikasi email verifikasi terkirim otomatis ke kotak masuk pendaftar.
+                  </p>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-0.5">Email Gmail Pengirim</label>
+                      <input
+                        type="email"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        placeholder="organisasi.manisjaya@gmail.com"
+                        className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-0.5">
+                        <label className="text-[10px] uppercase font-bold text-slate-400">Sandi Aplikasi Google (16 Huruf)</label>
+                        <a
+                          href="https://myaccount.google.com/apppasswords"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-blue-400 hover:underline inline-flex items-center gap-0.5"
+                        >
+                          <span>Buat di sini</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                      <input
+                        type="password"
+                        value={smtpPass}
+                        onChange={(e) => setSmtpPass(e.target.value)}
+                        placeholder="abcd efgh ijkl mnop"
+                        className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  {smtpFeedbackMsg && (
+                    <div className={`p-2 rounded-lg text-[11px] ${smtpFeedbackMsg.type === 'success' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}`}>
+                      {smtpFeedbackMsg.text}
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isSavingSmtp}
+                    onClick={handleSaveAndSendSmtp}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                  >
+                    {isSavingSmtp ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    <span>{isSavingSmtp ? 'Menghubungkan...' : 'Simpan Kredensial Pengirim'}</span>
+                  </button>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="pt-2 space-y-2">
                 <button
@@ -732,26 +1021,43 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {mode === 'verify' && (
             <div className="space-y-4 animate-fadeIn">
               {/* Notifikasi Email Masuk Banner Resmi */}
-              <div className="bg-gradient-to-br from-slate-900 via-[#0d213a] to-[#153457] text-white rounded-2xl p-4 sm:p-5 border border-blue-500/30 shadow-lg space-y-3.5">
-                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-800 text-[11px]">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                    <span className="relative flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                    <span>Email Verifikasi Resmi Telah Dikirim</span>
+              <div className={`text-white rounded-2xl p-4 sm:p-5 border shadow-lg space-y-3.5 ${
+                emailDeliveryResult?.delivered
+                  ? 'bg-gradient-to-br from-slate-900 via-[#064e3b] to-[#0f3d64] border-emerald-500/40'
+                  : 'bg-gradient-to-br from-slate-900 via-[#1e293b] to-[#153457] border-amber-500/30'
+              }`}>
+                <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-white/10 text-[11px]">
+                  <div className="flex items-center gap-2 font-bold">
+                    {emailDeliveryResult?.delivered ? (
+                      <>
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                        <span className="text-emerald-300">Email Verifikasi Resmi Terkirim</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="text-amber-300">Email Otomatis Belum Terkirim</span>
+                      </>
+                    )}
                   </div>
-                  <span className="font-mono text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
-                    Terkirim
+                  <span className={`font-mono text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                    emailDeliveryResult?.delivered
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  }`}>
+                    Tujuan: {regEmail}
                   </span>
                 </div>
 
                 <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2 bg-white/5 p-3 rounded-xl border border-white/10">
-                    <Mail className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                    <Mail className={`w-4 h-4 shrink-0 mt-0.5 ${emailDeliveryResult?.delivered ? 'text-emerald-400' : 'text-amber-400'}`} />
                     <div className="space-y-0.5">
                       <p className="text-slate-300 text-[11px]">
-                        Surat verifikasi dikirimkan ke alamat email tujuan:
+                        Surat verifikasi ditujukan ke email pendaftaran Anda:
                       </p>
                       <p className="text-white font-bold font-mono text-xs sm:text-sm break-all">
                         {regEmail}
@@ -759,64 +1065,150 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
 
-                  <p className="text-slate-300 text-[11px] leading-relaxed">
-                    Halo <strong>{regName}</strong>, silakan buka aplikasi email atau webmail Anda. Periksa folder <strong>Kotak Masuk (Inbox)</strong> atau folder <strong>Spam</strong> untuk melihat <strong>6 digit angka verifikasi</strong> yang telah kami kirimkan.
-                  </p>
-                </div>
-
-                {/* Tombol Pintas Buka Webmail Langsung */}
-                <div className="pt-1 flex flex-wrap items-center gap-2">
-                  <a
-                    href={getEmailProviderWebUrl(regEmail)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 min-w-[140px] py-2 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                  >
-                    <Inbox className="w-3.5 h-3.5" />
-                    <span>Buka Kotak Masuk Email</span>
-                    <ExternalLink className="w-3 h-3 opacity-70" />
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowBantuanKode(!showBantuanKode)}
-                    className="py-2 px-3 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
-                    title="Bantuan opsi darurat jika email terlambat"
-                  >
-                    <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{showBantuanKode ? 'Tutup Bantuan' : 'Bantuan Kode'}</span>
-                  </button>
-                </div>
-
-                {/* Panel Bantuan / Debug Pengujian (Opsional) */}
-                {showBantuanKode && (
-                  <div className="p-3 bg-amber-500/15 border border-amber-500/30 rounded-xl text-center space-y-2 animate-fadeIn">
-                    <p className="text-[11px] text-amber-200">
-                      Bantuan Sistem: Jika email belum masuk ke folder Inbox/Spam karena jaringan, angka verifikasi resmi Anda adalah:
+                  {emailDeliveryResult?.delivered ? (
+                    <p className="text-emerald-100 text-[11px] leading-relaxed">
+                      Halo <strong>{regName}</strong>, surat email verifikasi 6 digit telah berhasil dikirim otomatis dari <strong>{OFFICIAL_SENDER_EMAIL}</strong> ke alamat email tujuan <strong>{regEmail}</strong>. Silakan periksa Kotak Masuk atau folder Spam di email Anda.
                     </p>
-                    <div className="text-xl sm:text-2xl font-black font-mono tracking-[0.25em] text-amber-300 py-0.5">
-                      {generatedCode}
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="text-amber-100 text-[11px] leading-relaxed">
+                        Halo <strong>{regName}</strong>, surat email verifikasi 6 digit disiapkan dari <strong>{OFFICIAL_SENDER_EMAIL}</strong> menuju <strong>{regEmail}</strong>. Untuk pengiriman otomatis ke kotak masuk tanpa membuka webmail, masukkan Sandi Aplikasi Google 16-digit di bawah, atau kirim langsung via Gmail.
+                      </p>
+                      {emailDeliveryResult?.error && (
+                        <p className="text-[10px] font-mono text-rose-300 bg-rose-950/40 p-2 rounded-lg border border-rose-800/40">
+                          Status Server: {emailDeliveryResult.error}
+                        </p>
+                      )}
                     </div>
-                    <div className="flex items-center justify-center gap-2">
+                  )}
+                </div>
+
+                {/* Quick actions for SMTP or Manual Sending */}
+                {!emailDeliveryResult?.delivered && (
+                  <div className="p-3 bg-black/30 rounded-xl border border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-300 font-semibold">Pilihan Pengiriman & Aktivasi:</span>
                       <button
                         type="button"
-                        onClick={handleCopyCode}
-                        className="px-2.5 py-1 bg-white/15 hover:bg-white/25 text-white rounded-lg text-[10px] font-bold flex items-center gap-1"
+                        onClick={() => setShowSmtpSetup(!showSmtpSetup)}
+                        className="text-blue-300 hover:text-blue-200 font-bold underline flex items-center gap-1 cursor-pointer"
                       >
-                        <Copy className="w-3 h-3" />
-                        <span>{copiedCode ? 'Tersalin!' : 'Salin Angka'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAutoFillCode}
-                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold flex items-center gap-1"
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Tempel Otomatis</span>
+                        <Settings className="w-3 h-3" />
+                        <span>{showSmtpSetup ? 'Tutup Pengaturan' : 'Hubungkan Gmail Pengirim (SMTP)'}</span>
                       </button>
                     </div>
+
+                    {/* Inline SMTP Setup Card inside Verify screen */}
+                    {showSmtpSetup && (
+                      <div className="p-3 bg-slate-900/90 text-white rounded-xl border border-blue-500/40 space-y-2.5 animate-fadeIn text-xs">
+                        <div className="font-bold text-blue-300 flex items-center gap-1.5 pb-1 border-b border-slate-800">
+                          <Key className="w-3.5 h-3.5" />
+                          <span>Atur Kredensial Pengirim Gmail (Otomatis)</span>
+                        </div>
+                        <p className="text-[10.5px] text-slate-300 leading-relaxed">
+                          Konfigurasikan akun <strong>{OFFICIAL_SENDER_EMAIL}</strong> dengan 16-digit <em>Google App Password</em> untuk mengirim email verifikasi 6 digit otomatis ke <strong>{regEmail}</strong>:
+                        </p>
+                        <div className="space-y-1.5">
+                          <input
+                            type="email"
+                            value={smtpUser}
+                            onChange={(e) => setSmtpUser(e.target.value)}
+                            placeholder={OFFICIAL_SENDER_EMAIL}
+                            className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:ring-1 focus:ring-blue-500"
+                          />
+                          <input
+                            type="password"
+                            value={smtpPass}
+                            onChange={(e) => setSmtpPass(e.target.value)}
+                            placeholder="Sandi Aplikasi Google (16 huruf tanpa spasi)"
+                            className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white font-mono text-xs focus:ring-1 focus:ring-blue-500"
+                          />
+                        </div>
+                        {smtpFeedbackMsg && (
+                          <div className={`p-2 rounded-lg text-[10.5px] ${smtpFeedbackMsg.type === 'success' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}`}>
+                            {smtpFeedbackMsg.text}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          disabled={isSavingSmtp}
+                          onClick={handleSaveAndSendSmtp}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+                        >
+                          {isSavingSmtp ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                          <span>{isSavingSmtp ? 'Mengirim ke Email Tujuan...' : `Simpan & Kirim Email ke ${regEmail}`}</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* Status Pengiriman Kode Verifikasi ke Email Penerima (Tidak Menampilkan Kode di Layar) */}
+                <div className="p-4 bg-gradient-to-br from-slate-900 via-[#0f2847] to-[#0a192f] rounded-2xl border border-blue-400/30 text-white space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between text-[11px] pb-2 border-b border-white/10 font-semibold">
+                    <span className="text-blue-200 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Verifikasi Email Resmi Karang Taruna</span>
+                    </span>
+                    <span className="text-emerald-400 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Kode Dikirim ke Penerima</span>
+                    </span>
+                  </div>
+
+                  <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Pengirim Resmi:</span>
+                      <span className="font-mono text-blue-300 font-bold">{OFFICIAL_SENDER_EMAIL}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Email Penerima:</span>
+                      <span className="font-mono text-emerald-300 font-bold break-all">{regEmail}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Sistem telah mengirimkan surat resmi berisi <strong>6 digit angka verifikasi</strong> ke alamat email penerima <strong>{regEmail}</strong>. Silakan periksa Kotak Masuk atau folder Spam pada email Anda untuk melihat kode, atau buka email untuk mengisi kotak kode verifikasi secara otomatis.
+                  </p>
+
+                  {/* Banner Otomatis Terisi Ketika Email Dibuka */}
+                  {autoVerifiedByEmail && (
+                    <div className="p-3 bg-emerald-950/90 border border-emerald-500/50 rounded-xl text-xs text-emerald-300 font-semibold flex items-center gap-2.5 animate-fadeIn">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <span className="block font-bold">Email Berhasil Dibuka oleh Penerima!</span>
+                        <span className="text-[11px] text-emerald-200 font-normal">
+                          Kode 6 digit telah terisi secara otomatis ke dalam kotak verifikasi di bawah.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tombol Pintas Buka Webmail & Salinan Gmail */}
+                  <div className="pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <a
+                      href={getEmailProviderWebUrl(regEmail)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <Inbox className="w-3.5 h-3.5" />
+                      <span>Buka Kotak Masuk ({regEmail.split('@')[1] || 'Email'})</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+
+                    <a
+                      href={getDirectGmailComposeUrl(regEmail, generatedCode, regName)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 border border-white/15 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5 text-blue-300" />
+                      <span>Kirim Sekarang via Gmail</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
+                    </a>
+                  </div>
+                </div>
               </div>
 
               {/* Form Input Angka Verifikasi ke dalam Program */}
