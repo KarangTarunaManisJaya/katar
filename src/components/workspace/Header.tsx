@@ -18,11 +18,8 @@ import {
   BellOff,
   X,
   ChevronRight,
-  Sun,
-  Moon,
   Smartphone,
 } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
 import { BrandLogo } from './BrandLogo';
 import { UserAccount } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
@@ -65,7 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMobileMenu,
   onDownloadApk,
 }) => {
-  const { theme, updateTheme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -197,36 +193,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Download APK Button */}
-        {onDownloadApk && (
-          <button
-            type="button"
-            onClick={onDownloadApk}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-            title="Download Program APK Android Karang Taruna"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span className="hidden xs:inline sm:inline">Download APK</span>
-          </button>
-        )}
-
-        {/* Quick Theme Toggle (Light / Dark) */}
-        <button
-          type="button"
-          onClick={() => {
-            const nextMode = theme.displayMode === 'dark' ? 'light' : 'dark';
-            updateTheme({ displayMode: nextMode });
-          }}
-          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
-          title={theme.displayMode === 'dark' ? 'Beralih ke Mode Terang (Light)' : 'Beralih ke Mode Gelap (Dark)'}
-          aria-label="Ganti Tema Tampilan"
-        >
-          {theme.displayMode === 'dark' ? (
-            <Sun className="w-5 h-5 text-amber-400 transition-transform hover:rotate-45" />
-          ) : (
-            <Moon className="w-5 h-5 text-slate-600 transition-transform hover:-rotate-12" />
-          )}
-        </button>
 
         {/* Notifications Bell with dynamic real-time badge */}
         <div className="relative" ref={notifRef}>
@@ -298,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                   <p className="text-xs font-bold text-slate-700">Belum ada notifikasi baru</p>
                   <p className="text-[11px] text-slate-400 mt-1 max-w-[220px] leading-relaxed">
-                    Pemberitahuan surat, kegiatan, anggota, dan sinkronisasi akan muncul di sini secara otomatis.
+                    Pemberitahuan surat resmi, kegiatan pemuda, dan administrasi anggota akan muncul di sini.
                   </p>
                 </div>
               ) : (

@@ -1,4 +1,5 @@
 import React from 'react';
+import { getDefaultSuratPenandatangan } from '../../../utils/memberHelpers';
 
 export interface SignatoryItem {
   nama: string;
@@ -83,6 +84,29 @@ const SignatureSvg: React.FC<{ index: number }> = ({ index }) => {
   );
 };
 
+const renderSigName = (nama?: string) => {
+  if (nama && nama.trim()) {
+    return nama;
+  }
+  return '( ..................................... )';
+};
+
+const renderSigGraphic = (sig: SignatoryItem, idx: number) => {
+  if (!sig.nama || !sig.nama.trim()) {
+    return <div className="w-28 h-12 border-b border-dashed border-slate-300 print:border-black/30" />;
+  }
+  if (sig.signatureUrl) {
+    return (
+      <img
+        src={sig.signatureUrl}
+        alt="Tanda Tangan"
+        className="h-12 sm:h-14 print:h-10 object-contain"
+      />
+    );
+  }
+  return <SignatureSvg index={idx} />;
+};
+
 export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
   className = '',
   signatories,
@@ -98,30 +122,34 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
   ],
   organizationName = 'Karang Taruna Manis Jaya',
 }) => {
-  // Selesaikan daftar penandatangan aktual secara dinamis sesuai jumlah penandatangan surat
+  // Selesaikan daftar penandatangan aktual secara dinamis sesuai database anggota
   const activeSignatories: SignatoryItem[] = React.useMemo(() => {
     if (signatories && Array.isArray(signatories) && signatories.length > 0) {
       return signatories;
     }
     const result: SignatoryItem[] = [];
-    if (ketuaName) {
+    if (ketuaName !== undefined) {
       result.push({
         nama: ketuaName,
         jabatan: ketuaTitle || 'Ketua Pelaksana',
       });
     }
-    if (sekretarisName) {
+    if (sekretarisName !== undefined) {
       result.push({
         nama: sekretarisName,
         jabatan: sekretarisTitle || 'Sekretaris',
       });
     }
-    return result.length > 0
-      ? result
-      : [
-          { nama: 'Andriansyah', jabatan: 'Ketua Pelaksana' },
-          { nama: 'Eko Mujianto', jabatan: 'Sekretaris' },
-        ];
+    if (result.length > 0) {
+      return result;
+    }
+    // Mengambil dari database anggota resmi atau kosong jika belum terdaftar
+    const defaults = getDefaultSuratPenandatangan();
+    return defaults.map((d) => ({
+      nama: d.nama || '',
+      jabatan: d.jabatan,
+      ktaNo: d.ktaNo || '',
+    }));
   }, [signatories, ketuaTitle, ketuaName, sekretarisTitle, sekretarisName]);
 
   const count = activeSignatories.length;
@@ -145,24 +173,16 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
               </p>
             </div>
             <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative w-full">
-              {activeSignatories[0].signatureUrl ? (
-                <img
-                  src={activeSignatories[0].signatureUrl}
-                  alt="Tanda Tangan"
-                  className="h-12 sm:h-14 print:h-10 object-contain"
-                />
-              ) : (
-                <SignatureSvg index={0} />
-              )}
+              {renderSigGraphic(activeSignatories[0], 0)}
             </div>
-            <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
-              {activeSignatories[0].nama}
+            <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1 min-w-[130px]">
+              {renderSigName(activeSignatories[0].nama)}
             </p>
-            {activeSignatories[0].ktaNo && (
+            {activeSignatories[0].ktaNo ? (
               <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                 KTA: {activeSignatories[0].ktaNo}
               </p>
-            )}
+            ) : null}
           </div>
         </div>
       )}
@@ -184,24 +204,16 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
                 {activeSignatories[0].jabatan || 'Ketua Pelaksana'}
               </p>
               <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
-                {activeSignatories[0].signatureUrl ? (
-                  <img
-                    src={activeSignatories[0].signatureUrl}
-                    alt="Tanda Tangan"
-                    className="h-12 sm:h-14 print:h-10 object-contain"
-                  />
-                ) : (
-                  <SignatureSvg index={0} />
-                )}
+                {renderSigGraphic(activeSignatories[0], 0)}
               </div>
-              <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
-                {activeSignatories[0].nama}
+              <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1 min-w-[130px]">
+                {renderSigName(activeSignatories[0].nama)}
               </p>
-              {activeSignatories[0].ktaNo && (
+              {activeSignatories[0].ktaNo ? (
                 <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                   KTA: {activeSignatories[0].ktaNo}
                 </p>
-              )}
+              ) : null}
             </div>
 
             {/* Kolom Kanan: Penandatangan 2 */}
@@ -210,24 +222,16 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
                 {activeSignatories[1].jabatan || 'Sekretaris'}
               </p>
               <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
-                {activeSignatories[1].signatureUrl ? (
-                  <img
-                    src={activeSignatories[1].signatureUrl}
-                    alt="Tanda Tangan"
-                    className="h-12 sm:h-14 print:h-10 object-contain"
-                  />
-                ) : (
-                  <SignatureSvg index={1} />
-                )}
+                {renderSigGraphic(activeSignatories[1], 1)}
               </div>
-              <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
-                {activeSignatories[1].nama}
+              <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1 min-w-[130px]">
+                {renderSigName(activeSignatories[1].nama)}
               </p>
-              {activeSignatories[1].ktaNo && (
+              {activeSignatories[1].ktaNo ? (
                 <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                   KTA: {activeSignatories[1].ktaNo}
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -248,18 +252,14 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
               <div key={idx} className="flex flex-col items-center text-center">
                 <p className="text-xs sm:text-sm font-medium text-black mb-1 sm:mb-1.5">{sig.jabatan || 'Pengurus'}</p>
                 <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
-                  {sig.signatureUrl ? (
-                    <img src={sig.signatureUrl} alt="Tanda Tangan" className="h-12 sm:h-14 print:h-10 object-contain" />
-                  ) : (
-                    <SignatureSvg index={idx} />
-                  )}
+                  {renderSigGraphic(sig, idx)}
                 </div>
-                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
-                  {sig.nama}
+                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1 min-w-[120px]">
+                  {renderSigName(sig.nama)}
                 </p>
-                {sig.ktaNo && (
+                {sig.ktaNo ? (
                   <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">KTA: {sig.ktaNo}</p>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
@@ -285,24 +285,16 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
                   {activeSignatories[0].jabatan || 'Ketua Pelaksana'}
                 </p>
                 <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
-                  {activeSignatories[0].signatureUrl ? (
-                    <img
-                      src={activeSignatories[0].signatureUrl}
-                      alt="Tanda Tangan"
-                      className="h-12 sm:h-14 print:h-10 object-contain"
-                    />
-                  ) : (
-                    <SignatureSvg index={0} />
-                  )}
+                  {renderSigGraphic(activeSignatories[0], 0)}
                 </div>
-                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
-                  {activeSignatories[0].nama}
+                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1 min-w-[130px]">
+                  {renderSigName(activeSignatories[0].nama)}
                 </p>
-                {activeSignatories[0].ktaNo && (
+                {activeSignatories[0].ktaNo ? (
                   <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                     KTA: {activeSignatories[0].ktaNo}
                   </p>
-                )}
+                ) : null}
               </div>
 
               {/* Kolom 2 */}
@@ -311,24 +303,16 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
                   {activeSignatories[1].jabatan || 'Sekretaris'}
                 </p>
                 <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
-                  {activeSignatories[1].signatureUrl ? (
-                    <img
-                      src={activeSignatories[1].signatureUrl}
-                      alt="Tanda Tangan"
-                      className="h-12 sm:h-14 print:h-10 object-contain"
-                    />
-                  ) : (
-                    <SignatureSvg index={1} />
-                  )}
+                  {renderSigGraphic(activeSignatories[1], 1)}
                 </div>
-                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
-                  {activeSignatories[1].nama}
+                <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1 min-w-[130px]">
+                  {renderSigName(activeSignatories[1].nama)}
                 </p>
-                {activeSignatories[1].ktaNo && (
+                {activeSignatories[1].ktaNo ? (
                   <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                     KTA: {activeSignatories[1].ktaNo}
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -347,20 +331,16 @@ export const OfficialSignatureBlock: React.FC<OfficialSignatureBlockProps> = ({
                     {sig.jabatan || 'Pembina'}
                   </p>
                   <div className="h-14 sm:h-16 print:h-12 flex items-center justify-center relative">
-                    {sig.signatureUrl ? (
-                      <img src={sig.signatureUrl} alt="Tanda Tangan" className="h-12 sm:h-14 print:h-10 object-contain" />
-                    ) : (
-                      <SignatureSvg index={idx + 2} />
-                    )}
+                    {renderSigGraphic(sig, idx + 2)}
                   </div>
-                  <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1">
-                    {sig.nama}
+                  <p className="text-xs sm:text-sm font-bold text-black border-b border-black inline-block pb-0.5 mt-1 min-w-[130px]">
+                    {renderSigName(sig.nama)}
                   </p>
-                  {sig.ktaNo && (
+                  {sig.ktaNo ? (
                     <p className="text-[9px] sm:text-[10px] text-slate-700 font-mono mt-0.5">
                       KTA/NIP: {sig.ktaNo}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

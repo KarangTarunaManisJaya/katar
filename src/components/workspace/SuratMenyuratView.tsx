@@ -28,6 +28,7 @@ import {
   getInitialDisposisiData,
 } from '../../data/suratInitialData';
 import { addNotification } from '../../services/notificationService';
+import { getDefaultSuratPenandatangan } from '../../utils/memberHelpers';
 
 import { SuratDashboard } from './surat/SuratDashboard';
 import { SuratMasukTab } from './surat/SuratMasukTab';
@@ -67,14 +68,7 @@ const sanitizeSuratKeluarItem = (raw: any): SuratKeluarItem => {
     lampiran: Array.isArray(raw?.lampiran) ? raw.lampiran : [],
     penandatangan: Array.isArray(raw?.penandatangan) && raw.penandatangan.length > 0
       ? raw.penandatangan
-      : [
-          {
-            nama: 'Muhammad Ryan Pratama, S.Kom.',
-            jabatan: 'Ketua Umum',
-            ktaNo: 'KT-MJ-2024-001',
-            includeStamp: true,
-          },
-        ],
+      : getDefaultSuratPenandatangan(),
     stempelOrganisasi: raw?.stempelOrganisasi !== undefined ? !!raw.stempelOrganisasi : true,
     status: raw?.status === 'Proses' ? 'Menunggu TTD' : (raw?.status || 'Draft'),
     filePdfGenerated: !!raw?.filePdfGenerated,

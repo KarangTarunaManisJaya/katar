@@ -39,6 +39,7 @@ import {
   processIncomingVerificationUrl,
   listenToEmailVerification,
 } from '../../services/emailVerificationService';
+import { generateAIEmailContent, logAIEmailDispatch } from '../../services/aiEmailService';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -82,6 +83,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [countdown, setCountdown] = useState(60);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [aiSendingStatus, setAiSendingStatus] = useState<string>('');
+  const [aiGreeting, setAiGreeting] = useState<string>('');
   const [emailDeliveryResult, setEmailDeliveryResult] = useState<SendVerificationEmailResult | null>(null);
   const [showBantuanKode, setShowBantuanKode] = useState(false);
   const [autoVerifiedByEmail, setAutoVerifiedByEmail] = useState(false);
@@ -284,9 +287,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     onLogin(foundUser);
   };
 
-  // Kirim email verifikasi resmi ke email yang dimasukkan pengguna
+  // Kirim email verifikasi resmi ke email yang dimasukkan pengguna dengan bantuan AI
   const sendVerificationEmail = async () => {
     setIsSendingEmail(true);
+    setAiSendingStatus('🤖 AI menyusun surat sambutan resmi Karang Taruna...');
     setErrorMsg(null);
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedCode(code);
@@ -296,13 +300,39 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     setShowBantuanKode(false);
 
     try {
-      const result = await sendOfficialVerificationEmail({
+      // 1. Susun konten AI khusus untuk pendaftar
+      setAiSendingStatus('🤖 AI merancang sambutan resmi & angka verifikasi 6-digit...');
+      const aiContent = await generateAIEmailContent({
         to: regEmail.trim(),
         name: regName.trim(),
         username: regUsername.trim().toLowerCase(),
         code,
       });
+      if (aiContent?.welcomeMessage) {
+        setAiGreeting(aiContent.welcomeMessage);
+      }
+
+      // 2. Kirim otomatis dari karangtarunamanisjaya@gmail.com ke alamat email pendaftar
+      setAiSendingStatus(`📤 Mengirim otomatis dari ${OFFICIAL_SENDER_EMAIL} ke ${regEmail.trim()}...`);
+      const result = await sendOfficialVerificationEmail({
+        to: regEmail.trim(),
+        name: regName.trim(),
+        username: regUsername.trim().toLowerCase(),
+        code,
+        subjectOverride: aiContent.subject,
+        htmlOverride: aiContent.htmlContent,
+      });
       setEmailDeliveryResult(result);
+
+      // 3. Rekam audit log pengiriman AI
+      await logAIEmailDispatch({
+        to: regEmail.trim(),
+        name: regName.trim(),
+        username: regUsername.trim().toLowerCase(),
+        code,
+        delivered: result.delivered,
+        channel: result.channel,
+      });
 
       if (result.delivered) {
         addNotification({
@@ -333,6 +363,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setMode('verify');
     } finally {
       setIsSendingEmail(false);
+      setAiSendingStatus('');
       setTimeout(() => {
         otpInputRefs.current[0]?.focus();
       }, 200);
@@ -693,11 +724,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           {/* ============================================================== */}
           {mode === 'register' && (
             <form onSubmit={handleRegisterSubmit} className="space-y-3.5 animate-fadeIn">
-              <div className="bg-blue-50/70 p-3 rounded-2xl border border-blue-200/80 text-[11px] text-blue-900 flex items-start gap-2 leading-relaxed">
+              <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 p-3 rounded-2xl border border-blue-200/90 text-[11px] text-blue-900 flex items-start gap-2.5 leading-relaxed shadow-xs">
                 <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <p>
-                  <strong>Ketentuan Pendaftaran:</strong> Setiap pemuda dan pengurus baru wajib mendaftarkan identitas akun. Sistem akan mengirimkan notifikasi email berisi <strong>6 digit angka verifikasi</strong> untuk mengaktifkan akun Anda.
-                </p>
+                <div className="space-y-0.5">
+                  <p className="font-bold text-blue-950 flex items-center gap-1.5">
+                    <span>🤖 AI Otomasi Email Pendaftaran Karang Taruna</span>
+                  </p>
+                  <p className="text-slate-700">
+                    Sistem AI akan secara otomatis mengirimkan surat verifikasi resmi dari <strong>{OFFICIAL_SENDER_EMAIL}</strong> langsung ke alamat email tujuan yang Anda daftarkan saat mengklik tombol <em>Kirim Angka Verifikasi ke Email Tujuan</em>.
+                  </p>
+                </div>
               </div>
 
               {/* Nama Lengkap */}
@@ -991,11 +1027,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   {isSendingEmail ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Mengirim Email Verifikasi ke {regEmail || 'Email'}...</span>
+                      <span>{aiSendingStatus || `AI Mengirim Email Verifikasi ke ${regEmail || 'Email'}...`}</span>
                     </>
                   ) : (
                     <>
-                      <Send className="w-4 h-4" />
+                      <Sparkles className="w-4 h-4 text-emerald-200" />
                       <span>Kirim Angka Verifikasi ke Email Tujuan</span>
                     </>
                   )}
@@ -1167,8 +1203,15 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   </div>
 
+                  {aiGreeting && (
+                    <div className="p-2.5 bg-blue-950/70 rounded-xl border border-blue-500/30 text-[11px] text-blue-200 italic space-y-1">
+                      <span className="block font-bold not-italic text-blue-300 text-[10px] uppercase tracking-wider">Pesan Sambutan AI Karang Taruna:</span>
+                      <p>"{aiGreeting}"</p>
+                    </div>
+                  )}
+
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Sistem telah mengirimkan surat resmi berisi <strong>6 digit angka verifikasi</strong> ke alamat email penerima <strong>{regEmail}</strong>. Silakan periksa Kotak Masuk atau folder Spam pada email Anda untuk melihat kode, atau buka email untuk mengisi kotak kode verifikasi secara otomatis.
+                    Sistem AI telah memproses dan mengirimkan surat resmi berisi <strong>6 digit angka verifikasi</strong> ke alamat email penerima <strong>{regEmail}</strong>. Silakan periksa Kotak Masuk atau folder Spam pada email Anda untuk melihat kode, atau buka email untuk mengisi kotak kode verifikasi secara otomatis.
                   </p>
 
                   {/* Banner Otomatis Terisi Ketika Email Dibuka */}

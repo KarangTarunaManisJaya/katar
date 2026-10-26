@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Plus,
@@ -42,7 +42,21 @@ export const CreateVotingModal: React.FC<CreateVotingModalProps> = ({
   const [quorumPercentage, setQuorumPercentage] = useState(50);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Dynamic Options / Candidates
+  // Ambil daftar anggota lengkap dari database / localStorage 'kt_members_v3' dengan fallback
+  const availableMembers = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('kt_members_v3');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {}
+    return INITIAL_MEMBERS;
+  }, []);
+
+  // Dynamic Options / Candidates (Dikosongkan secara default agar user dapat menambah manual atau memilih dari anggota)
   const [options, setOptions] = useState<
     Array<{
       id: string;
@@ -53,15 +67,13 @@ export const CreateVotingModal: React.FC<CreateVotingModalProps> = ({
   >([
     {
       id: 'opt-new-1',
-      title: 'Fajar Maulana',
-      subtitle: 'Koordinator Olahraga & Pemuda RW 04',
-      avatar: resolveAssetUrl('/src/assets/images/fajar_maulana_portrait_1790646270000.jpg'),
+      title: '',
+      subtitle: '',
     },
     {
       id: 'opt-new-2',
-      title: 'Budi Santoso',
-      subtitle: 'Divisi Humas & Kemitraan RW 02',
-      avatar: resolveAssetUrl('/src/assets/images/budi_santoso_portrait_1790646268733.jpg'),
+      title: '',
+      subtitle: '',
     },
   ]);
 
@@ -94,14 +106,14 @@ export const CreateVotingModal: React.FC<CreateVotingModalProps> = ({
   };
 
   const handleSelectMemberAsOption = (index: number, memberId: string) => {
-    const member = INITIAL_MEMBERS.find((m) => m.id === memberId);
+    const member = availableMembers.find((m: any) => m.id === memberId);
     if (!member) return;
     const updated = [...options];
     updated[index] = {
       ...updated[index],
       title: member.name,
       subtitle: `${member.jabatan || 'Anggota'} - ${member.divisi || member.rw || 'Karang Taruna'}`,
-      avatar: resolveAssetUrl(member.avatar),
+      avatar: member.avatar ? resolveAssetUrl(member.avatar) : undefined,
     };
     setOptions(updated);
   };
@@ -310,26 +322,33 @@ export const CreateVotingModal: React.FC<CreateVotingModalProps> = ({
                     <span className="text-xs font-bold text-slate-700 flex-1 truncate">
                       {opt.title ? opt.title : `Opsi / Kandidat #${idx + 1}`}
                     </span>
-                    {category === 'ketua_kegiatan' && (
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleSelectMemberAsOption(idx, e.target.value);
-                          }
-                        }}
-                        className="text-[11px] font-semibold bg-slate-100 text-slate-700 py-1 px-2 rounded-lg border-0 cursor-pointer"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>
-                          + Pilih dari Anggota
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value === '__EMPTY__') {
+                          const updated = [...options];
+                          updated[idx] = { ...updated[idx], title: '', subtitle: '', avatar: undefined };
+                          setOptions(updated);
+                        } else if (e.target.value) {
+                          handleSelectMemberAsOption(idx, e.target.value);
+                        }
+                      }}
+                      className="text-[11px] font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 py-1 px-2.5 rounded-lg border border-blue-200 transition-colors cursor-pointer"
+                    >
+                      <option value="" disabled>
+                        + Pilih dari Anggota
+                      </option>
+                      {availableMembers.map((m: any) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.jabatan || m.rw || 'Anggota'})
                         </option>
-                        {INITIAL_MEMBERS.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} ({m.jabatan || m.rw})
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                      ))}
+                      {(opt.title || opt.subtitle) && (
+                        <option value="__EMPTY__">
+                          ✖ Kosongkan Pilihan Ini
+                        </option>
+                      )}
+                    </select>
                     {options.length > 2 && (
                       <button
                         type="button"

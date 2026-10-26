@@ -60,6 +60,65 @@ interface TambahBeritaViewProps {
   onToast: (msg: string) => void;
 }
 
+/**
+ * Mengambil data narahubung otomatis dari akun user yang sedang login
+ */
+function getInitialUserContact(user?: UserAccount) {
+  let name = user?.name || '';
+  let phone = user?.phone || '';
+  let email = user?.email || '';
+  let role = user?.role || '';
+
+  // 1. Cek sesi login di localStorage jika prop user belum lengkap
+  if (!name || !phone) {
+    try {
+      const savedAuth = localStorage.getItem('kt_auth_user_v3');
+      if (savedAuth) {
+        const parsed = JSON.parse(savedAuth);
+        if (!name && parsed.name) name = parsed.name;
+        if (!phone && parsed.phone) phone = parsed.phone;
+        if (!email && parsed.email) email = parsed.email;
+        if (!role && parsed.role) role = parsed.role;
+      }
+    } catch {}
+  }
+
+  // 2. Cek di daftar user jika nomor telepon ada di database anggota
+  if (!phone && name) {
+    try {
+      const savedList = localStorage.getItem('kt_users_list_v3');
+      if (savedList) {
+        const list: any[] = JSON.parse(savedList);
+        const match = list.find(
+          (u) => (user?.id && u.id === user.id) || (user?.username && u.username === user.username) || u.name === name
+        );
+        if (match?.phone) phone = match.phone;
+        if (match?.email && !email) email = match.email;
+      }
+    } catch {}
+  }
+
+  // 3. Fallback nomor telepon resmi sekretariat jika user belum mengisi nomor
+  if (!phone) {
+    try {
+      phone = localStorage.getItem('kt_telepon') || localStorage.getItem('kt_doc_telepon') || '';
+    } catch {}
+  }
+
+  const formattedName = name
+    ? role && !name.toLowerCase().includes(role.toLowerCase())
+      ? `${name} (${role})`
+      : name
+    : 'Pengurus Karang Taruna';
+
+  return {
+    name: formattedName,
+    rawName: name || 'Administrator',
+    phone: phone || '',
+    email: email || 'karangtarunamanisjaya@gmail.com',
+  };
+}
+
 export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
   currentUser,
   onSaveActivity,
@@ -103,24 +162,16 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     { id: 'rd-3', time: '09:15 - 11:30', activity: 'Pelaksanaan Kegiatan Inti & Dokumentasi', pic: 'Sie Lapangan' },
   ]);
   const [vipGuests, setVipGuests] = useState<VipGuest[]>([
-    { id: 'vip-1', name: 'Drs. Suhanda', title: 'Lurah Manis Jaya', status: 'Hadir' },
-    { id: 'vip-2', name: 'Sertu M. Rohim', title: 'Babinsa Kelurahan Manis Jaya', status: 'Hadir' },
+    { id: 'vip-1', name: '', title: 'Lurah Manis Jaya', status: 'Hadir' },
+    { id: 'vip-2', name: '', title: 'Babinsa Kelurahan Manis Jaya', status: 'Hadir' },
   ]);
 
   // --- CARD 4: Dokumentasi, Media & Berkas ---
-  const [coverPhoto, setCoverPhoto] = useState<string>(
-    'https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1000&auto=format&fit=crop'
-  );
-  const [coverCaption, setCoverCaption] = useState('Suasana pelaksanaan kegiatan Karang Taruna di Kelurahan Manis Jaya.');
-  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=600&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=600&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=600&auto=format&fit=crop',
-  ]);
+  const [coverPhoto, setCoverPhoto] = useState<string>('');
+  const [coverCaption, setCoverCaption] = useState<string>('');
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
-  const [documentFiles, setDocumentFiles] = useState<Array<{ name: string; size?: string }>>([
-    { name: 'Proposal_Kegiatan_Resmi.pdf', size: '1.8 MB' },
-  ]);
+  const [documentFiles, setDocumentFiles] = useState<Array<{ name: string; size?: string }>>([]);
   const [driveUrl, setDriveUrl] = useState('');
 
   // --- CARD 5: Peserta, Narahubung & Kemitraan ---
@@ -131,13 +182,25 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
   const [partners, setPartners] = useState(
     'Kelurahan Manis Jaya, Babinsa, Bhabinkamtibmas, Forum RW, Puskesmas'
   );
-  const [contactName, setContactName] = useState('Ahmad Fauzi (Ketua Panitia)');
-  const [contactPhone, setContactPhone] = useState('0812-9876-5432');
-  const [contactEmail, setContactEmail] = useState('sekretariat.ktmanisjaya@gmail.com');
+  const userContact = useMemo(() => getInitialUserContact(currentUser), [currentUser]);
+  const [contactName, setContactName] = useState(() => userContact.name);
+  const [contactPhone, setContactPhone] = useState(() => userContact.phone);
+  const [contactEmail, setContactEmail] = useState(() => userContact.email);
 
   // --- CARD 6: Publikasi Portal ---
   const [status, setStatus] = useState<'Draft' | 'Publikasikan Sekarang' | 'Menunggu Review'>('Publikasikan Sekarang');
-  const [author, setAuthor] = useState(currentUser?.name || 'Administrator');
+  const [author, setAuthor] = useState(() => userContact.rawName);
+
+  // Sinkronisasi otomatis data narahubung saat user login berganti
+  useEffect(() => {
+    if (currentUser) {
+      const info = getInitialUserContact(currentUser);
+      setContactName(info.name);
+      if (info.phone) setContactPhone(info.phone);
+      if (info.email) setContactEmail(info.email);
+      setAuthor(info.rawName);
+    }
+  }, [currentUser]);
   const [publishDate, setPublishDate] = useState(todayISO);
   const [slug, setSlug] = useState('kegiatan-karang-taruna-manis-jaya');
   const [isFeatured, setIsFeatured] = useState(true);
@@ -226,10 +289,10 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     setQuoteRole(tpl.data.keyQuote.role);
     setParticipantCount(tpl.data.participantCount);
     setParticipantsInvolved(tpl.data.participantsInvolved);
-    setPartners(tpl.data.partners);
-    setContactName(tpl.data.contactPerson.name);
-    setContactPhone(tpl.data.contactPerson.phone);
-    setContactEmail(tpl.data.contactPerson.email);
+    const loggedContact = getInitialUserContact(currentUser);
+    setContactName(loggedContact.name || tpl.data.contactPerson.name);
+    setContactPhone(loggedContact.phone || tpl.data.contactPerson.phone);
+    setContactEmail(loggedContact.email || tpl.data.contactPerson.email);
     setTags(tpl.data.tags);
     setMetaDescription(tpl.data.metaDescription);
     setSocialCaption(tpl.data.socialCaption);
@@ -338,6 +401,10 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
       setResult('');
       setQuoteText('');
       setRundown([]);
+      setVipGuests([
+        { id: 'vip-1', name: '', title: 'Lurah Manis Jaya', status: 'Hadir' },
+        { id: 'vip-2', name: '', title: 'Babinsa Kelurahan Manis Jaya', status: 'Hadir' },
+      ]);
       setDocumentFiles([]);
       onToast('Formulir berhasil dikosongkan.');
     }
@@ -873,30 +940,40 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  {galleryPhotos.map((photo, idx) => (
-                    <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group shadow-2xs">
-                      <img src={photo} alt={`Galeri ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <button
-                        type="button"
-                        onClick={() => setGalleryPhotos(galleryPhotos.filter((_, i) => i !== idx))}
-                        className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Hapus"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  ))}
-
-                  <button
-                    type="button"
+                {galleryPhotos.length === 0 ? (
+                  <div
                     onClick={() => galleryInputRef.current?.click()}
-                    className="w-16 h-16 rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/50 hover:bg-blue-100 text-blue-600 flex flex-col items-center justify-center text-[10px] font-bold transition-all shrink-0"
+                    className="p-3.5 border-2 border-dashed border-slate-200 hover:border-blue-400 bg-slate-50/60 hover:bg-blue-50/40 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-blue-600 group"
                   >
-                    <Plus className="w-4 h-4 mb-0.5" />
-                    <span>Tambah</span>
-                  </button>
-                </div>
+                    <Plus className="w-4 h-4 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                    <span className="text-xs font-semibold text-slate-600 group-hover:text-blue-700">Belum ada foto dokumentasi. Klik di sini untuk menambah foto galeri secara manual</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {galleryPhotos.map((photo, idx) => (
+                      <div key={idx} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0 group shadow-2xs">
+                        <img src={photo} alt={`Galeri ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <button
+                          type="button"
+                          onClick={() => setGalleryPhotos(galleryPhotos.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Hapus"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => galleryInputRef.current?.click()}
+                      className="w-16 h-16 rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/50 hover:bg-blue-100 text-blue-600 flex flex-col items-center justify-center text-[10px] font-bold transition-all shrink-0"
+                    >
+                      <Plus className="w-4 h-4 mb-0.5" />
+                      <span>Tambah</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Video Dokumentasi & Lampiran Berkas Multi */}
@@ -1191,7 +1268,14 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
 
               {/* Narahubung WhatsApp Contact Person */}
               <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/80 space-y-2">
-                <span className="text-[11px] font-bold text-emerald-900 block">Narahubung / Contact Person Resmi</span>
+                <span className="text-[11px] font-bold text-emerald-900 flex items-center justify-between">
+                  <span>Narahubung / Contact Person Resmi</span>
+                  {currentUser?.name && (
+                    <span className="text-[10px] text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full font-semibold">
+                      ✓ Data Akun Login: {currentUser.name}
+                    </span>
+                  )}
+                </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input
                     type="text"

@@ -21,25 +21,22 @@ export function getStoredNotifications(): AppNotification[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed;
+        // Abaikan notifikasi sinkronisasi sesuai permintaan user (tidak usah masuk notif)
+        const filtered = parsed.filter(
+          (n) => n.type !== 'sync' && !n.title.toLowerCase().includes('sinkronisasi')
+        );
+        if (filtered.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+        }
+        return filtered;
       }
     }
   } catch (err) {
     console.error('Failed to parse notifications:', err);
   }
 
-  // Initial seed based on real system state
+  // Initial seed based on real system state (tanpa notifikasi sync)
   const initialNotifications: AppNotification[] = [
-    {
-      id: 'init-sync',
-      title: 'Cloud Firestore Terhubung',
-      message: 'Sinkronisasi real-time antar perangkat aktif untuk organisasi Manis Jaya.',
-      timestamp: Date.now() - 3 * 60 * 1000,
-      read: false,
-      type: 'sync',
-      linkTab: 'database',
-      actionLabel: 'Lihat Database',
-    },
     {
       id: 'init-surat',
       title: 'Sistem Surat & Dokumen Siap',
@@ -105,6 +102,20 @@ export function addNotification(
     read?: boolean;
   }
 ): AppNotification {
+  // Real-time & cloud synchronization diabaikan dari daftar notifikasi lonceng
+  if (notif.type === 'sync' || notif.title.toLowerCase().includes('sinkronisasi')) {
+    return {
+      id: notif.id || `sync-ignored-${Date.now()}`,
+      title: notif.title,
+      message: notif.message,
+      timestamp: notif.timestamp || Date.now(),
+      read: true,
+      type: notif.type,
+      linkTab: notif.linkTab,
+      actionLabel: notif.actionLabel,
+    };
+  }
+
   const current = getStoredNotifications();
   const newNotif: AppNotification = {
     id: notif.id || `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,

@@ -84,6 +84,81 @@ export default defineConfig(() => {
               }
             }
 
+            // Endpoint POST untuk AI Generator Email Verifikasi Resmi Karang Taruna
+            if (req.url && req.url.startsWith('/api/ai-generate-verification-email') && req.method === 'POST') {
+              let body = '';
+              req.on('data', (chunk) => {
+                body += chunk;
+              });
+              req.on('end', async () => {
+                let data: any = {};
+                try {
+                  data = JSON.parse(body || '{}');
+                  const { name, username, code } = data;
+                  let welcomeMessage = '';
+                  let motivationQuote = '';
+
+                  const geminiKey = process.env.GEMINI_API_KEY;
+                  if (geminiKey && geminiKey !== 'MY_GEMINI_API_KEY' && geminiKey.length > 10) {
+                    try {
+                      const { GoogleGenAI } = await import('@google/genai');
+                      const ai = new GoogleGenAI();
+                      const prompt = `Anda adalah asisten AI resmi Karang Taruna Kelurahan Manis Jaya, Kecamatan Jatiuwung, Kota Tangerang.
+Tuliskan:
+1. Satu paragraf sambutan resmi dan hangat untuk calon anggota bernama "${name || 'Kawan Pemuda'}" (username: @${username || 'pemuda'}).
+2. Satu kutipan motivasi pemuda yang membangkitkan semangat berkarya dan kepedulian sosial di Manis Jaya.
+
+Format respons dalam JSON valid persis:
+{
+  "welcomeMessage": "isi sambutan...",
+  "motivationQuote": "isi kutipan motivasi..."
+}`;
+                      const response = await ai.models.generateContent({
+                        model: 'gemini-3.8-flash',
+                        contents: prompt,
+                        config: { responseMimeType: 'application/json' },
+                      });
+                      if (response.text) {
+                        const parsed = JSON.parse(response.text);
+                        welcomeMessage = parsed.welcomeMessage || '';
+                        motivationQuote = parsed.motivationQuote || '';
+                      }
+                    } catch (aiErr: any) {
+                      console.warn('Gemini generateContent notice:', aiErr?.message);
+                    }
+                  }
+
+                  if (!welcomeMessage) {
+                    welcomeMessage = `Selamat datang di Portal Resmi Karang Taruna Kelurahan Manis Jaya, Sdr/i ${name || 'Kawan Pemuda'} (@${username || 'pemuda'}). Mari bersama melangkah, berkarya, dan berkontribusi nyata bagi kemajuan pemuda serta masyarakat Manis Jaya.`;
+                    motivationQuote = 'Pemuda adalah garda terdepan perubahan. Satu tekad, satu semangat untuk Manis Jaya yang lebih berdaya.';
+                  }
+
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      success: true,
+                      welcomeMessage,
+                      motivationQuote,
+                      sender: 'karangtarunamanisjaya@gmail.com',
+                    })
+                  );
+                } catch (err: any) {
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      success: true,
+                      welcomeMessage: `Selamat datang di Karang Taruna Kelurahan Manis Jaya, Sdr/i ${data?.name || 'Kawan Pemuda'}.`,
+                      motivationQuote: 'Karya nyata pemuda untuk Manis Jaya sejahtera.',
+                      sender: 'karangtarunamanisjaya@gmail.com',
+                    })
+                  );
+                }
+              });
+              return;
+            }
+
             // Endpoint POST untuk mengirim email verifikasi resmi pendaftaran
             if (req.url && req.url.startsWith('/api/send-verification-email') && req.method === 'POST') {
               let body = '';

@@ -63,6 +63,35 @@ import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExpor
 
 export type { DetailedMember } from '../../data/membersData';
 
+export const EDUCATION_LIST = [
+  'SD / Sederajat',
+  'SMP / MTs',
+  'SMA / SMK / MA',
+  'Diploma (D1/D2/D3)',
+  'Sarjana (S1 / D4)',
+  'Magister (S2)',
+  'Doktor (S3)',
+  'Belum / Tidak Sekolah',
+  'Lainnya',
+];
+
+export const JOB_LIST = [
+  'Pelajar / Mahasiswa',
+  'Karyawan Swasta',
+  'Wiraswasta / Wirausaha',
+  'Pegawai Negeri Sipil (PNS / ASN)',
+  'Karyawan BUMN / BUMD',
+  'Guru / Dosen / Tenaga Pendidik',
+  'Tenaga Medis / Kesehatan',
+  'Freelancer / Kreatif / IT',
+  'Buruh Harian / Pabrik',
+  'Driver / Ojek Online',
+  'TNI / POLRI',
+  'Ibu Rumah Tangga',
+  'Belum / Tidak Bekerja',
+  'Lainnya',
+];
+
 interface AnggotaViewProps {
   onToast: (msg: string) => void;
   currentUser?: UserAccount;
@@ -1251,21 +1280,39 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-slate-700 font-bold mb-1">Pendidikan</label>
-                        <input
-                          type="text"
+                        <select
                           value={formEducation}
                           onChange={(e) => setFormEducation(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs"
-                        />
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 font-medium focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        >
+                          <option value="">-- Pilih Pendidikan --</option>
+                          {formEducation && !EDUCATION_LIST.includes(formEducation) && (
+                            <option value={formEducation}>{formEducation}</option>
+                          )}
+                          {EDUCATION_LIST.map((edu) => (
+                            <option key={edu} value={edu}>
+                              {edu}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-slate-700 font-bold mb-1">Pekerjaan</label>
-                        <input
-                          type="text"
+                        <select
                           value={formJob}
                           onChange={(e) => setFormJob(e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs"
-                        />
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs bg-white text-slate-800 font-medium focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        >
+                          <option value="">-- Pilih Pekerjaan --</option>
+                          {formJob && !JOB_LIST.includes(formJob) && (
+                            <option value={formJob}>{formJob}</option>
+                          )}
+                          {JOB_LIST.map((job) => (
+                            <option key={job} value={job}>
+                              {job}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 

@@ -443,13 +443,6 @@ function AppContent() {
       },
       (updatedKeys) => {
         showToast('Data diperbarui secara real-time dari komputer/perangkat lain!');
-        addNotification({
-          title: 'Sinkronisasi Real-Time',
-          message: `Pembaruan data (${updatedKeys.join(', ')}) diterima dari perangkat lain.`,
-          type: 'sync',
-          linkTab: 'database',
-          actionLabel: 'Buka Database',
-        });
         if (updatedKeys.includes('kt_users_list_v3')) {
           try {
             const raw = localStorage.getItem('kt_users_list_v3');
@@ -475,13 +468,6 @@ function AppContent() {
       showToast('Menyinkronkan data ke Cloud Firestore...');
       await pushLocalDataToCloud('Sinkronisasi manual pengguna', currentUser.name);
       showToast('Data berhasil disinkronkan ke Cloud Firestore! Semua komputer langsung terupdate.');
-      addNotification({
-        title: 'Sinkronisasi Cloud Berhasil',
-        message: 'Seluruh berkas dan data tersimpan aman di Google Cloud Firestore.',
-        type: 'sync',
-        linkTab: 'database',
-        actionLabel: 'Lihat Status',
-      });
     } catch (err: any) {
       showToast(`Gagal sinkronisasi cloud: ${err.message}`);
     }

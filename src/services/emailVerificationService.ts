@@ -12,6 +12,8 @@ export interface SendVerificationEmailParams {
   name: string;
   username: string;
   code: string;
+  htmlOverride?: string;
+  subjectOverride?: string;
 }
 
 export interface SendVerificationEmailResult {
@@ -236,8 +238,8 @@ export async function sendOfficialVerificationEmail(
 ): Promise<SendVerificationEmailResult> {
   const { to, name, username, code } = params;
   const timestamp = new Date().toISOString();
-  const subject = `[Karang Taruna Manis Jaya] Kode Verifikasi Pendaftaran: ${code}`;
-  const htmlContent = generateOfficialVerificationEmailHtml(params);
+  const subject = params.subjectOverride || `[Karang Taruna Manis Jaya] Kode Verifikasi Pendaftaran: ${code}`;
+  const htmlContent = params.htmlOverride || generateOfficialVerificationEmailHtml(params);
 
   // 1. Simpan pencatatan token verifikasi di Firestore database agar terverifikasi dan aman
   try {
