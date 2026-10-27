@@ -20,6 +20,8 @@ import {
   DanaSourceItem,
   RundownItem,
 } from '../../../types/proposal';
+import { getDatabaseMembers, getDefaultProposalOfficials } from '../../../utils/memberHelpers';
+import { DetailedMember } from '../../../data/membersData';
 
 interface ProposalFormModalProps {
   initialData?: ProposalItem | null;
@@ -62,6 +64,10 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
 
   const defaultNomor = `PRP/${currentYear}/KT-MJ/${String(existingCount + 1).padStart(3, '0')}`;
 
+  // Database anggota resmi
+  const availableMembers = React.useMemo<DetailedMember[]>(() => getDatabaseMembers(), []);
+  const defaultOfficials = React.useMemo(() => getDefaultProposalOfficials(availableMembers), [availableMembers]);
+
   const [activeStep, setActiveStep] = useState<'dasar' | 'narasi' | 'rab' | 'dana' | 'panitia' | 'rundown'>('dasar');
 
   // Form states
@@ -72,7 +78,9 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
   const [tanggalProposal, setTanggalProposal] = useState(initialData?.tanggalProposal || todayISO);
   const [tanggalKegiatan, setTanggalKegiatan] = useState(initialData?.tanggalKegiatan || todayISO);
   const [lokasiKegiatan, setLokasiKegiatan] = useState(initialData?.lokasiKegiatan || 'Kelurahan Manis Jaya');
-  const [penanggungJawab, setPenanggungJawab] = useState(initialData?.penanggungJawab || 'Iik Andriyana');
+  const [penanggungJawab, setPenanggungJawab] = useState(
+    initialData?.penanggungJawab ?? defaultOfficials.penanggungJawabName
+  );
   const [bidangSeksi, setBidangSeksi] = useState(initialData?.bidangSeksi || 'Seksi Kepemudaan');
   const [status, setStatus] = useState<ProposalStatus>(initialData?.status || 'Draft');
   const [jatuhTempo, setJatuhTempo] = useState(initialData?.jatuhTempo || todayISO);
@@ -158,21 +166,41 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
     ]
   );
 
-  // Kepanitiaan
+  // Kepanitiaan - Otomatis sesuai jabatan database atau kosong jika belum ada
   const [pelindung, setPelindung] = useState(initialData?.kepanitiaan.pelindung || 'Lurah Manis Jaya');
   const [penanggungJawabPanitia, setPenanggungJawabPanitia] = useState(
-    initialData?.kepanitiaan.penanggungJawab || 'Iik Andriyana (Ketua Karang Taruna)'
+    initialData?.kepanitiaan.penanggungJawab ?? defaultOfficials.penanggungJawab
   );
-  const [ketuaPanitia, setKetuaPanitia] = useState(initialData?.kepanitiaan.ketuaPanitia || 'Budi Santoso');
-  const [wakilKetua, setWakilKetua] = useState(initialData?.kepanitiaan.wakilKetua || 'Fajar Maulana');
-  const [sekretaris, setSekretaris] = useState(initialData?.kepanitiaan.sekretaris || 'Anisa Rahmawati');
-  const [bendahara, setBendahara] = useState(initialData?.kepanitiaan.bendahara || 'Bagus Tri Prakoso');
-  const [seksiAcaraText, setSeksiAcaraText] = useState(initialData?.kepanitiaan.seksiAcara.join(', ') || 'Dimas Prasetyo, Bayu Nugroho');
-  const [seksiHumasText, setSeksiHumasText] = useState(initialData?.kepanitiaan.seksiHumas.join(', ') || 'Dwi Lestari');
-  const [seksiKonsumsiText, setSeksiKonsumsiText] = useState(initialData?.kepanitiaan.seksiKonsumsi.join(', ') || 'Siti Nurhaliza, Tri Wahyuni');
-  const [seksiPerlengkapanText, setSeksiPerlengkapanText] = useState(initialData?.kepanitiaan.seksiPerlengkapan.join(', ') || 'Ahmad Fauzi');
-  const [seksiDokumentasiText, setSeksiDokumentasiText] = useState(initialData?.kepanitiaan.seksiDokumentasi.join(', ') || 'Rian Ardiansyah');
-  const [seksiKeamananText, setSeksiKeamananText] = useState(initialData?.kepanitiaan.seksiKeamanan.join(', ') || 'Hendri Setiawan');
+  const [ketuaPanitia, setKetuaPanitia] = useState(
+    initialData?.kepanitiaan.ketuaPanitia ?? defaultOfficials.ketuaPanitia
+  );
+  const [wakilKetua, setWakilKetua] = useState(
+    initialData?.kepanitiaan.wakilKetua ?? defaultOfficials.wakilKetua
+  );
+  const [sekretaris, setSekretaris] = useState(
+    initialData?.kepanitiaan.sekretaris ?? defaultOfficials.sekretaris
+  );
+  const [bendahara, setBendahara] = useState(
+    initialData?.kepanitiaan.bendahara ?? defaultOfficials.bendahara
+  );
+  const [seksiAcaraText, setSeksiAcaraText] = useState(
+    initialData?.kepanitiaan.seksiAcara ? initialData.kepanitiaan.seksiAcara.join(', ') : ''
+  );
+  const [seksiHumasText, setSeksiHumasText] = useState(
+    initialData?.kepanitiaan.seksiHumas ? initialData.kepanitiaan.seksiHumas.join(', ') : ''
+  );
+  const [seksiKonsumsiText, setSeksiKonsumsiText] = useState(
+    initialData?.kepanitiaan.seksiKonsumsi ? initialData.kepanitiaan.seksiKonsumsi.join(', ') : ''
+  );
+  const [seksiPerlengkapanText, setSeksiPerlengkapanText] = useState(
+    initialData?.kepanitiaan.seksiPerlengkapan ? initialData.kepanitiaan.seksiPerlengkapan.join(', ') : ''
+  );
+  const [seksiDokumentasiText, setSeksiDokumentasiText] = useState(
+    initialData?.kepanitiaan.seksiDokumentasi ? initialData.kepanitiaan.seksiDokumentasi.join(', ') : ''
+  );
+  const [seksiKeamananText, setSeksiKeamananText] = useState(
+    initialData?.kepanitiaan.seksiKeamanan ? initialData.kepanitiaan.seksiKeamanan.join(', ') : ''
+  );
 
   // Rundown Items
   const [rundownItems, setRundownItems] = useState<RundownItem[]>(
@@ -343,7 +371,7 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
         },
         {
           role: 'Ketua Karang Taruna',
-          officerName: 'Iik Andriyana',
+          officerName: defaultOfficials.penanggungJawabName || '',
           officerTitle: 'Ketua Karang Taruna',
           status: 'Menunggu',
         },
@@ -535,9 +563,33 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Penanggung Jawab</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block text-xs">Penanggung Jawab</label>
+                    {availableMembers.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (!e.target.value) setPenanggungJawab('');
+                          else {
+                            const m = availableMembers.find((item) => item.id === e.target.value);
+                            if (m) setPenanggungJawab(m.name);
+                          }
+                        }}
+                        className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5 max-w-[130px] truncate"
+                        defaultValue=""
+                      >
+                        <option value="">Pilih Anggota...</option>
+                        <option value="">(Kosongkan)</option>
+                        {availableMembers.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} ({m.jabatan || 'Anggota'})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    placeholder="Nama penanggung jawab (atau kosongkan)"
                     value={penanggungJawab}
                     onChange={(e) => setPenanggungJawab(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -807,6 +859,25 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
           {/* STEP 5: Kepanitiaan */}
           {activeStep === 'panitia' && (
             <div className="space-y-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-500">
+                  Nama pejabat kepanitiaan diselaraskan dengan database anggota, atau kosongkan jika belum ada.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPenanggungJawabPanitia(defaultOfficials.penanggungJawab);
+                    setKetuaPanitia(defaultOfficials.ketuaPanitia);
+                    setWakilKetua(defaultOfficials.wakilKetua);
+                    setSekretaris(defaultOfficials.sekretaris);
+                    setBendahara(defaultOfficials.bendahara);
+                  }}
+                  className="text-[11px] text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-0.5 rounded font-semibold"
+                >
+                  Sinkron Database
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Pelindung / Penasehat</label>
@@ -818,46 +889,155 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Penanggung Jawab Organisasi</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">Penanggung Jawab Organisasi</label>
+                    {availableMembers.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (!e.target.value) setPenanggungJawabPanitia('');
+                          else {
+                            const m = availableMembers.find((item) => item.id === e.target.value);
+                            if (m) setPenanggungJawabPanitia(`${m.name} (${m.jabatan || 'Ketua Karang Taruna'})`);
+                          }
+                        }}
+                        className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 max-w-[130px] truncate"
+                        defaultValue=""
+                      >
+                        <option value="">Pilih Anggota...</option>
+                        <option value="">(Kosongkan)</option>
+                        {availableMembers.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    placeholder="Nama Penanggung Jawab (atau kosongkan)"
                     value={penanggungJawabPanitia}
                     onChange={(e) => setPenanggungJawabPanitia(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Ketua Panitia Pelaksana *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">Ketua Panitia Pelaksana *</label>
+                    {availableMembers.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (!e.target.value) setKetuaPanitia('');
+                          else {
+                            const m = availableMembers.find((item) => item.id === e.target.value);
+                            if (m) setKetuaPanitia(m.name);
+                          }
+                        }}
+                        className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 max-w-[130px] truncate"
+                        defaultValue=""
+                      >
+                        <option value="">Pilih Anggota...</option>
+                        <option value="">(Kosongkan)</option>
+                        {availableMembers.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    placeholder="Nama Ketua Panitia (atau kosongkan jika belum ada)"
                     value={ketuaPanitia}
                     onChange={(e) => setKetuaPanitia(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
-                    required
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Wakil Ketua Panitia</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">Wakil Ketua Panitia</label>
+                    {availableMembers.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (!e.target.value) setWakilKetua('');
+                          else {
+                            const m = availableMembers.find((item) => item.id === e.target.value);
+                            if (m) setWakilKetua(m.name);
+                          }
+                        }}
+                        className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 max-w-[130px] truncate"
+                        defaultValue=""
+                      >
+                        <option value="">Pilih Anggota...</option>
+                        <option value="">(Kosongkan)</option>
+                        {availableMembers.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    placeholder="Nama Wakil Ketua (atau kosongkan)"
                     value={wakilKetua}
                     onChange={(e) => setWakilKetua(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Sekretaris Panitia</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">Sekretaris Panitia</label>
+                    {availableMembers.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (!e.target.value) setSekretaris('');
+                          else {
+                            const m = availableMembers.find((item) => item.id === e.target.value);
+                            if (m) setSekretaris(m.name);
+                          }
+                        }}
+                        className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 max-w-[130px] truncate"
+                        defaultValue=""
+                      >
+                        <option value="">Pilih Anggota...</option>
+                        <option value="">(Kosongkan)</option>
+                        {availableMembers.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    placeholder="Nama Sekretaris (atau kosongkan jika belum ada)"
                     value={sekretaris}
                     onChange={(e) => setSekretaris(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Bendahara Panitia</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700 block">Bendahara Panitia</label>
+                    {availableMembers.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          if (!e.target.value) setBendahara('');
+                          else {
+                            const m = availableMembers.find((item) => item.id === e.target.value);
+                            if (m) setBendahara(m.name);
+                          }
+                        }}
+                        className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 max-w-[130px] truncate"
+                        defaultValue=""
+                      >
+                        <option value="">Pilih Anggota...</option>
+                        <option value="">(Kosongkan)</option>
+                        {availableMembers.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    placeholder="Nama Bendahara (atau kosongkan jika belum ada)"
                     value={bendahara}
                     onChange={(e) => setBendahara(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"

@@ -45,6 +45,7 @@ import {
   LogIn,
   AlertCircle,
   Key,
+  PenTool,
 } from 'lucide-react';
 import { useBranding } from '../../context/BrandingContext';
 import { BrandLogo } from './BrandLogo';
@@ -60,6 +61,8 @@ import { resolveAssetUrl } from '../../utils/assetUrl';
 import { OfficialKopSurat } from './surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
 import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
+import { getDefaultSuratPenandatangan } from '../../utils/memberHelpers';
+import { DigitalSignatureModal } from './common/DigitalSignatureModal';
 
 export type { DetailedMember } from '../../data/membersData';
 
@@ -162,6 +165,10 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
   const [formAvatar, setFormAvatar] = useState(selectedMember?.avatar || '');
   const [formPhone, setFormPhone] = useState(selectedMember?.phone || '');
   const [formEmail, setFormEmail] = useState(selectedMember?.email || '');
+  const [formSignatureUrl, setFormSignatureUrl] = useState(
+    selectedMember?.signatureUrl || (selectedMember as any)?.digitalSignatureUrl || ''
+  );
+  const [isSigModalOpen, setIsSigModalOpen] = useState(false);
 
   // Additional form fields for "Data Tambahan" tab
   const [formEducation, setFormEducation] = useState(selectedMember?.education || 'SMA/SMK');
@@ -373,6 +380,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
     setFormJabatan(m.jabatan);
     setFormDivisi(m.divisi);
     setFormRw(m.rw || 'RW 03');
+    setFormSignatureUrl(m.signatureUrl || (m as any).digitalSignatureUrl || '');
 
     // Access fields
     setFormUsername(m.username || m.nickname.toLowerCase() || 'user');
@@ -425,6 +433,8 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       jabatan: formJabatan,
       divisi: formDivisi,
       rw: formRw,
+      signatureUrl: formSignatureUrl,
+      digitalSignatureUrl: formSignatureUrl,
       // Access & Password
       username: formUsername.trim().toLowerCase(),
       password: formPassword,
@@ -1329,9 +1339,9 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                   </div>
                 )}
 
-                {/* SUBTAB 3: DOKUMEN */}
+                {/* SUBTAB 3: DOKUMEN & TANDA TANGAN DIGITAL */}
                 {formTab === 'dokumen' && (
-                  <div className="space-y-3.5 animate-fadeIn">
+                  <div className="space-y-4 animate-fadeIn">
                     <div className="text-center p-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50">
                       <img
                         src={formAvatar}
@@ -1341,11 +1351,75 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-blue-700"
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-blue-700 cursor-pointer"
                       >
                         Unggah Foto Baru
                       </button>
                       <p className="text-[10px] text-slate-400 mt-1">Maksimal 2MB (JPG/PNG)</p>
+                    </div>
+
+                    {/* Tanda Tangan Digital Resmi Anggota */}
+                    <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50/80 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                            <PenTool className="w-3.5 h-3.5 text-emerald-600" />
+                            Tanda Tangan Digital Resmi
+                          </span>
+                          <span className="text-[11px] text-slate-500 leading-snug block mt-0.5">
+                            Otomatis diterapkan pada setiap surat keluar, proposal, dan laporan kegiatan resmi yang ditandatangani.
+                          </span>
+                        </div>
+                        {formSignatureUrl && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                            Tersimpan
+                          </span>
+                        )}
+                      </div>
+
+                      {formSignatureUrl ? (
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+                          <div className="h-14 max-w-[170px] flex items-center justify-center p-1 bg-slate-50 rounded border border-slate-100">
+                            <img
+                              src={formSignatureUrl}
+                              alt="Tanda Tangan Digital"
+                              className="max-h-full max-w-full object-contain"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setIsSigModalOpen(true)}
+                              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              Gores Ulang / Ubah
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormSignatureUrl('');
+                                onToast('Tanda tangan digital dihapus dari formulir.');
+                              }}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                              title="Hapus tanda tangan digital"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center p-4 bg-white rounded-xl border border-dashed border-slate-300 space-y-2">
+                          <p className="text-xs text-slate-500">Anggota ini belum memiliki tanda tangan digital resmi</p>
+                          <button
+                            type="button"
+                            onClick={() => setIsSigModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                          >
+                            <PenTool className="w-3.5 h-3.5" />
+                            <span>Buat / Gores Tanda Tangan Digital</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2361,10 +2435,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                         {/* Signatures */}
                         <div className="mt-8">
                           <OfficialSignatureBlock
-                            ketuaTitle="Ketua Karang Taruna"
-                            ketuaName="Iik Andriyana"
-                            sekretarisTitle="Sekretaris Karang Taruna"
-                            sekretarisName="Anisa Rahmawati"
+                            signatories={getDefaultSuratPenandatangan()}
                             organizationName="Karang Taruna Kelurahan Manis Jaya"
                           />
                         </div>
@@ -2391,6 +2462,22 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
           </div>
         );
       })()}
+
+      {/* MODAL TANDA TANGAN DIGITAL ANGGOTA */}
+      {isSigModalOpen && (
+        <DigitalSignatureModal
+          isOpen={isSigModalOpen}
+          onClose={() => setIsSigModalOpen(false)}
+          onSave={(sigUrl) => {
+            setFormSignatureUrl(sigUrl);
+            onToast(`Tanda tangan digital untuk ${formName || 'anggota'} siap disimpan.`);
+          }}
+          signatoryName={formName}
+          signatoryRole={formJabatan}
+          memberId={selectedMember?.id}
+          initialSignatureUrl={formSignatureUrl}
+        />
+      )}
     </div>
   );
 };

@@ -318,15 +318,14 @@ export const ProposalPrintView: React.FC<ProposalPrintViewProps> = ({ proposal, 
 
           <OfficialSignatureBlock
             ketuaTitle="Ketua Pelaksana"
-            ketuaName={proposal.kepanitiaan.ketuaPanitia || 'Andriansyah'}
+            ketuaName={proposal.kepanitiaan.ketuaPanitia || ''}
             sekretarisTitle="Sekretaris"
-            sekretarisName={proposal.kepanitiaan.sekretaris || 'Eko Mujianto'}
+            sekretarisName={proposal.kepanitiaan.sekretaris || ''}
             withStamp={false}
             showTembusan={true}
             tembusanList={[
-              'Lurah Manis Jaya',
-              'Pembina Karang Taruna Manis Jaya',
-              'Karang Taruna Kecamatan Jatiuwung',
+              'Pembina Karang Taruna',
+              'Arsip',
             ]}
           />
         </div>

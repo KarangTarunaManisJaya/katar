@@ -48,9 +48,10 @@ export interface SuratAttachment {
 
 export interface PenandatanganInfo {
   nama: string;
-  jabatan: 'Ketua Umum' | 'Sekretaris Umum' | 'Bendahara' | 'Ketua Panitia' | 'Pengurus Lainnya';
+  jabatan: 'Ketua Umum' | 'Sekretaris Umum' | 'Bendahara' | 'Ketua Panitia' | 'Pengurus Lainnya' | string;
   ktaNo?: string;
   digitalSignatureUrl?: string;
+  signatureUrl?: string;
   includeStamp?: boolean;
 }
 

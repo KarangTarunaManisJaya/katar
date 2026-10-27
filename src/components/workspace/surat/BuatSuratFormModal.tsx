@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Calendar,
   Layers,
+  PenTool,
 } from 'lucide-react';
 import {
   SuratKeluarItem,
@@ -30,8 +31,15 @@ import {
   templateSuratPresets,
   generateNextNomorSurat,
 } from '../../../data/suratInitialData';
+import {
+  getDatabaseMembers,
+  resolvePenandatanganByJabatan,
+  getDefaultSuratPenandatangan,
+} from '../../../utils/memberHelpers';
+import { DetailedMember } from '../../../data/membersData';
 import { OfficialKopSurat } from './OfficialKopSurat';
 import { OfficialSignatureBlock } from './OfficialSignatureBlock';
+import { DigitalSignatureModal } from '../common/DigitalSignatureModal';
 
 interface BuatSuratFormModalProps {
   isOpen: boolean;
@@ -56,6 +64,15 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
 
+  // Database anggota resmi
+  const [availableMembers, setAvailableMembers] = useState<DetailedMember[]>(() => getDatabaseMembers());
+
+  useEffect(() => {
+    if (isOpen) {
+      setAvailableMembers(getDatabaseMembers());
+    }
+  }, [isOpen]);
+
   // Form states
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [nomorSurat, setNomorSurat] = useState('');
@@ -68,25 +85,14 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
   const [instansi, setInstansi] = useState('');
   const [alamat, setAlamat] = useState('');
   const [isiSurat, setIsiSurat] = useState('');
-  const [tembusanText, setTembusanText] = useState('1. Pembina Karang Taruna\n2. Arsip');
+  const [tembusanText, setTembusanText] = useState('Pembina Karang Taruna\nArsip');
   const [status, setStatus] = useState<StatusSuratKeluar>('Draft');
   const [stempelOrganisasi, setStempelOrganisasi] = useState(false);
 
-  // Penandatangan list
-  const [penandatangan, setPenandatangan] = useState<PenandatanganInfo[]>([
-    {
-      nama: 'Muhammad Ryan Pratama, S.Kom.',
-      jabatan: 'Ketua Umum',
-      ktaNo: 'KT-MJ-2024-001',
-      includeStamp: true,
-    },
-    {
-      nama: 'Dinda Kirana S., S.AP.',
-      jabatan: 'Sekretaris Umum',
-      ktaNo: 'KT-MJ-2024-002',
-      includeStamp: true,
-    },
-  ]);
+  // Penandatangan list - Otomatis sesuai jabatan di database atau kosong jika belum ada
+  const [penandatangan, setPenandatangan] = useState<PenandatanganInfo[]>(() =>
+    getDefaultSuratPenandatangan()
+  );
 
   // Lampiran list
   const [lampiranList, setLampiranList] = useState<SuratAttachment[]>([]);
@@ -96,6 +102,10 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
 
   // Active form view: 'form' | 'preview'
   const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form');
+
+  // Digital Signature Modal state
+  const [sigModalOpen, setSigModalOpen] = useState(false);
+  const [activeSigIdx, setActiveSigIdx] = useState<number | null>(null);
 
   // Initialize form when editing or opening
   useEffect(() => {
@@ -110,10 +120,18 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
       setInstansi(editingItem.instansi || '');
       setAlamat(editingItem.alamat || '');
       setIsiSurat(editingItem.isiSurat);
-      setTembusanText(editingItem.tembusan ? editingItem.tembusan.join('\n') : '');
+      setTembusanText(
+        editingItem.tembusan && editingItem.tembusan.length > 0
+          ? editingItem.tembusan.join('\n')
+          : 'Pembina Karang Taruna\nArsip'
+      );
       setStatus(editingItem.status);
       setStempelOrganisasi(editingItem.stempelOrganisasi);
-      setPenandatangan(editingItem.penandatangan || []);
+      setPenandatangan(
+        editingItem.penandatangan && editingItem.penandatangan.length > 0
+          ? editingItem.penandatangan
+          : getDefaultSuratPenandatangan(availableMembers)
+      );
       setLampiranList(editingItem.lampiran || []);
       setSelectedTemplateId(editingItem.templateUsed || '');
     } else {
@@ -129,9 +147,10 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
       setInstansi('');
       setAlamat('');
       setIsiSurat('');
-      setTembusanText('1. Pembina Karang Taruna\n2. Arsip');
+      setTembusanText('Pembina Karang Taruna\nArsip');
       setStatus('Draft');
       setStempelOrganisasi(true);
+      setPenandatangan(getDefaultSuratPenandatangan(availableMembers));
       setLampiranList([]);
       setSelectedTemplateId('');
     }
@@ -149,7 +168,12 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
     setInstansi(tmpl.defaultInstansi);
     setAlamat(tmpl.defaultAlamat);
     setIsiSurat(tmpl.defaultIsi);
-    setPenandatangan(tmpl.defaultPenandatangan);
+
+    // Sesuai permintaan user: nama pejabat & nomor KTA diambil dari database anggota sesuai jabatan, atau kosong jika belum ada
+    const resolvedTtd = tmpl.defaultPenandatangan.map((ttd) =>
+      resolvePenandatanganByJabatan(ttd.jabatan, availableMembers, ttd.includeStamp)
+    );
+    setPenandatangan(resolvedTtd);
 
     // regenerate number with template jenis
     const generatedNo = generateNextNomorSurat(tmpl.jenisSurat, numberingConfig, new Date(tanggalSurat));
@@ -190,17 +214,74 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
     setLampiranList(lampiranList.filter((a) => a.id !== id));
   };
 
-  // Add penandatangan
+  // Add penandatangan - ambil jabatan berikutnya dari database atau kosongkan
   const handleAddPenandatangan = () => {
-    setPenandatangan([
-      ...penandatangan,
-      {
-        nama: 'Budi Santoso, S.E.',
-        jabatan: 'Bendahara',
-        ktaNo: 'KT-MJ-2024-003',
-        includeStamp: false,
-      },
-    ]);
+    const existingRoles = penandatangan.map((p) => p.jabatan);
+    let nextRole = 'Bendahara';
+    if (existingRoles.includes('Bendahara')) {
+      nextRole = 'Ketua Panitia';
+    } else if (existingRoles.includes('Ketua Panitia')) {
+      nextRole = 'Pengurus Lainnya';
+    }
+    const resolved = resolvePenandatanganByJabatan(nextRole, availableMembers, false);
+    setPenandatangan([...penandatangan, resolved]);
+  };
+
+  const handleJabatanChange = (idx: number, newJabatan: string) => {
+    // Sesuai permintaan user: ambil nama pejabat dan nomor KTA dari database jika ada, atau kosongkan jika belum ada
+    const resolved = resolvePenandatanganByJabatan(
+      newJabatan,
+      availableMembers,
+      penandatangan[idx]?.includeStamp ?? true
+    );
+    const updated = [...penandatangan];
+    updated[idx] = {
+      ...updated[idx],
+      jabatan: newJabatan,
+      nama: resolved.nama,
+      ktaNo: resolved.ktaNo,
+    };
+    setPenandatangan(updated);
+  };
+
+  const handleSelectMemberForTtd = (idx: number, memberId: string) => {
+    if (!memberId) {
+      // Opsi kosongkan
+      handleUpdatePenandatangan(idx, 'nama', '');
+      handleUpdatePenandatangan(idx, 'ktaNo', '');
+      return;
+    }
+    const member = availableMembers.find((m) => m.id === memberId);
+    if (member) {
+      const sig = member.signatureUrl || (member as any).digitalSignatureUrl || '';
+      const updated = [...penandatangan];
+      updated[idx] = {
+        ...updated[idx],
+        nama: member.name,
+        ktaNo: member.noAnggota || member.nik || '',
+        signatureUrl: sig,
+        digitalSignatureUrl: sig,
+      };
+      setPenandatangan(updated);
+    }
+  };
+
+  const handleOpenSignatureModal = (idx: number) => {
+    setActiveSigIdx(idx);
+    setSigModalOpen(true);
+  };
+
+  const handleSaveSignatureFromModal = (sigUrl: string) => {
+    if (activeSigIdx !== null && penandatangan[activeSigIdx]) {
+      const updated = [...penandatangan];
+      updated[activeSigIdx] = {
+        ...updated[activeSigIdx],
+        signatureUrl: sigUrl,
+        digitalSignatureUrl: sigUrl,
+      };
+      setPenandatangan(updated);
+      onToast(`Tanda tangan digital untuk ${updated[activeSigIdx].nama || 'pejabat'} berhasil disematkan.`);
+    }
   };
 
   const handleUpdatePenandatangan = (index: number, field: keyof PenandatanganInfo, val: any) => {
@@ -535,32 +616,73 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
 
               {/* Tembusan */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tembusan Surat (Satu baris per tujuan):
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Tembusan Surat (Satu baris per tujuan):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTembusanText('Pembina Karang Taruna\nArsip')}
+                    className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold"
+                    title="Kembalikan ke default resmi: Pembina Karang Taruna dan Arsip"
+                  >
+                    Setel Default (Pembina & Arsip)
+                  </button>
+                </div>
                 <textarea
                   rows={2}
                   value={tembusanText}
                   onChange={(e) => setTembusanText(e.target.value)}
-                  placeholder="1. Pembina Karang Taruna&#10;2. Arsip"
+                  placeholder="Pembina Karang Taruna&#10;Arsip"
                   className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
                 />
               </div>
 
               {/* Penandatangan Section */}
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    Penandatangan & Pengesahan Surat
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={handleAddPenandatangan}
-                    className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Tambah Penandatangan
-                  </button>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      Penandatangan & Pengesahan Surat
+                    </h3>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      Nama pejabat & nomor KTA otomatis disesuaikan dengan database anggota, atau kosongkan jika belum ada
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPenandatangan(getDefaultSuratPenandatangan(availableMembers));
+                        onToast('Nama pejabat & nomor KTA disinkronkan dari database anggota.');
+                      }}
+                      className="text-[11px] text-emerald-700 hover:text-emerald-900 bg-white border border-emerald-300 hover:bg-emerald-50 px-2.5 py-1 rounded-lg font-semibold transition-colors shadow-2xs"
+                      title="Sinkronkan nama pejabat dan KTA dari database anggota"
+                    >
+                      Sinkron Database
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPenandatangan(
+                          penandatangan.map((p) => ({ ...p, nama: '', ktaNo: '' }))
+                        );
+                        onToast('Nama pejabat dan nomor KTA dikosongkan.');
+                      }}
+                      className="text-[11px] text-slate-600 hover:text-slate-800 bg-white border border-slate-300 hover:bg-slate-100 px-2.5 py-1 rounded-lg font-semibold transition-colors shadow-2xs"
+                      title="Kosongkan nama pejabat dan nomor KTA"
+                    >
+                      Kosongkan Nama
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddPenandatangan}
+                      className="text-xs text-white bg-emerald-700 hover:bg-emerald-800 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 shadow-xs transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Tambah
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -570,42 +692,110 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
                       className="bg-white p-3 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center gap-3"
                     >
                       <div className="flex-1">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Nama Pejabat</label>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <label className="block text-[10px] text-slate-500 font-bold">Nama Pejabat</label>
+                          {availableMembers.length > 0 && (
+                            <select
+                              onChange={(e) => handleSelectMemberForTtd(idx, e.target.value)}
+                              className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 max-w-[190px] truncate"
+                              title="Pilih langsung dari database anggota"
+                              defaultValue=""
+                            >
+                              <option value="">Pilih dari Anggota...</option>
+                              <option value="">(Kosongkan Pejabat)</option>
+                              {availableMembers.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                  {m.name} ({m.jabatan || 'Anggota'})
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
                         <input
                           type="text"
+                          placeholder="Nama Pejabat (atau kosongkan jika belum ada)"
                           value={ttd.nama}
                           onChange={(e) => handleUpdatePenandatangan(idx, 'nama', e.target.value)}
-                          className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded"
+                          className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded focus:border-emerald-500 focus:outline-none"
                         />
                       </div>
-                      <div className="w-44">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Jabatan</label>
+                      <div className="w-40">
+                        <label className="block text-[10px] text-slate-500 font-bold mb-0.5">Jabatan</label>
                         <select
                           value={ttd.jabatan}
-                          onChange={(e) => handleUpdatePenandatangan(idx, 'jabatan', e.target.value as any)}
-                          className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded bg-white"
+                          onChange={(e) => handleJabatanChange(idx, e.target.value)}
+                          className="w-full text-xs px-2 py-1.5 border border-slate-200 rounded bg-white focus:border-emerald-500 focus:outline-none"
                         >
                           <option value="Ketua Umum">Ketua Umum</option>
                           <option value="Sekretaris Umum">Sekretaris Umum</option>
                           <option value="Bendahara">Bendahara</option>
                           <option value="Ketua Panitia">Ketua Panitia</option>
+                          <option value="Wakil Ketua">Wakil Ketua</option>
                           <option value="Pengurus Lainnya">Pengurus Lainnya</option>
                         </select>
                       </div>
-                      <div className="w-36">
-                        <label className="block text-[10px] text-slate-400 font-bold mb-0.5">Nomor KTA</label>
+                      <div className="w-32">
+                        <label className="block text-[10px] text-slate-500 font-bold mb-0.5">Nomor KTA</label>
                         <input
                           type="text"
+                          placeholder="Nomor KTA"
                           value={ttd.ktaNo || ''}
                           onChange={(e) => handleUpdatePenandatangan(idx, 'ktaNo', e.target.value)}
-                          className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded"
+                          className="w-full text-xs px-2.5 py-1.5 border border-slate-200 rounded focus:border-emerald-500 focus:outline-none font-mono"
                         />
                       </div>
+
+                      {/* Tombol & Indikator Tanda Tangan Digital */}
+                      <div className="w-32 flex flex-col justify-end">
+                        <label className="block text-[10px] text-slate-500 font-bold mb-0.5">TTD Digital</label>
+                        {ttd.signatureUrl || ttd.digitalSignatureUrl ? (
+                          <div className="flex items-center justify-between gap-1 bg-emerald-50 border border-emerald-300 rounded px-1.5 py-1">
+                            <img
+                              src={ttd.signatureUrl || ttd.digitalSignatureUrl}
+                              alt="TTD"
+                              className="h-5 max-w-[45px] object-contain"
+                            />
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSignatureModal(idx)}
+                                className="text-[10px] font-bold text-emerald-800 hover:underline"
+                                title="Gores ulang atau ganti tanda tangan digital"
+                              >
+                                Ubah
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleUpdatePenandatangan(idx, 'signatureUrl', '');
+                                  handleUpdatePenandatangan(idx, 'digitalSignatureUrl', '');
+                                }}
+                                className="text-rose-500 hover:text-rose-700"
+                                title="Hapus tanda tangan digital"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenSignatureModal(idx)}
+                            className="inline-flex items-center justify-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-1.5 rounded transition-colors"
+                            title="Bubuhkan tanda tangan digital langsung atau unggah gambar"
+                          >
+                            <PenTool className="w-3 h-3 text-emerald-700" />
+                            <span>Gores TTD</span>
+                          </button>
+                        )}
+                      </div>
+
                       {penandatangan.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleRemovePenandatangan(idx)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded mt-3 sm:mt-0"
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded mt-3 sm:mt-0 transition-colors self-end sm:self-center"
+                          title="Hapus baris penandatangan"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -792,6 +982,23 @@ export const BuatSuratFormModal: React.FC<BuatSuratFormModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* MODAL TANDA TANGAN DIGITAL PEJABAT */}
+      {sigModalOpen && activeSigIdx !== null && penandatangan[activeSigIdx] && (
+        <DigitalSignatureModal
+          isOpen={sigModalOpen}
+          onClose={() => {
+            setSigModalOpen(false);
+            setActiveSigIdx(null);
+          }}
+          onSave={handleSaveSignatureFromModal}
+          signatoryName={penandatangan[activeSigIdx].nama}
+          signatoryRole={penandatangan[activeSigIdx].jabatan}
+          initialSignatureUrl={
+            penandatangan[activeSigIdx].signatureUrl || penandatangan[activeSigIdx].digitalSignatureUrl
+          }
+        />
+      )}
     </div>
   );
 };

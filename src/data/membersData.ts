@@ -35,6 +35,9 @@ export interface DetailedMember {
   // History
   historyJabatan?: { role: string; period: string; desc: string }[];
   historyKegiatan?: { title: string; year: string; role: string }[];
+  // Tanda Tangan Digital Resmi (Base64 PNG URL)
+  signatureUrl?: string;
+  digitalSignatureUrl?: string;
 }
 
 export const EMPTY_MEMBER: DetailedMember = {
@@ -65,6 +68,8 @@ export const EMPTY_MEMBER: DetailedMember = {
   username: '',
   password: '',
   allowedMenus: ['beranda', 'surat'],
+  signatureUrl: '',
+  digitalSignatureUrl: '',
 };
 
 // Daftar Anggota Karang Taruna: Bersih & kosong saat peluncuran sistem

@@ -29,6 +29,7 @@ import {
 import { ActivityItem } from '../../data/workspaceData';
 import { OfficialKopSurat } from './surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
+import { getDefaultSuratPenandatangan } from '../../utils/memberHelpers';
 import { downloadElementAsPdf, printElementDirectly, openPrintInNewWindow } from '../../utils/pdfExport';
 
 export interface LaporanKegiatanItem {
@@ -1228,10 +1229,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
                 {/* POSISI TANDA TANGAN LAPORAN (TANPA STEMPEL SESUAI INSTRUKSI RESMI) */}
                 <div className="mt-6 print:mt-4 break-inside-avoid">
                   <OfficialSignatureBlock
-                    ketuaTitle="Ketua Umum"
-                    ketuaName="Muhammad Ryan Pratama, S.Kom."
-                    sekretarisTitle="Sekretaris Umum"
-                    sekretarisName="Dinda Kirana S., S.AP."
+                    signatories={getDefaultSuratPenandatangan()}
                     withStamp={false}
                     showTembusan={false}
                   />

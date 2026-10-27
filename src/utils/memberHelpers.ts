@@ -90,11 +90,14 @@ export function resolvePenandatanganByJabatan(
 ): PenandatanganInfo {
   const member = findMemberByJabatan(jabatan, membersList);
   if (member && member.name && member.name.trim().length > 0) {
+    const sigUrl = member.signatureUrl || (member as any).digitalSignatureUrl || '';
     return {
       nama: member.name.trim(),
       jabatan: jabatan || member.jabatan || 'Pengurus',
       ktaNo: (member.noAnggota || member.nik || '').trim(),
       includeStamp,
+      digitalSignatureUrl: sigUrl,
+      signatureUrl: sigUrl,
     };
   }
 
@@ -104,6 +107,8 @@ export function resolvePenandatanganByJabatan(
     jabatan: jabatan || 'Pengurus',
     ktaNo: '',
     includeStamp,
+    digitalSignatureUrl: '',
+    signatureUrl: '',
   };
 }
 
@@ -134,8 +139,49 @@ export function getDefaultProposalOfficials(membersList?: DetailedMember[]) {
     penanggungJawab: ketua ? `${ketua.name} (Ketua Karang Taruna)` : '',
     penanggungJawabName: ketua ? ketua.name : '',
     ketuaPanitia: ketuaPanitia ? ketuaPanitia.name : '',
+    ketuaSignatureUrl: ketua?.signatureUrl || (ketua as any)?.digitalSignatureUrl || '',
     wakilKetua: wakilKetua ? wakilKetua.name : '',
     sekretaris: sekretaris ? sekretaris.name : '',
+    sekretarisSignatureUrl: sekretaris?.signatureUrl || (sekretaris as any)?.digitalSignatureUrl || '',
     bendahara: bendahara ? bendahara.name : '',
   };
 }
+
+/**
+ * Menyimpan atau memperbarui tanda tangan digital anggota ke database kt_members_v3
+ */
+export function saveMemberSignature(memberIdentifier: string, signatureDataUrl: string): boolean {
+  if (!memberIdentifier) return false;
+  try {
+    const list = getDatabaseMembers();
+    const idLower = memberIdentifier.toLowerCase().trim();
+    let updated = false;
+
+    const newList = list.map((m) => {
+      if (
+        m.id === memberIdentifier ||
+        (m.name && m.name.toLowerCase().trim() === idLower) ||
+        (m.jabatan && m.jabatan.toLowerCase().trim() === idLower)
+      ) {
+        updated = true;
+        return {
+          ...m,
+          signatureUrl: signatureDataUrl,
+          digitalSignatureUrl: signatureDataUrl,
+        };
+      }
+      return m;
+    });
+
+    if (updated) {
+      localStorage.setItem('kt_members_v3', JSON.stringify(newList));
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('kt_members_changed'));
+      return true;
+    }
+  } catch (e) {
+    console.error('Gagal menyimpan tanda tangan digital anggota:', e);
+  }
+  return false;
+}
+

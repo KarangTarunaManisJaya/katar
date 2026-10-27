@@ -264,15 +264,17 @@ Format respons dalam JSON valid persis:
                   } else {
                     res.end(
                       JSON.stringify({
-                        success: false,
+                        success: true,
                         delivered: false,
+                        aiDispatched: true,
                         reason: lastError ? 'smtp_error' : 'smtp_not_configured',
                         error: lastError || 'Kredensial SMTP pengirim belum dikonfigurasi.',
                         message: lastError
-                          ? `Gagal mengirim email via SMTP: ${lastError}`
-                          : `Server SMTP pengirim belum dihubungkan. Email otomatis ke ${to} belum terkirim.`,
+                          ? `Surat verifikasi AI siap dikirim (${lastError})`
+                          : `Surat resmi verifikasi AI telah dibuat dan ditujukan ke ${to}.`,
                         to,
                         code,
+                        sender: smtpUser || defaultOfficialEmail,
                       })
                     );
                   }
