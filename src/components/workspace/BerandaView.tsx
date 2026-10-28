@@ -247,9 +247,22 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
     },
   ];
 
+  const isMenuAllowedOnBeranda = (id: WorkspaceTab) => {
+    if (!userLoggedIn) {
+      return id === 'berita' || id === 'voting';
+    }
+    if (currentUser?.isSuperAdmin) return true;
+    if (id === 'beranda' || id === 'berita' || id === 'voting') return true;
+    if (!allowedMenus || !Array.isArray(allowedMenus)) return false;
+    return allowedMenus.includes(id);
+  };
+
+  // Sembunyikan menu jika user tidak ada akses, untuk tamu hanya yang diperlukan (Berita & Voling)
+  const allowedMenuButtons = menuButtons.filter((m) => isMenuAllowedOnBeranda(m.id));
+
   const filteredButtons = selectedFilter === 'all'
-    ? menuButtons
-    : menuButtons.filter((m) => m.category === selectedFilter);
+    ? allowedMenuButtons
+    : allowedMenuButtons.filter((m) => m.category === selectedFilter);
 
   // Upcoming highlight agendas for Beranda from real agenda state
   const upcomingAgendas = realAgendasList.slice(0, 3).map((ag: any) => ({
@@ -330,20 +343,15 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (!userLoggedIn) {
-                  onToast('Wajib login pengurus untuk menambah berita.');
-                  onOpenLoginModal?.();
-                  return;
-                }
-                onAddNews();
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>+ Tambah Berita</span>
-            </button>
+            {userLoggedIn && (currentUser?.isSuperAdmin || (allowedMenus && allowedMenus.includes('tambah_berita'))) && (
+              <button
+                onClick={onAddNews}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Tambah Berita</span>
+              </button>
+            )}
             <button
               onClick={() => onNavigate('berita')}
               className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
@@ -395,34 +403,33 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 
             {/* Quick Action Pills in Hero */}
             <div className="flex flex-wrap items-center gap-2.5 pt-2">
-              <button
-                onClick={() => {
-                  if (!userLoggedIn) {
-                    onToast('Wajib login pengurus untuk membuat surat.');
-                    onOpenLoginModal?.();
-                    return;
-                  }
-                  onNavigate('surat');
-                }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5 transition-all transform active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Buat Surat Baru</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (!userLoggedIn) {
-                    onToast('Wajib login pengurus untuk mengelola data anggota.');
-                    onOpenLoginModal?.();
-                    return;
-                  }
-                  onNavigate('anggota');
-                }}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all"
-              >
-                <Users className="w-3.5 h-3.5 text-blue-300" />
-                <span>Kelola Anggota</span>
-              </button>
+              {isMenuAllowedOnBeranda('surat') && (
+                <button
+                  onClick={() => onNavigate('surat')}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5 transition-all transform active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Buat Surat Baru</span>
+                </button>
+              )}
+              {isMenuAllowedOnBeranda('anggota') && (
+                <button
+                  onClick={() => onNavigate('anggota')}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all"
+                >
+                  <Users className="w-3.5 h-3.5 text-blue-300" />
+                  <span>Kelola Anggota</span>
+                </button>
+              )}
+              {isMenuAllowedOnBeranda('ringkasan') && (
+                <button
+                  onClick={() => onNavigate('ringkasan')}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all"
+                >
+                  <Briefcase className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Lihat Kegiatan</span>
+                </button>
+              )}
               <button
                 onClick={() => onNavigate('berita')}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all cursor-pointer"
@@ -513,102 +520,84 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
             </p>
           </div>
 
-          {/* Filter Pill Buttons for Menu */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
-            <button
-              onClick={() => setSelectedFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                selectedFilter === 'all'
-                  ? 'bg-white text-blue-600 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Semua Menu
-            </button>
-            <button
-              onClick={() => setSelectedFilter('kegiatan')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                selectedFilter === 'kegiatan'
-                  ? 'bg-white text-blue-600 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Kegiatan
-            </button>
-            <button
-              onClick={() => setSelectedFilter('administrasi')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                selectedFilter === 'administrasi'
-                  ? 'bg-white text-blue-600 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Administrasi
-            </button>
-            <button
-              onClick={() => setSelectedFilter('sistem')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                selectedFilter === 'sistem'
-                  ? 'bg-white text-blue-600 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Sistem
-            </button>
-          </div>
+          {/* Filter Pill Buttons for Menu - hanya ditampilkan jika pengurus login */}
+          {userLoggedIn && (
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+              <button
+                onClick={() => setSelectedFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedFilter === 'all'
+                    ? 'bg-white text-blue-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Semua Menu
+              </button>
+              <button
+                onClick={() => setSelectedFilter('kegiatan')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedFilter === 'kegiatan'
+                    ? 'bg-white text-blue-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Kegiatan
+              </button>
+              <button
+                onClick={() => setSelectedFilter('administrasi')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedFilter === 'administrasi'
+                    ? 'bg-white text-blue-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Administrasi
+              </button>
+              <button
+                onClick={() => setSelectedFilter('sistem')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  selectedFilter === 'sistem'
+                    ? 'bg-white text-blue-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Sistem
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* The Grid of Interactive Button Menus */}
+        {/* The Grid of Interactive Button Menus - Menu yang tidak ada hak akses disembunyikan sepenuhnya */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredButtons.map((btn) => {
             const Icon = btn.icon;
-            const isAllowed = userLoggedIn
-              ? (btn.id === 'beranda' || !allowedMenus || (Array.isArray(allowedMenus) && allowedMenus.includes(btn.id)))
-              : (btn.id === 'berita' || btn.id === 'voting' || btn.id === 'beranda');
 
             return (
               <button
                 key={btn.id}
                 onClick={() => {
-                  if (isAllowed) {
-                    onNavigate(btn.id);
-                    onToast(`Membuka menu ${btn.title}`);
-                  } else {
-                    if (!userLoggedIn) {
-                      onToast(`Wajib masuk / login pengurus untuk membuka menu "${btn.title}".`);
-                      onOpenLoginModal?.();
-                    } else {
-                      onToast(`Akses Dibatasi: Menu "${btn.title}" belum dicentang untuk akun Anda. Hubungi Pengurus Karang Taruna.`);
-                    }
-                  }
+                  onNavigate(btn.id);
+                  onToast(`Membuka menu ${btn.title}`);
                 }}
-                className={`group relative text-left p-4 rounded-2xl border transition-all duration-200 bg-white hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between ${
-                  isAllowed ? btn.bgLight : 'bg-slate-50/80 border-slate-200 opacity-75'
-                }`}
+                className={`group relative text-left p-4 rounded-2xl border transition-all duration-200 bg-white hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between ${btn.bgLight}`}
               >
                 <div>
                   {/* Top Row: Icon + Badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div
-                      className={`w-11 h-11 rounded-xl ${
-                        isAllowed
-                          ? `bg-gradient-to-br ${btn.color} text-white`
-                          : 'bg-slate-200 text-slate-500'
-                      } flex items-center justify-center shadow-md shadow-slate-200 group-hover:scale-105 transition-transform`}
+                      className={`w-11 h-11 rounded-xl bg-gradient-to-br ${btn.color} text-white flex items-center justify-center shadow-md shadow-slate-200 group-hover:scale-105 transition-transform`}
                     >
-                      {isAllowed ? <Icon className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                      <Icon className="w-5 h-5" />
                     </div>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        isAllowed ? btn.badgeColor : 'bg-slate-200 text-slate-600'
-                      }`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${btn.badgeColor}`}
                     >
-                      {isAllowed ? btn.badge : (!userLoggedIn ? 'Wajib Login 🔒' : 'Terkunci 🔒')}
+                      {btn.badge}
                     </span>
                   </div>
 
                   {/* Title and Description */}
-                  <h3 className={`text-sm font-bold ${isAllowed ? 'text-slate-900 group-hover:text-blue-600' : 'text-slate-600'} transition-colors`}>
+                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                     {btn.title}
                   </h3>
                   <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
@@ -617,13 +606,9 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                 </div>
 
                 {/* Bottom Row Action Link */}
-                <div className={`mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold ${isAllowed ? 'text-slate-600 group-hover:text-blue-600' : 'text-slate-400'}`}>
-                  <span>{isAllowed ? 'Buka Menu' : (!userLoggedIn ? 'Login untuk Buka' : 'Perlu Izin Akses')}</span>
-                  {isAllowed ? (
-                    <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-                  ) : (
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
-                  )}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-600 group-hover:text-blue-600">
+                  <span>Buka Menu</span>
+                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
             );
@@ -646,62 +631,54 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-2 w-full md:w-auto">
-          <button
-            onClick={() => {
-              if (!userLoggedIn) {
-                onToast('Wajib login pengurus untuk membuat surat.');
-                onOpenLoginModal?.();
-                return;
-              }
-              onNavigate('surat');
-            }}
-            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-          >
-            <Mail className="w-3.5 h-3.5" />
-            <span>+ Buat Surat</span>
-          </button>
-          <button
-            onClick={() => {
-              if (!userLoggedIn) {
-                onToast('Wajib login pengurus untuk menambah anggota.');
-                onOpenLoginModal?.();
-                return;
-              }
-              onNavigate('anggota');
-            }}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>+ Tambah Anggota</span>
-          </button>
-          <button
-            onClick={() => {
-              if (!userLoggedIn) {
-                onToast('Wajib login pengurus untuk membuat berita.');
-                onOpenLoginModal?.();
-                return;
-              }
-              onAddNews();
-            }}
-            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-          >
-            <Megaphone className="w-3.5 h-3.5" />
-            <span>+ Buat Berita</span>
-          </button>
-          <button
-            onClick={() => {
-              if (!userLoggedIn) {
-                onToast('Wajib login pengurus untuk menjadwalkan kegiatan.');
-                onOpenLoginModal?.();
-                return;
-              }
-              onNavigate('jadwal');
-            }}
-            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>+ Jadwalkan</span>
-          </button>
+          {isMenuAllowedOnBeranda('surat') && (
+            <button
+              onClick={() => onNavigate('surat')}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>+ Buat Surat</span>
+            </button>
+          )}
+          {isMenuAllowedOnBeranda('anggota') && (
+            <button
+              onClick={() => onNavigate('anggota')}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>+ Tambah Anggota</span>
+            </button>
+          )}
+          {userLoggedIn && (currentUser?.isSuperAdmin || (allowedMenus && allowedMenus.includes('tambah_berita'))) && (
+            <button
+              onClick={onAddNews}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <Megaphone className="w-3.5 h-3.5" />
+              <span>+ Buat Berita</span>
+            </button>
+          )}
+          {isMenuAllowedOnBeranda('jadwal') && (
+            <button
+              onClick={() => onNavigate('jadwal')}
+              className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>+ Jadwalkan</span>
+            </button>
+          )}
+          {!userLoggedIn && (
+            <button
+              onClick={() => {
+                onNavigate('berita');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Megaphone className="w-3.5 h-3.5" />
+              <span>Baca Berita</span>
+            </button>
+          )}
           <button
             onClick={() => {
               onNavigate('voting');

@@ -1075,52 +1075,70 @@ function AppContent() {
           </button>
           <button
             onClick={() => {
-              setCurrentTab('surat');
+              setCurrentTab('berita');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center gap-0.5 font-semibold ${
-              currentTab === 'surat' ? 'text-blue-600 font-bold' : 'text-slate-500'
+              currentTab === 'berita' ? 'text-blue-600 font-bold' : 'text-slate-500'
             }`}
           >
-            <span className="text-sm">✉️</span>
-            <span className="text-[10px]">Surat</span>
+            <span className="text-sm">📢</span>
+            <span className="text-[10px]">Berita</span>
           </button>
           <button
             onClick={() => {
-              setCurrentTab('anggota');
+              setCurrentTab('voting');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center gap-0.5 font-semibold ${
-              currentTab === 'anggota' ? 'text-blue-600 font-bold' : 'text-slate-500'
+              currentTab === 'voting' ? 'text-blue-600 font-bold' : 'text-slate-500'
             }`}
           >
-            <span className="text-sm">👥</span>
-            <span className="text-[10px]">Anggota</span>
+            <span className="text-sm">🗳️</span>
+            <span className="text-[10px]">Voling</span>
           </button>
-          <button
-            onClick={() => {
-              setCurrentTab('laporan');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`flex flex-col items-center gap-0.5 font-semibold ${
-              currentTab === 'laporan' ? 'text-blue-600 font-bold' : 'text-slate-500'
-            }`}
-          >
-            <span className="text-sm">📊</span>
-            <span className="text-[10px]">Laporan</span>
-          </button>
-          <button
-            onClick={() => {
-              setCurrentTab('pengaturan');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className={`flex flex-col items-center gap-0.5 font-semibold ${
-              currentTab === 'pengaturan' ? 'text-blue-600 font-bold' : 'text-slate-500'
-            }`}
-          >
-            <span className="text-sm">⚙️</span>
-            <span className="text-[10px]">Pengaturan</span>
-          </button>
+          {isTabAllowedForUser('surat', currentUser) && (
+            <button
+              onClick={() => {
+                setCurrentTab('surat');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`flex flex-col items-center gap-0.5 font-semibold ${
+                currentTab === 'surat' ? 'text-blue-600 font-bold' : 'text-slate-500'
+              }`}
+            >
+              <span className="text-sm">✉️</span>
+              <span className="text-[10px]">Surat</span>
+            </button>
+          )}
+          {isTabAllowedForUser('anggota', currentUser) && (
+            <button
+              onClick={() => {
+                setCurrentTab('anggota');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`flex flex-col items-center gap-0.5 font-semibold ${
+                currentTab === 'anggota' ? 'text-blue-600 font-bold' : 'text-slate-500'
+              }`}
+            >
+              <span className="text-sm">👥</span>
+              <span className="text-[10px]">Anggota</span>
+            </button>
+          )}
+          {isTabAllowedForUser('pengaturan', currentUser) && (
+            <button
+              onClick={() => {
+                setCurrentTab('pengaturan');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`flex flex-col items-center gap-0.5 font-semibold ${
+                currentTab === 'pengaturan' ? 'text-blue-600 font-bold' : 'text-slate-500'
+              }`}
+            >
+              <span className="text-sm">⚙️</span>
+              <span className="text-[10px]">Pengaturan</span>
+            </button>
+          )}
         </div>
       )}
 

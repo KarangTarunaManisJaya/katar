@@ -173,6 +173,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'akses' as WorkspaceTab, label: 'Akses Pengguna', icon: ShieldCheck },
   ];
 
+  // Sembunyikan menu jika user tidak memiliki hak akses, dan untuk tamu hanya yang diperlukan (Berita & Voling)
+  const visibleKegiatanItems = kegiatanItems.filter((item) => isMenuAllowed(item.id));
+  const visibleAdministrasiItems = administrasiItems.filter((item) => isMenuAllowed(item.id));
+  const visiblePengaturanItems = pengaturanItems.filter((item) => isMenuAllowed(item.id));
+
   // Helper for active menu styling
   const getActiveStyle = (isActive: boolean) => {
     if (!isActive) return {};
@@ -301,93 +306,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* SECTION: KEGIATAN */}
-        <div>
-          {!isCollapsed && (
-            <div
-              className={`px-3 text-[10px] font-bold uppercase tracking-[0.16em] mb-1.5 ${
-                isLight ? 'text-slate-400' : 'text-slate-400'
-              }`}
-            >
-              KEGIATAN
-            </div>
-          )}
-          <nav className="space-y-1">
-            {kegiatanItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              const allowed = isMenuAllowed(item.id);
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelectTab(item.id)}
-                  style={getActiveStyle(isActive)}
-                  className={`w-full flex items-center ${
-                    isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
-                  } rounded-xl text-xs sm:text-sm transition-all ${
-                    !isActive ? getInactiveClass(allowed) : 'shadow-md font-bold'
-                  }`}
-                  title={item.label + (!allowed ? ' (Terkunci)' : '')}
-                >
-                  <div className="flex items-center gap-3">
-                    {showIcon && (
-                      <Icon
-                        className={`w-4 h-4 ${
-                          isActive
-                            ? 'text-white'
-                            : allowed
-                            ? isLight
-                              ? 'text-slate-500'
-                              : 'text-slate-400'
-                            : 'text-slate-400'
-                        }`}
-                      />
-                    )}
-                    {showText && <span>{item.label}</span>}
-                  </div>
-                  {!isCollapsed && (
-                    <>
-                      {isActive ? (
-                        <ChevronRight className="w-4 h-4 opacity-80 shrink-0" />
-                      ) : !allowed ? (
-                        <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      ) : null}
-                    </>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* SECTION: ADMINISTRASI */}
-        <div>
-          {!isCollapsed && (
-            <div
-              className={`px-3 text-[10px] font-bold uppercase tracking-[0.16em] mb-1.5 ${
-                isLight ? 'text-slate-400' : 'text-slate-400'
-              }`}
-            >
-              ADMINISTRASI
-            </div>
-          )}
-          <nav className="space-y-1">
-            {administrasiItems.map((item) => {
-              const Icon = item.icon;
-              const isBeritaGroup = item.id === 'berita';
-              const isActive = currentTab === item.id || (isBeritaGroup && currentTab === 'tambah_berita');
-              const allowed = isMenuAllowed(item.id);
-
-              return (
-                <div key={item.id} className="space-y-0.5">
+        {visibleKegiatanItems.length > 0 && (
+          <div>
+            {!isCollapsed && (
+              <div
+                className={`px-3 text-[10px] font-bold uppercase tracking-[0.16em] mb-1.5 ${
+                  isLight ? 'text-slate-400' : 'text-slate-400'
+                }`}
+              >
+                KEGIATAN
+              </div>
+            )}
+            <nav className="space-y-1">
+              {visibleKegiatanItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentTab === item.id;
+                return (
                   <button
+                    key={item.id}
                     onClick={() => onSelectTab(item.id)}
                     style={getActiveStyle(isActive)}
                     className={`w-full flex items-center ${
                       isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
                     } rounded-xl text-xs sm:text-sm transition-all ${
-                      !isActive ? getInactiveClass(allowed) : 'shadow-md font-bold'
+                      !isActive ? getInactiveClass(true) : 'shadow-md font-bold'
                     }`}
-                    title={item.label + (!allowed ? ' (Terkunci)' : '')}
+                    title={item.label}
                   >
                     <div className="flex items-center gap-3">
                       {showIcon && (
@@ -395,28 +339,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           className={`w-4 h-4 ${
                             isActive
                               ? 'text-white'
-                              : allowed
-                              ? isLight
-                                ? 'text-slate-500'
-                                : 'text-slate-400'
+                              : isLight
+                              ? 'text-slate-500'
                               : 'text-slate-400'
                           }`}
                         />
                       )}
                       {showText && <span>{item.label}</span>}
                     </div>
-
                     {!isCollapsed && (
                       <>
                         {isActive ? (
                           <ChevronRight className="w-4 h-4 opacity-80 shrink-0" />
-                        ) : !allowed ? (
-                          <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         ) : (
                           item.badge !== undefined &&
-                          item.badge > 0 &&
-                          item.id !== 'surat' && (
-                            <span className="w-5 h-5 rounded-full bg-orange-500 text-white font-bold text-[10px] flex items-center justify-center">
+                          item.badge > 0 && (
+                            <span className="w-5 h-5 rounded-full bg-blue-500 text-white font-bold text-[10px] flex items-center justify-center">
                               {item.badge}
                             </span>
                           )
@@ -424,117 +362,183 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </>
                     )}
                   </button>
+                );
+              })}
+            </nav>
+          </div>
+        )}
 
-                  {/* Sub-item: Tambah Berita Baru when on berita group */}
-                  {!isCollapsed && isBeritaGroup && (currentTab === 'berita' || currentTab === 'tambah_berita') && (
-                    <div className="pl-7 pr-1 pt-1 pb-0.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectTab('tambah_berita');
-                        }}
-                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
-                          currentTab === 'tambah_berita'
-                            ? 'bg-blue-500/25 text-blue-300 font-bold border border-blue-400/30'
-                            : isLight
-                            ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5 font-medium'
-                        }`}
-                      >
-                        <PlusSquare className="w-3.5 h-3.5 text-blue-400" />
-                        <span>+ Tambah Berita</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-        </div>
+        {/* SECTION: ADMINISTRASI */}
+        {visibleAdministrasiItems.length > 0 && (
+          <div>
+            {!isCollapsed && (
+              <div
+                className={`px-3 text-[10px] font-bold uppercase tracking-[0.16em] mb-1.5 ${
+                  isLight ? 'text-slate-400' : 'text-slate-400'
+                }`}
+              >
+                ADMINISTRASI
+              </div>
+            )}
+            <nav className="space-y-1">
+              {visibleAdministrasiItems.map((item) => {
+                const Icon = item.icon;
+                const isBeritaGroup = item.id === 'berita';
+                const isActive = currentTab === item.id || (isBeritaGroup && currentTab === 'tambah_berita');
+                const canAddNews = Boolean(
+                  isLoggedIn && (currentUser?.isSuperAdmin || (allowedMenus && allowedMenus.includes('tambah_berita')))
+                );
 
-        {/* SECTION: PENGATURAN */}
-        <div>
-          {!isCollapsed && (
-            <div
-              className={`px-3 text-[10px] font-bold uppercase tracking-[0.16em] mb-1.5 ${
-                isLight ? 'text-slate-400' : 'text-slate-400'
-              }`}
-            >
-              PENGATURAN
-            </div>
-          )}
-          <nav className="space-y-1">
-            {pengaturanItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = currentTab === item.id;
-              const allowed = isMenuAllowed(item.id);
-              return (
-                <div key={item.id}>
-                  <button
-                    onClick={() => onSelectTab(item.id)}
-                    style={getActiveStyle(isActive)}
-                    className={`w-full flex items-center ${
-                      isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
-                    } rounded-xl text-xs sm:text-sm transition-all ${
-                      !isActive ? getInactiveClass(allowed) : 'shadow-md font-bold'
-                    }`}
-                    title={item.label + (!allowed ? ' (Terkunci)' : '')}
-                  >
-                    <div className="flex items-center gap-3">
-                      {showIcon && (
-                        <Icon
-                          className={`w-4 h-4 ${
-                            isActive
-                              ? 'text-white'
-                              : allowed
-                              ? isLight
+                return (
+                  <div key={item.id} className="space-y-0.5">
+                    <button
+                      onClick={() => onSelectTab(item.id)}
+                      style={getActiveStyle(isActive)}
+                      className={`w-full flex items-center ${
+                        isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
+                      } rounded-xl text-xs sm:text-sm transition-all ${
+                        !isActive ? getInactiveClass(true) : 'shadow-md font-bold'
+                      }`}
+                      title={item.label}
+                    >
+                      <div className="flex items-center gap-3">
+                        {showIcon && (
+                          <Icon
+                            className={`w-4 h-4 ${
+                              isActive
+                                ? 'text-white'
+                                : isLight
                                 ? 'text-slate-500'
                                 : 'text-slate-400'
-                              : 'text-slate-400'
-                          }`}
-                        />
-                      )}
-                      {showText && <span>{item.label}</span>}
-                    </div>
-                    {!isCollapsed && (
-                      <>
-                        {isActive ? (
-                          <ChevronRight className="w-4 h-4 opacity-80 shrink-0" />
-                        ) : !allowed ? (
-                          <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        ) : null}
-                      </>
-                    )}
-                  </button>
+                            }`}
+                          />
+                        )}
+                        {showText && <span>{item.label}</span>}
+                      </div>
 
-                  {/* Sub-item under Pengaturan: Kustomisasi Tampilan */}
-                  {!isCollapsed && item.id === 'pengaturan' && currentTab === 'pengaturan' && (
-                    <div className="pl-7 pr-1 pt-1 pb-0.5 space-y-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          try {
-                            localStorage.setItem('kt_active_pengaturan_tab', 'tampilan');
-                            window.dispatchEvent(new CustomEvent('kt_switch_pengaturan_tab', { detail: 'tampilan' }));
-                          } catch {}
-                          onSelectTab('pengaturan');
-                        }}
-                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
-                          isLight
-                            ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                            : 'text-slate-300 hover:text-white hover:bg-white/5 font-medium'
-                        }`}
-                      >
-                        <Palette className="w-3.5 h-3.5 text-blue-400" />
-                        <span>Kustomisasi Tampilan</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-        </div>
+                      {!isCollapsed && (
+                        <>
+                          {isActive ? (
+                            <ChevronRight className="w-4 h-4 opacity-80 shrink-0" />
+                          ) : (
+                            item.badge !== undefined &&
+                            item.badge > 0 &&
+                            item.id !== 'surat' && (
+                              <span className="w-5 h-5 rounded-full bg-orange-500 text-white font-bold text-[10px] flex items-center justify-center">
+                                {item.badge}
+                              </span>
+                            )
+                          )}
+                        </>
+                      )}
+                    </button>
+
+                    {/* Sub-item: Tambah Berita Baru when on berita group and allowed */}
+                    {!isCollapsed && isBeritaGroup && (currentTab === 'berita' || currentTab === 'tambah_berita') && canAddNews && (
+                      <div className="pl-7 pr-1 pt-1 pb-0.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectTab('tambah_berita');
+                          }}
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
+                            currentTab === 'tambah_berita'
+                              ? 'bg-blue-500/25 text-blue-300 font-bold border border-blue-400/30'
+                              : isLight
+                              ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                              : 'text-slate-400 hover:text-white hover:bg-white/5 font-medium'
+                          }`}
+                        >
+                          <PlusSquare className="w-3.5 h-3.5 text-blue-400" />
+                          <span>+ Tambah Berita</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
+        )}
+
+        {/* SECTION: PENGATURAN */}
+        {visiblePengaturanItems.length > 0 && (
+          <div>
+            {!isCollapsed && (
+              <div
+                className={`px-3 text-[10px] font-bold uppercase tracking-[0.16em] mb-1.5 ${
+                  isLight ? 'text-slate-400' : 'text-slate-400'
+                }`}
+              >
+                PENGATURAN
+              </div>
+            )}
+            <nav className="space-y-1">
+              {visiblePengaturanItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentTab === item.id;
+                return (
+                  <div key={item.id}>
+                    <button
+                      onClick={() => onSelectTab(item.id)}
+                      style={getActiveStyle(isActive)}
+                      className={`w-full flex items-center ${
+                        isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3.5 py-2'
+                      } rounded-xl text-xs sm:text-sm transition-all ${
+                        !isActive ? getInactiveClass(true) : 'shadow-md font-bold'
+                      }`}
+                      title={item.label}
+                    >
+                      <div className="flex items-center gap-3">
+                        {showIcon && (
+                          <Icon
+                            className={`w-4 h-4 ${
+                              isActive
+                                ? 'text-white'
+                                : isLight
+                                ? 'text-slate-500'
+                                : 'text-slate-400'
+                            }`}
+                          />
+                        )}
+                        {showText && <span>{item.label}</span>}
+                      </div>
+                      {!isCollapsed && (
+                        <>
+                          {isActive && <ChevronRight className="w-4 h-4 opacity-80 shrink-0" />}
+                        </>
+                      )}
+                    </button>
+
+                    {/* Sub-item under Pengaturan: Kustomisasi Tampilan */}
+                    {!isCollapsed && item.id === 'pengaturan' && currentTab === 'pengaturan' && (
+                      <div className="pl-7 pr-1 pt-1 pb-0.5 space-y-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            try {
+                              localStorage.setItem('kt_active_pengaturan_tab', 'tampilan');
+                              window.dispatchEvent(new CustomEvent('kt_switch_pengaturan_tab', { detail: 'tampilan' }));
+                            } catch {}
+                            onSelectTab('pengaturan');
+                          }}
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
+                            isLight
+                              ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                              : 'text-slate-300 hover:text-white hover:bg-white/5 font-medium'
+                          }`}
+                        >
+                          <Palette className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Kustomisasi Tampilan</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </div>
 
       {/* User Profile Card & Detail List matching propil user di atas */}
