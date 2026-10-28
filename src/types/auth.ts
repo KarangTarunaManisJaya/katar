@@ -126,7 +126,27 @@ export const ALL_MENU_DEFINITIONS: MenuItemDefinition[] = [
     category: 'Sistem',
     description: 'Kelola akun login anggota, kata sandi, dan ceklis izin akses menu.',
   },
+  {
+    id: 'voting',
+    label: 'Voling & Pemilihan Anggota',
+    category: 'Portal',
+    description: 'Pemungutan suara anggota, polling aspirasi pemuda, dan pemilihan ketua kegiatan.',
+  },
 ];
+
+// Akun Tamu / Pengunjung Default (Saat Pertama Kali Masuk Situs Belum Login)
+export const GUEST_USER: UserAccount = {
+  id: 'guest',
+  username: 'tamu',
+  password: '',
+  name: 'Tamu / Pengunjung',
+  role: 'Pengunjung Publik',
+  rw: 'Kelurahan Manis Jaya',
+  avatarInitials: 'TM',
+  status: 'Aktif',
+  isSuperAdmin: false,
+  allowedMenus: ['beranda', 'berita', 'voting'],
+};
 
 // Akun Khusus Administrator (Super Admin) - Tidak tercatat di daftar anggota karang taruna
 export const DEFAULT_USERS: UserAccount[] = [
@@ -161,6 +181,7 @@ export const DEFAULT_USERS: UserAccount[] = [
       'database',
       'pengaturan',
       'akses',
+      'voting',
     ],
     lastLogin: 'Baru saja',
   },

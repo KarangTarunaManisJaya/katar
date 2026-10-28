@@ -32,8 +32,9 @@ import { ArsipKegiatanView } from './components/workspace/ArsipKegiatanView';
 import { DatabaseGoogleDriveView } from './components/workspace/DatabaseGoogleDriveView';
 import { FirebaseConfigModal } from './components/workspace/FirebaseConfigModal';
 import { LoginModal } from './components/auth/LoginModal';
+import { VotingAnggotaSection } from './components/workspace/VotingAnggotaSection';
 import { resolveAssetUrl } from './utils/assetUrl';
-import { DEFAULT_USERS, UserAccount } from './types/auth';
+import { DEFAULT_USERS, UserAccount, GUEST_USER } from './types/auth';
 import { Lock, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import {
   ACTIVITIES_DATA,
@@ -133,11 +134,12 @@ function AppContent() {
   });
 
   const sanitizeUser = (user: any): UserAccount => {
-    if (!user) return DEFAULT_USERS[0];
+    if (!user) return GUEST_USER;
+    if (user.id === 'guest' || user.username === 'pengunjung') return GUEST_USER;
     const defaultUser = DEFAULT_USERS.find((u) => u.id === user.id || u.username === user.username) || DEFAULT_USERS[0];
     const rawMenus = Array.isArray(user.allowedMenus) ? user.allowedMenus : (defaultUser.allowedMenus || []);
-    // Ensure core tabs like 'beranda' and 'surat' are always accessible to users
-    const allowedMenus = Array.from(new Set([...rawMenus, 'beranda', 'surat']));
+    // Ensure core tab 'beranda' is accessible to authenticated users
+    const allowedMenus = Array.from(new Set([...rawMenus, 'beranda']));
     if (allowedMenus.includes('ringkasan') && !allowedMenus.includes('arsip_kegiatan')) {
       allowedMenus.push('arsip_kegiatan');
     }
@@ -150,9 +152,21 @@ function AppContent() {
   };
 
   const isTabAllowedForUser = (tab: WorkspaceTab, user?: UserAccount | null): boolean => {
-    if (!user) return true;
-    if (tab === 'beranda' || tab === 'surat' || user.isSuperAdmin) return true;
-    const allowed = Array.isArray(user.allowedMenus) ? user.allowedMenus : [];
+    const activeUser = user || currentUser;
+    const isUserLoggedIn = Boolean(
+      activeUser &&
+      activeUser.id !== 'guest' &&
+      (typeof localStorage !== 'undefined' ? Boolean(localStorage.getItem('kt_auth_user_v3')) : false)
+    );
+
+    // Pertama kali masuk situs (tamu belum login) hanya bisa melihat berita dan voling (serta beranda)
+    if (!isUserLoggedIn) {
+      return tab === 'berita' || tab === 'voting' || tab === 'beranda';
+    }
+
+    if (activeUser?.isSuperAdmin) return true;
+    if (tab === 'beranda') return true;
+    const allowed = Array.isArray(activeUser?.allowedMenus) ? activeUser.allowedMenus : [];
     if (tab === 'arsip_kegiatan') {
       return allowed.includes('ringkasan') || allowed.includes('arsip_kegiatan');
     }
@@ -186,8 +200,14 @@ function AppContent() {
         return sanitizeUser(JSON.parse(savedAuth));
       }
     } catch (e) {}
-    return DEFAULT_USERS[0];
+    return GUEST_USER;
   });
+
+  const isLoggedIn = Boolean(
+    currentUser &&
+    currentUser.id !== 'guest' &&
+    (typeof localStorage !== 'undefined' ? Boolean(localStorage.getItem('kt_auth_user_v3')) : false)
+  );
 
   const [showLoginModal, setShowLoginModal] = useState<boolean>(() => {
     try {
@@ -197,10 +217,8 @@ function AppContent() {
           return true;
         }
       }
-      return !localStorage.getItem('kt_auth_user_v3');
-    } catch {
-      return true;
-    }
+    } catch {}
+    return false;
   });
 
   const showToast = (msg: string) => {
@@ -280,8 +298,10 @@ function AppContent() {
     try {
       localStorage.removeItem('kt_auth_user_v3');
     } catch (e) {}
-    showToast('Sesi ditutup. Silakan login kembali.');
-    setShowLoginModal(true);
+    setCurrentUser(GUEST_USER);
+    setCurrentTab('beranda');
+    showToast('Sesi ditutup. Anda kini dalam mode Pengunjung (Tamu).');
+    setShowLoginModal(false);
   };
 
   const handleAddActivity = async (newAct: ActivityItem) => {
@@ -495,6 +515,7 @@ function AppContent() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         currentUser={currentUser}
+        isLoggedIn={isLoggedIn}
         onOpenSettings={() => setCurrentTab('pengaturan')}
         onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         onOpenLoginModal={() => setShowLoginModal(true)}
@@ -544,7 +565,12 @@ function AppContent() {
                 setCurrentTab(tab);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
-                showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun ${currentUser.name}.`);
+                if (!isLoggedIn) {
+                  showToast(`Wajib masuk / login pengurus untuk membuka menu tersebut.`);
+                  setShowLoginModal(true);
+                } else {
+                  showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun ${currentUser.name}.`);
+                }
               }
             }}
           />
@@ -586,7 +612,13 @@ function AppContent() {
                     setMobileMenuOpen(false);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   } else {
-                    showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun Anda.`);
+                    setMobileMenuOpen(false);
+                    if (!isLoggedIn) {
+                      showToast(`Wajib masuk / login pengurus untuk membuka menu tersebut.`);
+                      setShowLoginModal(true);
+                    } else {
+                      showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun Anda.`);
+                    }
                   }
                 }}
               />
@@ -598,45 +630,92 @@ function AppContent() {
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
           {/* Permission Guard: Check if current tab is allowed for current user */}
           {!isTabAllowedForUser(currentTab, currentUser) ? (
-            <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 max-w-xl mx-auto mt-8 animate-fadeIn">
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-inner">
-                <Lock className="w-8 h-8" />
-              </div>
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                  Hak Akses Terkunci
-                </span>
-                <h3 className="text-xl font-black text-slate-900 pt-2">
-                  Akses Menu Ini Dibatasi
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
-                  Akun Anda (<strong>{currentUser.name}</strong> - <em>@{currentUser.username}</em>) belum dicentang untuk membuka menu/aplikasi ini oleh Pengurus Karang Taruna.
-                </p>
-              </div>
+            !isLoggedIn ? (
+              <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 max-w-xl mx-auto mt-8 animate-fadeIn">
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-inner">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                    Wajib Login Pengurus
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 pt-2">
+                    Akses Menu Khusus Pengurus
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                    Menu ini dibatasi untuk Pengurus Karang Taruna Kelurahan Manis Jaya. Pertama kali masuk situs pengunjung umum hanya dapat melihat <strong>Berita Kegiatan</strong> dan <strong>Voling Anggota</strong>. Silakan masuk / login untuk membuka seluruh modul sesuai hak akses Anda.
+                  </p>
+                </div>
 
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-left text-xs text-slate-600 space-y-1">
-                <p className="font-semibold text-slate-800">Status Wewenang Anggota:</p>
-                <p>• Peran: <span className="font-bold text-blue-600">{currentUser.role}</span></p>
-                <p>• Wilayah: <span className="font-bold text-slate-700">{currentUser.rw}</span></p>
-                <p>• Total Menu Terbuka: <span className="font-bold text-emerald-600">{(currentUser.allowedMenus || []).length} Menu</span></p>
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Masuk / Login Pengurus</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentTab('berita');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Lihat Berita Kegiatan
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentTab('voting');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Buka Voling Anggota
+                  </button>
+                </div>
               </div>
+            ) : (
+              <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-sm space-y-4 max-w-xl mx-auto mt-8 animate-fadeIn">
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200 shadow-inner">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                    Hak Akses Terkunci
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 pt-2">
+                    Akses Menu Ini Dibatasi
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-md mx-auto">
+                    Akun Anda (<strong>{currentUser.name}</strong> - <em>@{currentUser.username}</em>) belum dicentang untuk membuka menu/aplikasi ini oleh Pengurus Karang Taruna.
+                  </p>
+                </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => setCurrentTab('beranda')}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Kembali ke Beranda</span>
-                </button>
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all"
-                >
-                  Ganti Akun Pengurus Lain
-                </button>
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-left text-xs text-slate-600 space-y-1">
+                  <p className="font-semibold text-slate-800">Status Wewenang Anggota:</p>
+                  <p>• Peran: <span className="font-bold text-blue-600">{currentUser.role}</span></p>
+                  <p>• Wilayah: <span className="font-bold text-slate-700">{currentUser.rw}</span></p>
+                  <p>• Total Menu Terbuka: <span className="font-bold text-emerald-600">{(currentUser.allowedMenus || []).length} Menu</span></p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => setCurrentTab('beranda')}
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Kembali ke Beranda</span>
+                  </button>
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Ganti Akun Pengurus Lain
+                  </button>
+                </div>
               </div>
-            </div>
+            )
           ) : (
             <>
               {/* 1. View: Anggota & KTA (100% synchronized with user accounts & password form) */}
@@ -674,11 +753,21 @@ function AppContent() {
                       setCurrentTab(tab);
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     } else {
-                      showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun ${currentUser.name}.`);
+                      if (!isLoggedIn) {
+                        showToast(`Wajib masuk / login pengurus untuk membuka menu tersebut.`);
+                        setShowLoginModal(true);
+                      } else {
+                        showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun ${currentUser.name}.`);
+                      }
                     }
                   }}
                   allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
                   onAddNews={() => {
+                    if (!isLoggedIn) {
+                      showToast(`Wajib masuk / login pengurus untuk menambah berita.`);
+                      setShowLoginModal(true);
+                      return;
+                    }
                     setCurrentTab('tambah_berita');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
@@ -688,6 +777,8 @@ function AppContent() {
                   archivedCount={archivedActivitiesCount}
                   onDownloadApk={() => setShowApkModal(true)}
                   currentUser={currentUser}
+                  isLoggedIn={isLoggedIn}
+                  onOpenLoginModal={() => setShowLoginModal(true)}
                 />
               )}
 
@@ -915,6 +1006,29 @@ function AppContent() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 />
+              )}
+
+              {/* 12. View: Voling Anggota (Voting & Aspirasi Real-Time) */}
+              {currentTab === 'voting' && (
+                <div className="space-y-6 animate-fadeIn">
+                  <VotingAnggotaSection
+                    currentUser={currentUser}
+                    onToast={showToast}
+                    onNavigateToTab={(tab) => {
+                      if (isTabAllowedForUser(tab, currentUser)) {
+                        setCurrentTab(tab);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      } else {
+                        if (!isLoggedIn) {
+                          showToast(`Wajib masuk / login pengurus untuk membuka menu tersebut.`);
+                          setShowLoginModal(true);
+                        } else {
+                          showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun ${currentUser.name}.`);
+                        }
+                      }
+                    }}
+                  />
+                </div>
               )}
             </>
           )}

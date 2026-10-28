@@ -45,6 +45,8 @@ interface BerandaViewProps {
   onDownloadApk?: () => void;
   archivedCount?: number;
   currentUser?: UserAccount;
+  isLoggedIn?: boolean;
+  onOpenLoginModal?: () => void;
 }
 
 export const BerandaView: React.FC<BerandaViewProps> = ({
@@ -57,8 +59,18 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   onDownloadApk,
   archivedCount = 0,
   currentUser = DEFAULT_USERS[0],
+  isLoggedIn: propIsLoggedIn,
+  onOpenLoginModal,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'administrasi' | 'kegiatan' | 'sistem'>('all');
+
+  const userLoggedIn = Boolean(
+    propIsLoggedIn ??
+      (currentUser &&
+        currentUser.id !== 'guest' &&
+        typeof localStorage !== 'undefined' &&
+        Boolean(localStorage.getItem('kt_auth_user_v3')))
+  );
 
   // Dynamic counts from localStorage / state
   const membersCount = (() => {
@@ -251,9 +263,50 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 
   return (
     <div className="space-y-7 animate-fadeIn pb-12">
+      {/* 0. BANNER KHUSUS PENGUNJUNG / TAMU (BELUM LOGIN) */}
+      {!userLoggedIn && (
+        <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-5 sm:p-6 border border-blue-500/30 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 border border-blue-400/30 shadow-inner">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-black bg-amber-400/20 text-amber-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-amber-400/30">
+                  Mode Pengunjung (Tamu)
+                </span>
+                <span className="text-xs font-semibold text-slate-300">
+                  Akses Terbuka: Berita Kegiatan & Voling Anggota
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
+                Anda sedang membuka portal publik Karang Taruna Kelurahan Manis Jaya. Anda dapat membaca berita kegiatan dan berpartisipasi dalam voling/aspirasi pemuda. Untuk membuka surat menyurat, berkas proposal, database anggota, dan modul kerja lainnya, silakan masuk dengan akun pengurus.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={onOpenLoginModal}
+              className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer transform active:scale-95"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Masuk / Login Pengurus</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP BANNER: BERITA KEGIATAN & SELAMAT BERKARYA */}
       <Banner
-        onAddNewsClick={onAddNews}
+        onAddNewsClick={() => {
+          if (!userLoggedIn) {
+            onToast('Wajib login pengurus untuk menambah berita.');
+            onOpenLoginModal?.();
+            return;
+          }
+          onAddNews();
+        }}
         onExploreClick={() => onNavigate('jadwal')}
         membersCount={membersCount}
         activitiesCount={activities.length}
@@ -278,7 +331,14 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={onAddNews}
+              onClick={() => {
+                if (!userLoggedIn) {
+                  onToast('Wajib login pengurus untuk menambah berita.');
+                  onOpenLoginModal?.();
+                  return;
+                }
+                onAddNews();
+              }}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
@@ -336,25 +396,39 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
             {/* Quick Action Pills in Hero */}
             <div className="flex flex-wrap items-center gap-2.5 pt-2">
               <button
-                onClick={() => onNavigate('surat')}
+                onClick={() => {
+                  if (!userLoggedIn) {
+                    onToast('Wajib login pengurus untuk membuat surat.');
+                    onOpenLoginModal?.();
+                    return;
+                  }
+                  onNavigate('surat');
+                }}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center gap-1.5 transition-all transform active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Buat Surat Baru</span>
               </button>
               <button
-                onClick={() => onNavigate('anggota')}
+                onClick={() => {
+                  if (!userLoggedIn) {
+                    onToast('Wajib login pengurus untuk mengelola data anggota.');
+                    onOpenLoginModal?.();
+                    return;
+                  }
+                  onNavigate('anggota');
+                }}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all"
               >
                 <Users className="w-3.5 h-3.5 text-blue-300" />
                 <span>Kelola Anggota</span>
               </button>
               <button
-                onClick={() => onNavigate('ringkasan')}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all"
+                onClick={() => onNavigate('berita')}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all cursor-pointer"
               >
-                <Briefcase className="w-3.5 h-3.5 text-amber-300" />
-                <span>Lihat Kegiatan</span>
+                <Megaphone className="w-3.5 h-3.5 text-cyan-300" />
+                <span>Baca Berita Kegiatan</span>
               </button>
               <button
                 onClick={() => {
@@ -362,13 +436,13 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                   if (el) {
                     el.scrollIntoView({ behavior: 'smooth' });
                   } else {
-                    onToast('Mengarahkan ke Fitur Voting Anggota...');
+                    onNavigate('voting');
                   }
                 }}
                 className="px-4 py-2 bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-200 border border-emerald-400/30 rounded-xl text-xs font-semibold backdrop-blur-sm flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <Vote className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Voting Anggota (Live 🟢)</span>
+                <span>Voling Anggota (Live 🟢)</span>
               </button>
             </div>
           </div>
@@ -488,7 +562,9 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredButtons.map((btn) => {
             const Icon = btn.icon;
-            const isAllowed = btn.id === 'beranda' || btn.id === 'surat' || !allowedMenus || (Array.isArray(allowedMenus) && allowedMenus.includes(btn.id));
+            const isAllowed = userLoggedIn
+              ? (btn.id === 'beranda' || !allowedMenus || (Array.isArray(allowedMenus) && allowedMenus.includes(btn.id)))
+              : (btn.id === 'berita' || btn.id === 'voting' || btn.id === 'beranda');
 
             return (
               <button
@@ -498,7 +574,12 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                     onNavigate(btn.id);
                     onToast(`Membuka menu ${btn.title}`);
                   } else {
-                    onToast(`Akses Dibatasi: Menu "${btn.title}" belum dicentang untuk akun Anda. Hubungi Pengurus Karang Taruna.`);
+                    if (!userLoggedIn) {
+                      onToast(`Wajib masuk / login pengurus untuk membuka menu "${btn.title}".`);
+                      onOpenLoginModal?.();
+                    } else {
+                      onToast(`Akses Dibatasi: Menu "${btn.title}" belum dicentang untuk akun Anda. Hubungi Pengurus Karang Taruna.`);
+                    }
                   }
                 }}
                 className={`group relative text-left p-4 rounded-2xl border transition-all duration-200 bg-white hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between ${
@@ -522,7 +603,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                         isAllowed ? btn.badgeColor : 'bg-slate-200 text-slate-600'
                       }`}
                     >
-                      {isAllowed ? btn.badge : 'Terkunci 🔒'}
+                      {isAllowed ? btn.badge : (!userLoggedIn ? 'Wajib Login 🔒' : 'Terkunci 🔒')}
                     </span>
                   </div>
 
@@ -537,7 +618,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 
                 {/* Bottom Row Action Link */}
                 <div className={`mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold ${isAllowed ? 'text-slate-600 group-hover:text-blue-600' : 'text-slate-400'}`}>
-                  <span>{isAllowed ? 'Buka Menu' : 'Perlu Izin Akses'}</span>
+                  <span>{isAllowed ? 'Buka Menu' : (!userLoggedIn ? 'Login untuk Buka' : 'Perlu Izin Akses')}</span>
                   {isAllowed ? (
                     <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                   ) : (
@@ -566,28 +647,56 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 
         <div className="flex flex-wrap items-center justify-center gap-2 w-full md:w-auto">
           <button
-            onClick={() => onNavigate('surat')}
+            onClick={() => {
+              if (!userLoggedIn) {
+                onToast('Wajib login pengurus untuk membuat surat.');
+                onOpenLoginModal?.();
+                return;
+              }
+              onNavigate('surat');
+            }}
             className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
           >
             <Mail className="w-3.5 h-3.5" />
             <span>+ Buat Surat</span>
           </button>
           <button
-            onClick={() => onNavigate('anggota')}
+            onClick={() => {
+              if (!userLoggedIn) {
+                onToast('Wajib login pengurus untuk menambah anggota.');
+                onOpenLoginModal?.();
+                return;
+              }
+              onNavigate('anggota');
+            }}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
           >
             <Users className="w-3.5 h-3.5" />
             <span>+ Tambah Anggota</span>
           </button>
           <button
-            onClick={onAddNews}
+            onClick={() => {
+              if (!userLoggedIn) {
+                onToast('Wajib login pengurus untuk membuat berita.');
+                onOpenLoginModal?.();
+                return;
+              }
+              onAddNews();
+            }}
             className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
           >
             <Megaphone className="w-3.5 h-3.5" />
             <span>+ Buat Berita</span>
           </button>
           <button
-            onClick={() => onNavigate('jadwal')}
+            onClick={() => {
+              if (!userLoggedIn) {
+                onToast('Wajib login pengurus untuk menjadwalkan kegiatan.');
+                onOpenLoginModal?.();
+                return;
+              }
+              onNavigate('jadwal');
+            }}
             className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -595,12 +704,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
           </button>
           <button
             onClick={() => {
-              const el = document.getElementById('section-voting-anggota');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-              } else {
-                onToast('Membuka Fitur Voting Anggota...');
-              }
+              onNavigate('voting');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
           >

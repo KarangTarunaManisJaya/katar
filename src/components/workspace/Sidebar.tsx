@@ -24,6 +24,7 @@ import {
   Palette,
   Smartphone,
   Archive,
+  Vote,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
@@ -45,7 +46,8 @@ export type WorkspaceTab =
   | 'galeri'
   | 'database'
   | 'akses'
-  | 'pengaturan';
+  | 'pengaturan'
+  | 'voting';
 
 interface SidebarProps {
   currentTab: WorkspaceTab;
@@ -84,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [propCurrentUser?.avatar]);
 
   // Active user matching top header (di atas)
-  const currentUser = propCurrentUser || (() => {
+  const currentUser = propCurrentUser !== undefined ? propCurrentUser : (() => {
     try {
       const raw = localStorage.getItem('kt_auth_user_v3');
       return raw ? JSON.parse(raw) : null;
@@ -92,6 +94,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       return null;
     }
   })();
+
+  const isLoggedIn = Boolean(
+    currentUser &&
+    currentUser.id &&
+    currentUser.id !== 'guest' &&
+    typeof window !== 'undefined' &&
+    localStorage.getItem('kt_auth_user_v3')
+  );
 
   const isCollapsed = theme?.sidebarState === 'collapsed';
   const showIcon = theme ? theme.showMenuIcon : true;
@@ -120,9 +130,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       : 'bg-[#0d1b2a] text-white border-slate-800/80';
 
   const isMenuAllowed = (id: WorkspaceTab) => {
-    if (!allowedMenus) return true;
-    if (id === 'beranda' || id === 'surat') return true;
-    if (!Array.isArray(allowedMenus)) return false;
+    if (!isLoggedIn) {
+      // Saat pertama kali masuk belum login, hanya bisa melihat berita dan voling
+      return id === 'berita' || id === 'voting' || id === 'beranda';
+    }
+    if (currentUser?.isSuperAdmin) return true;
+    if (id === 'beranda' || id === 'berita' || id === 'voting') return true;
+    if (!allowedMenus || !Array.isArray(allowedMenus)) return false;
     if (id === 'tambah_berita' || id === 'kategori' || id === 'galeri') {
       return allowedMenus.includes('berita') || allowedMenus.includes(id);
     }
@@ -150,6 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'aset' as WorkspaceTab, label: 'Aset Organisasi', icon: Package },
     { id: 'jadwal' as WorkspaceTab, label: 'Jadwal Kegiatan', icon: Calendar },
     { id: 'berita' as WorkspaceTab, label: 'Berita Kegiatan', icon: Megaphone },
+    { id: 'voting' as WorkspaceTab, label: 'Voling Anggota', icon: Vote },
   ];
 
   const pengaturanItems = [
@@ -650,147 +665,188 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             )}
 
-            {/* Header info profil sama seperti propil user di atas - klik untuk buka/tutup detail */}
-            <div
-              onClick={() => setShowProfileDetail(!showProfileDetail)}
-              className={`p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
-                isLight
-                  ? 'bg-slate-50/90 border-slate-200/80 hover:bg-slate-100/90 shadow-xs'
-                  : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/80 shadow-xs'
-              }`}
-              title="Klik untuk melihat/menyembunyikan detail profil"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  {currentUser?.avatar && !avatarError ? (
-                    <img
-                      src={currentUser.avatar}
-                      alt={currentUser.name}
-                      referrerPolicy="no-referrer"
-                      onError={() => setAvatarError(true)}
-                      className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0 shadow-xs"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                      {currentUser?.avatarInitials || (
-                        <User className="w-4 h-4 text-white" />
-                      )}
+            {/* Mode Pengunjung (Tamu) vs Profil Pengurus */}
+            {!isLoggedIn ? (
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-950/70 to-slate-900 border border-blue-500/30 text-white space-y-2 shadow-sm">
+                {!isCollapsed ? (
+                  <>
+                    <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
+                      <span className="text-xs font-bold text-blue-200 flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Mode Pengunjung</span>
+                      </span>
+                      <span className="text-[10px] font-semibold bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full">
+                        Tamu
+                      </span>
                     </div>
-                  )}
-                  <div className="flex flex-col text-left min-w-0">
-                    <p
-                      className={`text-xs font-bold leading-tight truncate ${
-                        isLight ? 'text-slate-900' : 'text-white'
+                    <p className="text-[11px] text-slate-300 leading-snug">
+                      Akses publik: <strong>Berita</strong> &amp; <strong>Voling</strong>. Wajib masuk untuk membuka menu lainnya.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onOpenLoginModal}
+                      className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Masuk / Login Pengurus</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onOpenLoginModal}
+                    title="Masuk / Login Pengurus"
+                    className="w-full py-2.5 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md cursor-pointer"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                {/* Header info profil sama seperti propil user di atas - klik untuk buka/tutup detail */}
+                <div
+                  onClick={() => setShowProfileDetail(!showProfileDetail)}
+                  className={`p-2.5 rounded-xl border transition-all cursor-pointer select-none ${
+                    isLight
+                      ? 'bg-slate-50/90 border-slate-200/80 hover:bg-slate-100/90 shadow-xs'
+                      : 'bg-slate-900/60 border-slate-800/80 hover:bg-slate-800/80 shadow-xs'
+                  }`}
+                  title="Klik untuk melihat/menyembunyikan detail profil"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {currentUser?.avatar && !avatarError ? (
+                        <img
+                          src={currentUser.avatar}
+                          alt={currentUser.name}
+                          referrerPolicy="no-referrer"
+                          onError={() => setAvatarError(true)}
+                          className="w-8 h-8 rounded-full object-cover border border-slate-300 dark:border-slate-700 shrink-0 shadow-xs"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                          {currentUser?.avatarInitials || (
+                            <User className="w-4 h-4 text-white" />
+                          )}
+                        </div>
+                      )}
+                      <div className="flex flex-col text-left min-w-0">
+                        <p
+                          className={`text-xs font-bold leading-tight truncate ${
+                            isLight ? 'text-slate-900' : 'text-white'
+                          }`}
+                        >
+                          {currentUser?.name || 'Administrator'}
+                        </p>
+                        <p
+                          className={`text-[10px] font-mono leading-tight truncate mt-0.5 ${
+                            isLight ? 'text-slate-500' : 'text-slate-400'
+                          }`}
+                        >
+                          @{currentUser?.username || 'admin'} · {currentUser?.rw || 'Kelurahan Manis Jaya'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 shrink-0 ${
+                        showProfileDetail
+                          ? 'rotate-180 text-blue-600'
+                          : isLight
+                          ? 'text-slate-400'
+                          : 'text-slate-500'
+                      }`}
+                    />
+                  </div>
+
+                  <div className="mt-2 pt-1.5 border-t border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between">
+                    <span
+                      className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded ${
+                        isLight
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50'
                       }`}
                     >
-                      {currentUser?.name || 'Administrator'}
-                    </p>
-                    <p
-                      className={`text-[10px] font-mono leading-tight truncate mt-0.5 ${
-                        isLight ? 'text-slate-500' : 'text-slate-400'
-                      }`}
-                    >
-                      @{currentUser?.username || 'admin'} · {currentUser?.rw || 'Kelurahan Manis Jaya'}
-                    </p>
+                      {currentUser?.role || 'Administrator'}
+                    </span>
+                    <span className={`text-[10px] font-medium flex items-center gap-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Aktif
+                    </span>
                   </div>
                 </div>
 
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform duration-200 shrink-0 ${
-                    showProfileDetail
-                      ? 'rotate-180 text-blue-600'
-                      : isLight
-                      ? 'text-slate-400'
-                      : 'text-slate-500'
-                  }`}
-                />
-              </div>
+                {/* Detail List: Sembunyikan, ada ketika di klik saja */}
+                {showProfileDetail && (
+                  <div className="space-y-1 animate-fadeIn pt-0.5">
+                    <button
+                      onClick={() => {
+                        if (onOpenFirebaseConfig) onOpenFirebaseConfig();
+                        else onSelectTab('database');
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                        isLight
+                          ? 'text-emerald-800 hover:bg-emerald-50'
+                          : 'text-emerald-400 hover:bg-emerald-950/40'
+                      }`}
+                      title="Akun & Database Firebase"
+                    >
+                      <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="truncate">Akun & Database Firebase</span>
+                    </button>
 
-              <div className="mt-2 pt-1.5 border-t border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between">
-                <span
-                  className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded ${
-                    isLight
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50'
-                  }`}
-                >
-                  {currentUser?.role || 'Administrator'}
-                </span>
-                <span className={`text-[10px] font-medium flex items-center gap-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  Aktif
-                </span>
-              </div>
-            </div>
+                    <button
+                      onClick={() => onSelectTab('akses')}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                        currentTab === 'akses'
+                          ? isLight
+                            ? 'bg-amber-100 text-amber-900 font-bold'
+                            : 'bg-amber-950/60 text-amber-300 font-bold'
+                          : isLight
+                          ? 'text-slate-700 hover:bg-slate-100'
+                          : 'text-slate-300 hover:bg-white/5'
+                      }`}
+                      title="Pengaturan Hak Akses Menu"
+                    >
+                      <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span className="truncate">Pengaturan Hak Akses Menu</span>
+                    </button>
 
-            {/* Detail List: Sembunyikan, ada ketika di klik saja */}
-            {showProfileDetail && (
-              <div className="space-y-1 animate-fadeIn pt-0.5">
-                <button
-                  onClick={() => {
-                    if (onOpenFirebaseConfig) onOpenFirebaseConfig();
-                    else onSelectTab('database');
-                  }}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    isLight
-                      ? 'text-emerald-800 hover:bg-emerald-50'
-                      : 'text-emerald-400 hover:bg-emerald-950/40'
-                  }`}
-                  title="Akun & Database Firebase"
-                >
-                  <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="truncate">Akun & Database Firebase</span>
-                </button>
+                    <button
+                      onClick={() => {
+                        if (onOpenLoginModal) onOpenLoginModal();
+                        else onSelectTab('akses');
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                        isLight
+                          ? 'text-slate-700 hover:bg-slate-100'
+                          : 'text-slate-300 hover:bg-white/5'
+                      }`}
+                      title="Ganti Akun Pengurus"
+                    >
+                      <User className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <span className="truncate">Ganti Akun Pengurus</span>
+                    </button>
 
-                <button
-                  onClick={() => onSelectTab('akses')}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    currentTab === 'akses'
-                      ? isLight
-                        ? 'bg-amber-100 text-amber-900 font-bold'
-                        : 'bg-amber-950/60 text-amber-300 font-bold'
-                      : isLight
-                      ? 'text-slate-700 hover:bg-slate-100'
-                      : 'text-slate-300 hover:bg-white/5'
-                  }`}
-                  title="Pengaturan Hak Akses Menu"
-                >
-                  <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span className="truncate">Pengaturan Hak Akses Menu</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (onOpenLoginModal) onOpenLoginModal();
-                    else onSelectTab('akses');
-                  }}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    isLight
-                      ? 'text-slate-700 hover:bg-slate-100'
-                      : 'text-slate-300 hover:bg-white/5'
-                  }`}
-                  title="Ganti Akun Pengurus"
-                >
-                  <User className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <span className="truncate">Ganti Akun Pengurus</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    if (onLogout) onLogout();
-                    else window.location.reload();
-                  }}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
-                    isLight
-                      ? 'text-red-600 hover:bg-red-50'
-                      : 'text-red-400 hover:bg-red-950/40'
-                  }`}
-                  title="Keluar Akun"
-                >
-                  <LogOut className="w-4 h-4 text-red-500 shrink-0" />
-                  <span className="truncate">Keluar Akun</span>
-                </button>
-              </div>
+                    <button
+                      onClick={() => {
+                        if (onLogout) onLogout();
+                        else window.location.reload();
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                        isLight
+                          ? 'text-red-600 hover:bg-red-50'
+                          : 'text-red-400 hover:bg-red-950/40'
+                      }`}
+                      title="Keluar Akun"
+                    >
+                      <LogOut className="w-4 h-4 text-red-500 shrink-0" />
+                      <span className="truncate">Keluar Akun</span>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

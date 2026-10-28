@@ -1207,83 +1207,40 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   </div>
                 )}
 
-                {/* Surat Verifikasi Resmi AI (Salinan Digital Otomatis) */}
-                <div className="p-4 sm:p-5 bg-gradient-to-br from-slate-900 via-[#0f2847] to-[#0a192f] rounded-2xl border border-blue-400/40 text-white space-y-3.5 shadow-xl">
-                  <div className="flex items-center justify-between text-[11px] pb-2.5 border-b border-white/10 font-semibold">
+                {/* Status Pengiriman Kode Verifikasi ke Email Penerima (Tidak Menampilkan Kode di Layar) */}
+                <div className="p-4 bg-gradient-to-br from-slate-900 via-[#0f2847] to-[#0a192f] rounded-2xl border border-blue-400/30 text-white space-y-3 shadow-inner">
+                  <div className="flex items-center justify-between text-[11px] pb-2 border-b border-white/10 font-semibold">
                     <span className="text-blue-200 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>Surat Verifikasi Otomatis AI Karang Taruna</span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Verifikasi Email Resmi Karang Taruna</span>
                     </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-[10px]">
+                    <span className="text-emerald-400 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
-                      <span>AI Siap Verifikasi</span>
+                      <span>Kode Dikirim ke Penerima</span>
                     </span>
                   </div>
 
-                  {/* Info Nomor Surat & Alamat Email Tujuan */}
                   <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-1.5 text-xs">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-400">Nomor Surat:</span>
-                      <span className="font-mono text-blue-300 font-bold">
-                        {aiEmailContent?.nomorSurat || `KT-MJ/VERIF/${new Date().getFullYear()}/${generatedCode}`}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-400">Ditujukan ke:</span>
-                      <span className="font-medium text-slate-200">{regName} (@{regUsername})</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-slate-400">Email Pendaftaran:</span>
-                      <span className="font-mono text-emerald-300 font-bold break-all">{regEmail}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px]">
                       <span className="text-slate-400">Pengirim Resmi:</span>
-                      <span className="font-mono text-slate-300">{OFFICIAL_SENDER_EMAIL}</span>
+                      <span className="font-mono text-blue-300 font-bold">{OFFICIAL_SENDER_EMAIL}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Email Penerima:</span>
+                      <span className="font-mono text-emerald-300 font-bold break-all">{regEmail}</span>
                     </div>
                   </div>
 
-                  {/* Pesan Sambutan AI */}
                   {aiGreeting && (
-                    <div className="p-3 bg-blue-950/70 rounded-xl border border-blue-500/30 text-[11px] text-blue-100 space-y-1">
-                      <span className="block font-bold text-amber-300 text-[10px] uppercase tracking-wider flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-amber-400" /> Sambutan Resmi AI Manis Jaya:
-                      </span>
-                      <p className="leading-relaxed italic">"{aiGreeting}"</p>
+                    <div className="p-2.5 bg-blue-950/70 rounded-xl border border-blue-500/30 text-[11px] text-blue-200 italic space-y-1">
+                      <span className="block font-bold not-italic text-blue-300 text-[10px] uppercase tracking-wider">Pesan Sambutan AI Karang Taruna:</span>
+                      <p>"{aiGreeting}"</p>
                     </div>
                   )}
 
-                  {/* Kotak 6-Digit Angka Verifikasi Resmi */}
-                  <div className="p-3.5 bg-gradient-to-r from-blue-950/90 via-indigo-950/80 to-slate-900 rounded-xl border-2 border-dashed border-blue-400/60 text-center space-y-1 relative">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-300 block">
-                      6 Digit Angka Verifikasi Pendaftaran
-                    </span>
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="font-mono text-3xl sm:text-4xl font-black text-amber-300 tracking-[0.25em] pl-2 drop-shadow-md">
-                        {generatedCode}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleCopyCode}
-                        title="Salin Angka Verifikasi"
-                        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 transition-colors ml-1 cursor-pointer"
-                      >
-                        {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-slate-300">
-                      Surat dan angka verifikasi ini telah ditujukan khusus ke alamat email <strong>{regEmail}</strong>
-                    </p>
-                  </div>
-
-                  {/* Tombol Utama: ⚡ AI Otomatis Isi Kode & Aktifkan Akun (1-Klik) */}
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFillCode(true)}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/40 transition-all transform active:scale-98 cursor-pointer"
-                  >
-                    <Zap className="w-4 h-4 text-amber-300 fill-amber-300 animate-pulse" />
-                    <span>⚡ AI Otomatis: Isi Kode &amp; Aktifkan Akun Sekarang (1-Klik)</span>
-                  </button>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Sistem AI telah memproses dan mengirimkan surat resmi berisi <strong>6 digit angka verifikasi</strong> ke alamat email penerima <strong>{regEmail}</strong>. Silakan periksa Kotak Masuk atau folder Spam pada email Anda untuk melihat kode, atau buka email untuk mengisi kotak kode verifikasi secara otomatis.
+                  </p>
 
                   {/* Banner Otomatis Terisi Ketika Email Dibuka */}
                   {autoVerifiedByEmail && (
@@ -1298,41 +1255,28 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     </div>
                   )}
 
-                  {/* Tombol Pintas Buka Salinan Dokumen, Webmail & Salinan Gmail */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
-                    {aiEmailContent && (
-                      <button
-                        type="button"
-                        onClick={() => openAIVerificationLetterInNewTab(aiEmailContent)}
-                        className="py-2.5 px-2.5 bg-white/10 hover:bg-white/20 text-slate-100 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 border border-white/15 cursor-pointer"
-                        title="Buka salinan surat resmi lengkap di tab baru"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-blue-300 shrink-0" />
-                        <span className="truncate">Surat Resmi (Tab Baru)</span>
-                        <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />
-                      </button>
-                    )}
-
+                  {/* Tombol Pintas Buka Webmail & Salinan Gmail */}
+                  <div className="pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <a
                       href={getEmailProviderWebUrl(regEmail)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-2.5 px-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer text-center"
+                      className="py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                     >
-                      <Inbox className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">Buka Inbox ({regEmail.split('@')[1] || 'Email'})</span>
-                      <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />
+                      <Inbox className="w-3.5 h-3.5" />
+                      <span>Buka Kotak Masuk ({regEmail.split('@')[1] || 'Email'})</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
                     </a>
 
                     <a
                       href={getDirectGmailComposeUrl(regEmail, generatedCode, regName)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-2.5 px-2.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5 border border-white/15 cursor-pointer text-center"
+                      className="py-2.5 px-3 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 border border-white/15 cursor-pointer"
                     >
-                      <Send className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-                      <span className="truncate">Kirim via Gmail</span>
-                      <ExternalLink className="w-3 h-3 opacity-70 shrink-0" />
+                      <Send className="w-3.5 h-3.5 text-blue-300" />
+                      <span>Kirim Sekarang via Gmail</span>
+                      <ExternalLink className="w-3 h-3 opacity-70" />
                     </a>
                   </div>
                 </div>
@@ -1341,21 +1285,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {/* Form Input Angka Verifikasi ke dalam Program */}
               <form onSubmit={handleVerifySubmit} className="space-y-4">
                 <div className="space-y-2 text-center">
-                  <div className="flex items-center justify-between pb-1">
-                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider text-left">
-                      Masukkan 6 Digit Angka Verifikasi
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => handleAutoFillCode(false)}
-                      className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg border border-blue-200 transition-colors"
-                    >
-                      <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
-                      <span>AI Tempel 6-Digit</span>
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-slate-500 text-left">
-                    Ketik angka 6-digit yang tertera di atas ke dalam kotak berikut untuk mengaktifkan akun:
+                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    Masukkan 6 Digit Angka Verifikasi
+                  </label>
+                  <p className="text-[11px] text-slate-500">
+                    Ketik angka 6-digit yang tertera di surat email Anda ke dalam kotak di bawah:
                   </p>
 
                   {/* 6 Digit Input Boxes */}
