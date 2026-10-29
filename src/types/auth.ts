@@ -145,7 +145,7 @@ export const GUEST_USER: UserAccount = {
   avatarInitials: 'TM',
   status: 'Aktif',
   isSuperAdmin: false,
-  allowedMenus: ['beranda', 'berita', 'voting'],
+  allowedMenus: ['beranda', 'berita', 'voting', 'jadwal'],
 };
 
 // Akun Khusus Administrator (Super Admin) - Tidak tercatat di daftar anggota karang taruna

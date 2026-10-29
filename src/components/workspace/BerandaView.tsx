@@ -249,15 +249,15 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 
   const isMenuAllowedOnBeranda = (id: WorkspaceTab) => {
     if (!userLoggedIn) {
-      return id === 'berita' || id === 'voting';
+      return id === 'berita' || id === 'voting' || id === 'jadwal';
     }
     if (currentUser?.isSuperAdmin) return true;
-    if (id === 'beranda' || id === 'berita' || id === 'voting') return true;
+    if (id === 'beranda' || id === 'berita' || id === 'voting' || id === 'jadwal') return true;
     if (!allowedMenus || !Array.isArray(allowedMenus)) return false;
     return allowedMenus.includes(id);
   };
 
-  // Sembunyikan menu jika user tidak ada akses, untuk tamu hanya yang diperlukan (Berita & Voling)
+  // Sembunyikan menu jika user tidak ada akses, untuk tamu hanya yang diperlukan (Berita, Voling & Jadwal)
   const allowedMenuButtons = menuButtons.filter((m) => isMenuAllowedOnBeranda(m.id));
 
   const filteredButtons = selectedFilter === 'all'
@@ -289,11 +289,11 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                   Mode Pengunjung (Tamu)
                 </span>
                 <span className="text-xs font-semibold text-slate-300">
-                  Akses Terbuka: Berita Kegiatan & Voling Anggota
+                  Akses Terbuka: Berita Kegiatan, Jadwal Pemuda & Voling Anggota
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-                Anda sedang membuka portal publik Karang Taruna Kelurahan Manis Jaya. Anda dapat membaca berita kegiatan dan berpartisipasi dalam voling/aspirasi pemuda. Untuk membuka surat menyurat, berkas proposal, database anggota, dan modul kerja lainnya, silakan masuk dengan akun pengurus.
+                Anda sedang membuka portal publik Karang Taruna Kelurahan Manis Jaya. Anda dapat membaca berita kegiatan, melihat jadwal & agenda pemuda, dan berpartisipasi dalam voling/aspirasi. Untuk membuka surat menyurat, berkas proposal, database anggota, dan menambah jadwal kegiatan, silakan masuk dengan akun pengurus.
               </p>
             </div>
           </div>

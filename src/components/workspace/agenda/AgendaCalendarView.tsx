@@ -21,7 +21,8 @@ interface AgendaCalendarViewProps {
   onSelectDate: (date: Date) => void;
   agendas: AgendaItem[];
   onSelectAgenda: (agenda: AgendaItem) => void;
-  onAddOnDate: (dateStr: string) => void;
+  onAddOnDate?: (dateStr: string) => void;
+  canManage?: boolean;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
@@ -40,6 +41,7 @@ export const AgendaCalendarView: React.FC<AgendaCalendarViewProps> = ({
   agendas,
   onSelectAgenda,
   onAddOnDate,
+  canManage = true,
   onPrev,
   onNext,
   onToday,
@@ -243,18 +245,20 @@ export const AgendaCalendarView: React.FC<AgendaCalendarViewProps> = ({
                     )}
                   </div>
 
-                  <div className="pt-1 flex items-center justify-end">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAddOnDate(cell.dateStr);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 hover:opacity-100 p-0.5 text-slate-400 hover:text-blue-600 transition-opacity"
-                      title="Tambah agenda pada tanggal ini"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {onAddOnDate && canManage && (
+                    <div className="pt-1 flex items-center justify-end">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddOnDate(cell.dateStr);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 hover:opacity-100 p-0.5 text-slate-400 hover:text-blue-600 transition-opacity"
+                        title="Tambah agenda pada tanggal ini"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -303,16 +307,18 @@ export const AgendaCalendarView: React.FC<AgendaCalendarViewProps> = ({
                         </span>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAddOnDate(colDay.dateStr);
-                      }}
-                      className="p-1 text-slate-400 hover:text-blue-600 rounded"
-                      title="Tambah agenda"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
+                    {onAddOnDate && canManage && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAddOnDate(colDay.dateStr);
+                        }}
+                        className="p-1 text-slate-400 hover:text-blue-600 rounded"
+                        title="Tambah agenda"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Agenda list for this day */}
@@ -387,13 +393,15 @@ export const AgendaCalendarView: React.FC<AgendaCalendarViewProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={() => onAddOnDate(selectedIso)}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Jadwalkan Agenda Hari Ini</span>
-              </button>
+              {onAddOnDate && canManage && (
+                <button
+                  onClick={() => onAddOnDate(selectedIso)}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Jadwalkan Agenda Hari Ini</span>
+                </button>
+              )}
             </div>
 
             {/* Right: Daily Timeline */}
@@ -411,13 +419,15 @@ export const AgendaCalendarView: React.FC<AgendaCalendarViewProps> = ({
                       Jadwalkan kegiatan baru seperti rapat pleno, kerja bakti, turnamen, atau pelatihan kepemudaan.
                     </p>
                   </div>
-                  <button
-                    onClick={() => onAddOnDate(selectedIso)}
-                    className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold inline-flex items-center gap-2 shadow-xs"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Jadwalkan Sekarang</span>
-                  </button>
+                  {onAddOnDate && canManage && (
+                    <button
+                      onClick={() => onAddOnDate(selectedIso)}
+                      className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold inline-flex items-center gap-2 shadow-xs"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Jadwalkan Sekarang</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 getAgendasForDate(selectedIso).map((item) => {

@@ -37,6 +37,7 @@ interface AgendaDetailModalProps {
   onDelete: (id: string) => void;
   onUpdateAgenda: (updated: AgendaItem) => void;
   onToast: (msg: string) => void;
+  canManage?: boolean;
 }
 
 export const AgendaDetailModal: React.FC<AgendaDetailModalProps> = ({
@@ -46,6 +47,7 @@ export const AgendaDetailModal: React.FC<AgendaDetailModalProps> = ({
   onDelete,
   onUpdateAgenda,
   onToast,
+  canManage = true,
 }) => {
   const [activeTab, setActiveTab] = useState<
     'detail' | 'panitia_peserta' | 'lokasi' | 'anggaran' | 'dokumentasi' | 'pengingat'
@@ -163,13 +165,15 @@ export const AgendaDetailModal: React.FC<AgendaDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onEdit(agenda)}
-              className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors"
-              title="Edit Agenda"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
+            {canManage && (
+              <button
+                onClick={() => onEdit(agenda)}
+                className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors"
+                title="Edit Agenda"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={handlePrint}
               className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
@@ -402,28 +406,42 @@ export const AgendaDetailModal: React.FC<AgendaDetailModalProps> = ({
                           <div className="text-[11px] text-slate-500">{peserta.instansiRt}</div>
                         </div>
 
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => handleToggleAttendance(peserta.id, 'Hadir')}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+                        {canManage ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleToggleAttendance(peserta.id, 'Hadir')}
+                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+                                peserta.statusKehadiran === 'Hadir'
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-slate-200/80 text-slate-700 hover:bg-emerald-100'
+                              }`}
+                            >
+                              Hadir
+                            </button>
+                            <button
+                              onClick={() => handleToggleAttendance(peserta.id, 'Tidak Hadir')}
+                              className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
+                                peserta.statusKehadiran === 'Tidak Hadir'
+                                  ? 'bg-rose-600 text-white'
+                                  : 'bg-slate-200/80 text-slate-700 hover:bg-rose-100'
+                              }`}
+                            >
+                              Tidak Hadir
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] ${
                               peserta.statusKehadiran === 'Hadir'
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-200/80 text-slate-700 hover:bg-emerald-100'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : peserta.statusKehadiran === 'Tidak Hadir'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-slate-100 text-slate-600'
                             }`}
                           >
-                            Hadir
-                          </button>
-                          <button
-                            onClick={() => handleToggleAttendance(peserta.id, 'Tidak Hadir')}
-                            className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors ${
-                              peserta.statusKehadiran === 'Tidak Hadir'
-                                ? 'bg-rose-600 text-white'
-                                : 'bg-slate-200/80 text-slate-700 hover:bg-rose-100'
-                            }`}
-                          >
-                            Tidak Hadir
-                          </button>
-                        </div>
+                            {peserta.statusKehadiran}
+                          </span>
+                        )}
                       </div>
                     ))
                   )}
@@ -673,27 +691,35 @@ export const AgendaDetailModal: React.FC<AgendaDetailModalProps> = ({
 
         {/* Modal Bottom Actions */}
         <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
-          <button
-            onClick={() => {
-              if (window.confirm(`Yakin ingin menghapus agenda "${agenda.namaKegiatan}"?`)) {
-                onDelete(agenda.id);
-                onClose();
-              }
-            }}
-            className="px-3.5 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>Hapus Agenda</span>
-          </button>
+          {canManage ? (
+            <button
+              onClick={() => {
+                if (window.confirm(`Yakin ingin menghapus agenda "${agenda.namaKegiatan}"?`)) {
+                  onDelete(agenda.id);
+                  onClose();
+                }
+              }}
+              className="px-3.5 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Hapus Agenda</span>
+            </button>
+          ) : (
+            <div className="text-xs text-slate-500 italic">
+              Mode Tamu (Pratinjau Informasi Agenda)
+            </div>
+          )}
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => onEdit(agenda)}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors"
-            >
-              <Edit className="w-4 h-4" />
-              <span>Edit Agenda</span>
-            </button>
+            {canManage && (
+              <button
+                onClick={() => onEdit(agenda)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit Agenda</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-colors"

@@ -159,9 +159,9 @@ function AppContent() {
       (typeof localStorage !== 'undefined' ? Boolean(localStorage.getItem('kt_auth_user_v3')) : false)
     );
 
-    // Pertama kali masuk situs (tamu belum login) hanya bisa melihat berita dan voling (serta beranda)
+    // Pertama kali masuk situs (tamu belum login) hanya bisa melihat berita, voling, jadwal kegiatan, serta beranda
     if (!isUserLoggedIn) {
-      return tab === 'berita' || tab === 'voting' || tab === 'beranda';
+      return tab === 'berita' || tab === 'voting' || tab === 'beranda' || tab === 'jadwal';
     }
 
     if (activeUser?.isSuperAdmin) return true;
@@ -844,7 +844,9 @@ function AppContent() {
               {currentTab === 'jadwal' && (
                 <JadwalKegiatanView
                   onToast={showToast}
-                  onExploreOther={() => setCurrentTab('ringkasan')}
+                  onExploreOther={() => setCurrentTab(isLoggedIn ? 'ringkasan' : 'berita')}
+                  currentUser={currentUser}
+                  isLoggedIn={isLoggedIn}
                 />
               )}
 

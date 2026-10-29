@@ -131,11 +131,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isMenuAllowed = (id: WorkspaceTab) => {
     if (!isLoggedIn) {
-      // Saat pertama kali masuk belum login, hanya bisa melihat berita dan voling
-      return id === 'berita' || id === 'voting' || id === 'beranda';
+      // Saat pertama kali masuk belum login, tamu bisa melihat berita, voling, beranda, dan jadwal kegiatan
+      return id === 'berita' || id === 'voting' || id === 'beranda' || id === 'jadwal';
     }
     if (currentUser?.isSuperAdmin) return true;
-    if (id === 'beranda' || id === 'berita' || id === 'voting') return true;
+    if (id === 'beranda' || id === 'berita' || id === 'voting' || id === 'jadwal') return true;
     if (!allowedMenus || !Array.isArray(allowedMenus)) return false;
     if (id === 'tambah_berita' || id === 'kategori' || id === 'galeri') {
       return allowedMenus.includes('berita') || allowedMenus.includes(id);

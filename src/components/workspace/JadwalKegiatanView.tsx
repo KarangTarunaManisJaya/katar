@@ -34,13 +34,26 @@ import { AgendaCalendarView } from './agenda/AgendaCalendarView';
 import { AgendaDetailModal } from './agenda/AgendaDetailModal';
 import { AgendaFormModal } from './agenda/AgendaFormModal';
 import { AgendaStatsView } from './agenda/AgendaStatsView';
+import { UserAccount } from '../../types/auth';
 
 interface JadwalKegiatanViewProps {
   onToast: (msg: string) => void;
   onExploreOther?: () => void;
+  currentUser?: UserAccount;
+  isLoggedIn?: boolean;
 }
 
-export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({ onToast }) => {
+export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({
+  onToast,
+  currentUser,
+  isLoggedIn,
+}) => {
+  const canManage = Boolean(
+    isLoggedIn &&
+    currentUser &&
+    currentUser.id !== 'guest' &&
+    (currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes('jadwal')))
+  );
   // Persistence state
   const [agendas, setAgendas] = useState<AgendaItem[]>(() => {
     try {
@@ -205,17 +218,24 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({ onToast 
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              onClick={() => {
-                setDefaultAddDate('');
-                setSelectedAgendaForEdit(null);
-                setShowAddModal(true);
-              }}
-              className="px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all transform active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Jadwalkan Kegiatan</span>
-            </button>
+            {canManage ? (
+              <button
+                onClick={() => {
+                  setDefaultAddDate('');
+                  setSelectedAgendaForEdit(null);
+                  setShowAddModal(true);
+                }}
+                className="px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-all transform active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Jadwalkan Kegiatan</span>
+              </button>
+            ) : (
+              <div className="px-3.5 py-2 bg-white/15 backdrop-blur-xs border border-white/20 rounded-xl text-xs font-semibold text-white flex items-center gap-1.5 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span>Mode Tamu: Pratinjau Jadwal</span>
+              </div>
+            )}
 
             <button
               onClick={handleExportSpreadsheet}
@@ -361,7 +381,8 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({ onToast 
           onSelectDate={(d) => setSelectedDate(d)}
           agendas={filteredAgendas}
           onSelectAgenda={(ag) => setSelectedAgendaForDetail(ag)}
-          onAddOnDate={handleAddOnDate}
+          onAddOnDate={canManage ? handleAddOnDate : undefined}
+          canManage={canManage}
           onPrev={handlePrevDate}
           onNext={handleNextDate}
           onToday={handleTodayDate}
@@ -376,19 +397,23 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({ onToast 
                 Daftar Seluruh Agenda Kegiatan ({filteredAgendas.length})
               </h3>
               <p className="text-xs text-slate-500">
-                Kelola jadwal, presensi peserta, anggaran, dan detail kepanitiaan.
+                {canManage
+                  ? 'Kelola jadwal, presensi peserta, anggaran, dan detail kepanitiaan.'
+                  : 'Daftar jadwal dan rincian agenda kepemudaan Karang Taruna.'}
               </p>
             </div>
-            <button
-              onClick={() => {
-                setSelectedAgendaForEdit(null);
-                setShowAddModal(true);
-              }}
-              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Tambah Agenda</span>
-            </button>
+            {canManage && (
+              <button
+                onClick={() => {
+                  setSelectedAgendaForEdit(null);
+                  setShowAddModal(true);
+                }}
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Agenda</span>
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -466,27 +491,31 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({ onToast 
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => {
-                                setSelectedAgendaForEdit(item);
-                                setShowAddModal(true);
-                              }}
-                              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
-                              title="Edit Agenda"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Hapus agenda "${item.namaKegiatan}"?`)) {
-                                  handleDeleteAgenda(item.id);
-                                }
-                              }}
-                              className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
-                              title="Hapus"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {canManage && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setSelectedAgendaForEdit(item);
+                                    setShowAddModal(true);
+                                  }}
+                                  className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                                  title="Edit Agenda"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Hapus agenda "${item.namaKegiatan}"?`)) {
+                                      handleDeleteAgenda(item.id);
+                                    }
+                                  }}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                                  title="Hapus"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -507,6 +536,7 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({ onToast 
           agenda={selectedAgendaForDetail}
           onClose={() => setSelectedAgendaForDetail(null)}
           onEdit={(ag) => {
+            if (!canManage) return;
             setSelectedAgendaForDetail(null);
             setSelectedAgendaForEdit(ag);
             setShowAddModal(true);
@@ -514,11 +544,12 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({ onToast 
           onDelete={handleDeleteAgenda}
           onUpdateAgenda={handleSaveAgenda}
           onToast={onToast}
+          canManage={canManage}
         />
       )}
 
       {/* ADD / EDIT MODAL */}
-      {showAddModal && (
+      {showAddModal && canManage && (
         <AgendaFormModal
           initialData={selectedAgendaForEdit}
           defaultDate={defaultAddDate}
