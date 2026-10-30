@@ -1037,8 +1037,25 @@ function AppContent() {
         </main>
       </div>
 
-      {/* Floating Chat Button */}
-      <FloatingChat />
+      {/* Asisten AI Karang Taruna (Tanya Program, Tatacara, Berita & Kegiatan) */}
+      <FloatingChat
+        activities={activities}
+        currentUser={currentUser}
+        isLoggedIn={isLoggedIn}
+        onNavigateToTab={(tab) => {
+          if (isTabAllowedForUser(tab, currentUser)) {
+            setCurrentTab(tab);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else {
+            if (!isLoggedIn) {
+              showToast(`Wajib masuk / login pengurus untuk membuka menu tersebut.`);
+              setShowLoginModal(true);
+            } else {
+              showToast(`Akses Dibatasi: Menu tersebut belum dicentang untuk akun ${currentUser.name}.`);
+            }
+          }
+        }}
+      />
 
       {/* Modal: Activity Detail */}
       {selectedActivity && (

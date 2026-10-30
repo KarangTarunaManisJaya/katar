@@ -287,6 +287,103 @@ Format respons dalam JSON valid persis:
               return;
             }
 
+            // Endpoint POST untuk AI Chat Asisten Karang Taruna Manis Jaya
+            if (req.url && req.url.startsWith('/api/ai-chat-karang-taruna') && req.method === 'POST') {
+              let body = '';
+              req.on('data', (chunk) => {
+                body += chunk;
+              });
+              req.on('end', async () => {
+                try {
+                  const data = JSON.parse(body || '{}');
+                  const { message, history, context } = data;
+                  const geminiKey = process.env.GEMINI_API_KEY;
+                  let replyText = '';
+
+                  if (geminiKey && geminiKey !== 'MY_GEMINI_API_KEY' && geminiKey.length > 10) {
+                    try {
+                      const { GoogleGenAI } = await import('@google/genai');
+                      const ai = new GoogleGenAI();
+                      const systemInstruction = `Kamu adalah seorang rekan ngobrol yang cerdas, hangat, bijaksana, dan berwawasan luas, dengan gaya komunikasi yang luwes, santai, dan mengalir alami persis seperti ChatGPT. Kamu hadir di portal Karang Taruna Kelurahan Manis Jaya sebagai sahabat dialog manusiawi yang siap diajak berdiskusi tentang apa saja.
+
+PEDOMAN GAYA BICARA & CARA BERPIKIR (PERSIS SEPERTI MENGOBROL DI CHATGPT):
+1. GAYA NGOBROL MANUSIAWI, LUWES & HANGAT:
+   - Bicaralah seperti orang yang sedang mengobrol akrab, cerdas, dan menyenangkan.
+   - HINDARI BAHASA ROBOTIK ATAU KAKU: Jangan pernah gunakan frasa klise robot ("Sebagai AI...", "Berdasarkan sistem...", "Sebagai model bahasa..."). Jangan pula membuat jawabanmu terasa seperti diktat silabus kuliah, lembar SOP kaku, atau surat dinas birokratis yang membosankan.
+   - Gunakan transisi percakapan yang alami khas obrolan manusia (misalnya: "Nah, jadi begini ceritanya...", "Wah, pertanyaan yang asyik banget nih!", "Bayangin gini deh...", "Pernah nggak kamu ngerasa...").
+   - Gunakan analogi sederhana dan relatable dari kehidupan sehari-hari agar penjelasan mudah dipahami dan dinikmati.
+
+2. BISA MENJAWAB & MENGOBROL TENTANG APA SAJA (OPEN-DOMAIN):
+   - Kamu terbuka untuk membahas segala macam topik di dunia tanpa batas:
+     * Sains, astronomi, biologi, fisika, mekanika, dan alam semesta.
+     * Tips kehidupan nyata, mengatasi malas/prokrastinasi, manajemen stres, karier, percintaan, dan pertemanan.
+     * Teknologi, gadget, software, internet, dan AI.
+     * Obrolan santai, curhat perasaan, filosofi hidup, maupun humor cerdas.
+   - JAWABLAH TOPIK YANG DITANYAKAN SECARA LANGSUNG & TUNTAS. Jangan pernah menolak pertanyaan umum atau memaksa mengembalikan pembicaraan ke Karang Taruna jika pengguna sedang ngobrol hal lain.
+
+3. KHUSUS JIKA BERTANYA TENTANG KARANG TARUNA KELURAHAN MANIS JAYA:
+   - Jawablah dengan penuh kehangatan pemuda Manis Jaya (Kecamatan Jatiuwung, Kota Tangerang): ceritakan 5 pilar program kerja pemuda (olahraga, sosial kemanusiaan, lingkungan hidup, UMKM pemuda, seni budaya), alur surat dinas dengan barcode & TTD digital, cara cetak KTA digital, peminjaman aset inventaris (sound system, tenda), serta jadwal kegiatan di 8 RW. Pandu pengguna dengan ramah layaknya teman satu pengurus.
+
+4. NADA & PENUTUP:
+   - Tutup obrolan dengan kalimat yang bersahabat, suportif, dan membuka ruang obrolan lebih lanjut bila pengguna ingin menggali lebih dalam.`;
+
+                      const prompt = `Konteks Situasi Obrolan:
+- Waktu: 28 Oktober 2026
+- Rekan Ngobrol: ${context?.userName || 'Teman'} (${context?.userRole || 'Warga/Pengunjung'})
+- Status: ${context?.isLoggedIn ? 'Sudah Login' : 'Tamu'}
+- Berita Terkini Portal (jika relevan): ${JSON.stringify(context?.currentNews || [])}
+- Agenda Terkini Portal (jika relevan): ${JSON.stringify(context?.upcomingAgendas || [])}
+
+Riwayat Obrolan Sebelumnya:
+${(history || []).map((h: any) => `${h.sender === 'user' ? 'Teman' : 'Kamu'}: ${h.text}`).join('\n')}
+
+Pesan Terbaru dari Teman:
+${message}
+
+Instruksi Tanggapan:
+Tanggapi pesan teman di atas dengan gaya mengobrol persis seperti ChatGPT: mengalir, cerdas, bersahabat, berempati, dan masuk akal secara logika. Jelaskan dengan runtut dan asyik dibaca tanpa nada robotik.`;
+
+                      const response = await ai.models.generateContent({
+                        model: 'gemini-3.8-flash',
+                        contents: prompt,
+                        config: {
+                          systemInstruction,
+                        },
+                      });
+
+                      replyText = response.text || '';
+                    } catch (aiErr: any) {
+                      console.warn('Gemini chat generateContent notice:', aiErr?.message);
+                    }
+                  }
+
+                  if (!replyText) {
+                    try {
+                      const { generateLogicalAnswer } = await import('./src/utils/aiReasoningEngine.ts');
+                      replyText = generateLogicalAnswer(message, context);
+                    } catch (engErr) {
+                      console.warn('Reasoning engine error:', engErr);
+                      replyText = `Pertanyaan Anda mengenai "${message}" memiliki keterkaitan erat dengan tata kelola pemuda di Kelurahan Manis Jaya. Silakan periksa menu terkait di portal atau sampaikan pertanyaan lebih rinci agar saya bantu secara bertahap.`;
+                    }
+                  }
+
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ success: true, reply: replyText }));
+                } catch (e: any) {
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(
+                    JSON.stringify({
+                      success: true,
+                      reply: 'Halo! Asisten AI Karang Taruna Manis Jaya siap membantu Anda mengenai program kerja, tatacara surat & KTA, serta berita kegiatan.',
+                    })
+                  );
+                }
+              });
+              return;
+            }
+
             next();
           });
         },

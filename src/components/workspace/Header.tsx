@@ -19,6 +19,7 @@ import {
   X,
   ChevronRight,
   Smartphone,
+  Sparkles,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { UserAccount } from '../../types/auth';
@@ -203,6 +204,19 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
+
+        {/* Tanya AI Button */}
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('open-ai-chat'));
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 border border-blue-200/90 text-xs font-bold transition-all shadow-2xs cursor-pointer group active:scale-95"
+          title="Tanya AI (Bisa Tanya Apa Saja, Berpikir Logis & Karang Taruna)"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-blue-600 group-hover:rotate-12 transition-transform" />
+          <span className="hidden sm:inline">Tanya AI</span>
+        </button>
 
         {/* Notifications Bell with dynamic real-time badge */}
         <div className="relative" ref={notifRef}>
