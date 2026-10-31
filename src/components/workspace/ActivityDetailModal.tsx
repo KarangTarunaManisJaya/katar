@@ -24,6 +24,7 @@ import {
   Check,
   Archive,
   ArchiveRestore,
+  Video,
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
@@ -402,6 +403,44 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                     #{tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {/* Video Liputan & Dokumentasi (Durasi Maksimal 60 Detik) */}
+            {activity.videoUrl && (
+              <div className="space-y-2 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-rose-400" />
+                    <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                      Video Liputan & Dokumentasi
+                    </h4>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    ⏱️ {activity.videoDuration ? `${activity.videoDuration} Detik` : 'Maks. 60 Detik'}
+                  </span>
+                </div>
+
+                {activity.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/) ? (
+                  <div className="w-full aspect-video rounded-xl overflow-hidden shadow-inner">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${activity.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/)![1]}`}
+                      title="Video Liputan"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full border-0"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full rounded-xl overflow-hidden bg-black max-h-96 flex items-center justify-center">
+                    <video
+                      src={activity.videoUrl}
+                      controls
+                      preload="metadata"
+                      className="w-full max-h-96 object-contain"
+                    />
+                  </div>
+                )}
               </div>
             )}
 

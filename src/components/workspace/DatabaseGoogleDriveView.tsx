@@ -63,6 +63,7 @@ import {
 } from '../../services/googleDriveService';
 import {
   pushLocalDataToCloud,
+  forceSyncAllToCloud,
   db,
   getActiveFirebaseConfig,
   isUsingCustomFirebase,
@@ -309,8 +310,12 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
   const handleSyncToCloud = async () => {
     setIsSyncingCloud(true);
     try {
-      await pushLocalDataToCloud('Sinkronisasi manual dari menu database');
-      onToast('Seluruh data operasional berhasil disinkronkan ke Cloud Firestore! Komputer & HP lain langsung terupdate.');
+      const res = await forceSyncAllToCloud();
+      if (res.success) {
+        onToast('Seluruh data operasional berhasil disinkronkan ke Cloud Firestore! Komputer & HP lain langsung terupdate.');
+      } else {
+        onToast(res.message);
+      }
     } catch (err: any) {
       onToast(`Gagal sinkronisasi cloud: ${err.message}`);
     } finally {

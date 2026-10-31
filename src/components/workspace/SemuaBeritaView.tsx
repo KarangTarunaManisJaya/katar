@@ -390,6 +390,14 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                       )}
                     </div>
 
+                    {/* Video badge */}
+                    {act.videoUrl && (
+                      <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-lg bg-rose-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-sm backdrop-blur-xs">
+                        <Video className="w-3 h-3" />
+                        <span>Video (≤60s)</span>
+                      </div>
+                    )}
+
                     {/* Photo count pill */}
                     <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-lg bg-black/60 text-white text-[10px] font-bold flex items-center gap-1 backdrop-blur-xs">
                       <ImageIcon className="w-3 h-3" />

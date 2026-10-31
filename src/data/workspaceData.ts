@@ -44,6 +44,9 @@ export interface ActivityItem {
   contactPerson?: { name: string; phone: string; email?: string };
   coverCaption?: string;
   videoUrl?: string;
+  videoDuration?: number;
+  hasLocalVideo?: boolean;
+  videoNote?: string;
   attachments?: Array<{ id: string; name: string; size?: string; type?: string }>;
   driveUrl?: string;
   status?: 'Draft' | 'Publikasikan Sekarang' | 'Menunggu Review';

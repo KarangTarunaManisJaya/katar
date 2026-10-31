@@ -49,6 +49,7 @@ interface BeritaPreviewModalProps {
     coverCaption?: string;
     galleryPhotos: string[];
     videoUrl?: string;
+    videoDuration?: number;
     documentFiles: Array<{ name: string; size?: string }>;
     driveUrl?: string;
     participantCount?: string;
@@ -306,22 +307,39 @@ export const BeritaPreviewModal: React.FC<BeritaPreviewModalProps> = ({
             </div>
           )}
 
-          {/* YouTube Video Player Embed */}
-          {youtubeEmbedUrl && (
+          {/* Video Player (HTML5 / YouTube) */}
+          {data.videoUrl && (
             <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Video className="w-3.5 h-3.5 text-rose-600" />
-                <span>Video Dokumentasi Liputan</span>
-              </h4>
-              <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-md">
-                <iframe
-                  src={youtubeEmbedUrl}
-                  title="Video Dokumentasi"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Video className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Video Dokumentasi Liputan</span>
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                  ⏱️ {data.videoDuration ? `${data.videoDuration} Detik` : 'Maks. 60 Detik'}
+                </span>
               </div>
+
+              {youtubeEmbedUrl ? (
+                <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-md">
+                  <iframe
+                    src={youtubeEmbedUrl}
+                    title="Video Dokumentasi"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full border-0"
+                  />
+                </div>
+              ) : (
+                <div className="w-full rounded-2xl overflow-hidden shadow-md bg-black">
+                  <video
+                    src={data.videoUrl}
+                    controls
+                    preload="metadata"
+                    className="w-full max-h-96 object-contain"
+                  />
+                </div>
+              )}
             </div>
           )}
 

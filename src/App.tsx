@@ -48,50 +48,8 @@ import {
   deleteNewsFromFirestore,
   notifyLocalDataChanged,
   CloudSyncStatus,
-  purgeCloudNewsAndAssets,
 } from './services/firestoreSyncService';
 import { addNotification } from './services/notificationService';
-
-// Clean Launch Purge - Membersihkan seluruh data uji/inputan sebelum peluncuran resmi sistem (Semua aset & berita dikosongkan)
-const LAUNCH_CLEAN_KEY = 'kt_launch_clean_2026_v2';
-if (typeof window !== 'undefined') {
-  try {
-    if (!localStorage.getItem(LAUNCH_CLEAN_KEY)) {
-      const keysToClear = [
-        'kt_news_v1',
-        'kt_activities_v1',
-        'kt_agenda_v1',
-        'kt_agenda_items_v1',
-        'kt_laporan_kegiatan_v1',
-        'kt_official_letters_v1',
-        'kt_proposals_v1',
-        'kt_assets_v1',
-        'kt_asset_peminjaman_v1',
-        'kt_asset_mutasi_v1',
-        'kt_asset_pengadaan_v1',
-        'kt_asset_penghapusan_v1',
-        'kt_asset_stock_opname_v1',
-        'kt_asset_dokumen_v1',
-        'kt_peminjaman_v1',
-        'kt_pengadaan_v1',
-        'kt_votings_v1',
-        'kt_umkm_v1',
-        'kt_aspirations_v1',
-      ];
-      keysToClear.forEach((k) => {
-        localStorage.removeItem(k);
-        localStorage.setItem(k, '[]');
-      });
-      localStorage.setItem('kt_news_v1', '[]');
-      localStorage.setItem('kt_activities_v1', '[]');
-      localStorage.setItem('kt_assets_v1', '[]');
-      localStorage.setItem(LAUNCH_CLEAN_KEY, 'done');
-      purgeCloudNewsAndAssets().catch(() => {});
-    }
-  } catch (e) {
-    console.warn('Launch cleanup notice:', e);
-  }
-}
 
 function AppContent() {
   const { theme } = useTheme();

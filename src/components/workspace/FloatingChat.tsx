@@ -73,7 +73,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const initialBotWelcome: ChatMessage = {
     id: 'welcome-1',
     sender: 'bot',
-    text: `Halo ${currentUser?.name ? currentUser.name : 'Kawan'}! 👋\n\nSenang banget bisa ngobrol bareng kamu! Anggap saja aku teman mengobrol dan bertukar pikiranmu di portal Karang Taruna Kelurahan Manis Jaya—kamu bisa ngobrol santai dan berdiskusi denganku persis seperti mengobrol di ChatGPT.\n\nKamu bisa tanya atau diskusikan **apa saja**, bebas dan tanpa batas:\n\n• **Obrolan Bebas & Wawasan Hidup:** Sains seru, teknologi masa depan, tips produktivitas dan mengatasi malas, cara mengatur waktu, kesehatan, sampai curhat keseharian.\n• **Karang Taruna Manis Jaya:** 5 pilar program kerja pemuda di 8 RW, cara buat surat dinas resmi & barcode legalitas, daftar KTA digital, peminjaman aset (sound/tenda), hingga jadwal agenda kegiatan.\n\nAku bakal mengetikkan jawaban secara perlahan seperti sedang ngobrol langsung denganmu. Silakan tanyakan hal apa pun yang ada di benakmu!`,
+    text: `Halo ${currentUser?.name ? currentUser.name : 'Warga'}! 👋\n\nSaya asisten AI resmi Karang Taruna Kelurahan Manis Jaya. Saya siap memberikan jawaban yang **cepat, lugas, dan logis** sesuai pertanyaan Anda.\n\nAnda dapat menanyakan topik apa pun:\n• **Karang Taruna Manis Jaya:** 5 pilar program kerja di 8 RW, tata cara surat dinas resmi & barcode TTD digital, pendaftaran KTA digital, peminjaman aset (sound/tenda), hingga jadwal kegiatan pemuda.\n• **Topik Umum & Logika:** Sains, teknologi, psikologi/cara mengatasi malas, manajemen waktu, hingga penalaran logis sehari-hari.\n\nSilakan sampaikan pertanyaan Anda di bawah!`,
     time: 'Baru saja',
     isTyping: false,
   };
@@ -158,9 +158,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   };
 
   /**
-   * Realistic Slow Human Keystroke Engine:
-   * Types character-by-character with natural cognitive rhythm.
-   * Pauses longer at commas, sentence ends, and paragraph breaks.
+   * Fast & Responsive Typing Engine:
+   * Streams text quickly so answers appear rapidly, crisply, and without tedious delay.
    */
   const startSlowHumanTyping = (
     botMsgId: string,
@@ -210,12 +209,9 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
         return;
       }
 
-      // Human keystroke step: mostly 1 character at a time, occasionally 2 for fluent words
-      let step = 1;
-      if (totalLength > 600 && Math.random() > 0.5) {
-        step = 2;
-      }
-      charIndex = Math.min(charIndex + step, totalLength);
+      // Fast streaming step (3 to 6 characters per tick)
+      const step = Math.min(Math.floor(Math.random() * 3) + 3, totalLength - charIndex);
+      charIndex += step;
 
       const partial = fullText.slice(0, charIndex);
       setMessages((prev) =>
@@ -224,25 +220,20 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
         )
       );
 
-      // Realistic human typing cadence with punctuation pauses
+      // Fast cadence: 8-12ms delay per tick
       const lastChar = fullText[charIndex - 1] || '';
-      let delay = Math.floor(Math.random() * 16) + 36; // 36ms - 52ms base human stroke
-
+      let delay = 10;
       if (lastChar === '.' || lastChar === '!' || lastChar === '?') {
-        delay += 320; // 320ms pause at end of sentence
-      } else if (lastChar === ',' || lastChar === ';' || lastChar === ':') {
-        delay += 160; // 160ms pause at clause
+        delay = 35; // tiny micro-pause at end of sentence
       } else if (lastChar === '\n') {
-        delay += 250; // 250ms pause at paragraph break
-      } else if (lastChar === ' ') {
-        delay += 30; // slight pause between words
+        delay = 25; // micro-pause at newline
       }
 
       typingTimeoutRef.current = setTimeout(typeNextKeystroke, delay);
     };
 
-    // Initial small pause before fingers hit the keyboard
-    typingTimeoutRef.current = setTimeout(typeNextKeystroke, 180);
+    // Quick start
+    typingTimeoutRef.current = setTimeout(typeNextKeystroke, 30);
   };
 
   // Instant skip / complete typing button
@@ -294,14 +285,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     setMessages((prev) => [...prev, userMessage]);
     setInputText('');
 
-    // Phase 1: Reading question (human takes a moment to read)
-    setThinkingState('reading');
-    const startTime = Date.now();
-
-    // Transition to Phase 2: Thinking & formulating logical answer
-    const readTimer = setTimeout(() => {
-      setThinkingState('thinking');
-    }, 700);
+    // Quick cognitive transition
+    setThinkingState('thinking');
 
     // Retrieve real agenda items
     const upcomingAgendas = (() => {
@@ -351,32 +336,16 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
       }
 
       const resData = await response.json();
-      const reply = resData.reply || 'Mohon maaf, saya belum dapat memproses pertanyaan tersebut secara logis. Silakan ulangi kembali.';
+      const reply = resData.reply || 'Mohon maaf, silakan ulangi kembali pertanyaan Anda.';
       const { actionTab, actionLabel } = detectActionTab(reply);
 
-      // Ensure a realistic thinking pause of at least 1500ms so it genuinely feels like human deliberation
-      const elapsed = Date.now() - startTime;
-      const minThinkTime = 1600;
-      const remainingWait = Math.max(0, minThinkTime - elapsed);
-
-      setTimeout(() => {
-        clearTimeout(readTimer);
-        startSlowHumanTyping(botMsgId, reply, actionTab, actionLabel);
-      }, remainingWait);
+      startSlowHumanTyping(botMsgId, reply, actionTab, actionLabel);
     } catch (err) {
       console.warn('AI Chat API fallback activated:', err);
-      // Client-side fallback with structured logical reasoning
       const reply = generateLocalKarangTarunaReply(query, contextPayload);
       const { actionTab, actionLabel } = detectActionTab(reply);
 
-      const elapsed = Date.now() - startTime;
-      const minThinkTime = 1600;
-      const remainingWait = Math.max(0, minThinkTime - elapsed);
-
-      setTimeout(() => {
-        clearTimeout(readTimer);
-        startSlowHumanTyping(botMsgId, reply, actionTab, actionLabel);
-      }, remainingWait);
+      startSlowHumanTyping(botMsgId, reply, actionTab, actionLabel);
     }
   };
 

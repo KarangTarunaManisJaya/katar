@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { X, Plus, Calendar, MapPin, UploadCloud, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Calendar, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Video, AlertCircle } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { compressImage } from '../../utils/imageOptimizer';
 import { resolveAssetUrl } from '../../utils/assetUrl';
@@ -23,7 +23,12 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
   const [description, setDescription] = useState('');
   const [author, setAuthor] = useState('Iik Andriyana');
   const [uploadedPhoto, setUploadedPhoto] = useState<string>('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isVideoChecking, setIsVideoChecking] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -35,6 +40,56 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
         onToast('Foto dokumentasi berhasil dipilih!');
       }
     }
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setVideoError(null);
+    setIsVideoChecking(true);
+    onToast('Memeriksa durasi video (maksimal 60 detik)...');
+
+    const videoElem = document.createElement('video');
+    videoElem.preload = 'metadata';
+    const objectUrl = URL.createObjectURL(file);
+    videoElem.src = objectUrl;
+
+    videoElem.onloadedmetadata = () => {
+      URL.revokeObjectURL(objectUrl);
+      setIsVideoChecking(false);
+      const duration = videoElem.duration;
+
+      if (isNaN(duration) || duration <= 0) {
+        setVideoError('Format video tidak didukung atau durasi tidak dapat dibaca.');
+        onToast('Gagal memverifikasi durasi video.');
+        return;
+      }
+
+      const durationSec = Math.round(duration);
+
+      if (duration > 60.5) {
+        setVideoError(`Durasi video ${durationSec} detik melebihi batas maksimal 60 detik!`);
+        onToast(`⚠️ Durasi video ${durationSec} detik melebihi batas maksimal 60 detik!`);
+        if (videoInputRef.current) videoInputRef.current.value = '';
+        return;
+      }
+
+      setVideoDuration(durationSec);
+      const reader = new FileReader();
+      reader.onload = () => {
+        setVideoUrl(reader.result as string);
+        onToast(`Video (${durationSec} detik) berhasil ditambahkan!`);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    videoElem.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      setIsVideoChecking(false);
+      setVideoError('Gagal membaca berkas video. Pastikan format video valid.');
+      onToast('Gagal membaca berkas video.');
+    };
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -55,6 +110,8 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
       location,
       author,
       photos: [chosenImage],
+      videoUrl: videoUrl || undefined,
+      videoDuration: videoDuration || undefined,
     };
 
     onAdd(newActivity);
@@ -211,6 +268,63 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
                 </span>
                 <span className="text-[10px] text-slate-500">
                   Foto otomatis dikompresi agar hemat memori & sinkron instan ke semua ponsel
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Video Input (Maksimal 60 Detik) */}
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/mp4,video/webm,video/quicktime,video/*"
+            className="hidden"
+            onChange={handleVideoUpload}
+          />
+
+          {isVideoChecking && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-700">
+              <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
+              <span>Memverifikasi durasi video (maksimal 60 detik)...</span>
+            </div>
+          )}
+
+          {videoError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-xs text-rose-800">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <strong className="block font-bold">Durasi Video Melebihi Batas</strong>
+                <span>{videoError}</span>
+              </div>
+            </div>
+          )}
+
+          <div
+            onClick={() => videoInputRef.current?.click()}
+            className="p-3.5 rounded-xl border-2 border-dashed border-rose-200 bg-rose-50/40 hover:bg-rose-50/70 cursor-pointer text-center transition-colors"
+          >
+            {videoUrl ? (
+              <div className="space-y-2 text-left">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-rose-600" />
+                    <span className="text-xs font-bold text-rose-800">Video Dokumentasi Terpilih</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                    ⏱️ {videoDuration ? `${videoDuration} Detik` : 'Maks. 60s'}
+                  </span>
+                </div>
+                <video src={videoUrl} controls className="w-full max-h-36 rounded-lg bg-black object-contain" />
+                <span className="text-[10px] text-slate-500 block text-center">Klik untuk mengganti video</span>
+              </div>
+            ) : (
+              <>
+                <Video className="w-6 h-6 text-rose-500 mx-auto mb-1" />
+                <span className="text-xs font-semibold text-rose-700 block">
+                  Pilih / Unggah Video Dokumentasi (Maksimal 60 Detik)
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  Format MP4 / WebM / MOV · Durasi klip maksimal 1 menit
                 </span>
               </>
             )}

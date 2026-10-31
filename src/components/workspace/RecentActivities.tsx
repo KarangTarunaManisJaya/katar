@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon, Archive } from 'lucide-react';
+import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon, Archive, Video } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { resolveAssetUrl } from '../../utils/assetUrl';
 
@@ -143,6 +143,15 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
                     {item.badge}
                   </span>
                 </div>
+
+                {item.videoUrl && (
+                  <div className="absolute bottom-2.5 left-2.5">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white shadow-xs">
+                      <Video className="w-3 h-3" />
+                      <span>Video (≤60s)</span>
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Card Body */}

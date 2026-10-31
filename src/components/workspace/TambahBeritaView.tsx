@@ -171,6 +171,9 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
   const [coverCaption, setCoverCaption] = useState<string>('');
   const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [isVideoChecking, setIsVideoChecking] = useState(false);
   const [documentFiles, setDocumentFiles] = useState<Array<{ name: string; size?: string }>>([]);
   const [driveUrl, setDriveUrl] = useState('');
 
@@ -224,6 +227,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
   // Refs for hidden inputs
   const coverInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -390,6 +394,71 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     }
   };
 
+  /**
+   * Video Upload Handler dengan Verifikasi Durasi Maksimal 60 Detik
+   */
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setVideoError(null);
+    setIsVideoChecking(true);
+    onToast('Memeriksa durasi video (maksimal 60 detik)...');
+
+    const videoElem = document.createElement('video');
+    videoElem.preload = 'metadata';
+    const objectUrl = URL.createObjectURL(file);
+    videoElem.src = objectUrl;
+
+    videoElem.onloadedmetadata = () => {
+      URL.revokeObjectURL(objectUrl);
+      setIsVideoChecking(false);
+      const duration = videoElem.duration;
+
+      if (isNaN(duration) || duration <= 0) {
+        setVideoError('Format video tidak didukung atau durasi tidak dapat dibaca.');
+        onToast('Gagal memverifikasi durasi video.');
+        return;
+      }
+
+      const durationSec = Math.round(duration);
+
+      // Verifikasi durasi maksimal 60 detik (diberi toleransi 0.5s untuk rounding)
+      if (duration > 60.5) {
+        const errorMsg = `Durasi video ${durationSec} detik melebihi batas maksimal 60 detik! Silakan potong video atau pilih klip berdurasi maksimal 1 menit.`;
+        setVideoError(errorMsg);
+        onToast(`⚠️ Durasi video ${durationSec} detik melebihi batas maksimal 60 detik!`);
+        if (videoInputRef.current) videoInputRef.current.value = '';
+        return;
+      }
+
+      // Valid: simpan video dan durasi
+      setVideoDuration(durationSec);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const resultBase64 = reader.result as string;
+        setVideoUrl(resultBase64);
+        onToast(`Video dokumentasi (${durationSec} detik) berhasil ditambahkan!`);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    videoElem.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      setIsVideoChecking(false);
+      setVideoError('Gagal memuat berkas video. Pastikan format video valid (MP4, WebM, MOV).');
+      onToast('Gagal memuat berkas video.');
+    };
+  };
+
+  const handleRemoveVideo = () => {
+    setVideoUrl('');
+    setVideoDuration(null);
+    setVideoError(null);
+    if (videoInputRef.current) videoInputRef.current.value = '';
+    onToast('Video dokumentasi dihapus.');
+  };
+
   // Reset form with confirmation
   const handleResetForm = () => {
     if (window.confirm('Kosongkan semua isian formulir berita?')) {
@@ -406,6 +475,10 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
         { id: 'vip-2', name: '', title: 'Babinsa Kelurahan Manis Jaya', status: 'Hadir' },
       ]);
       setDocumentFiles([]);
+      setVideoUrl('');
+      setVideoDuration(null);
+      setVideoError(null);
+      if (videoInputRef.current) videoInputRef.current.value = '';
       onToast('Formulir berhasil dikosongkan.');
     }
   };
@@ -466,6 +539,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
       contactPerson: contactName ? { name: contactName, phone: contactPhone, email: contactEmail } : undefined,
       coverCaption,
       videoUrl,
+      videoDuration: videoDuration || undefined,
       attachments: documentFiles.map((d, i) => ({ id: `att-${i}`, name: d.name, size: d.size })),
       driveUrl,
       status: asDraft ? 'Draft' : status,
@@ -494,6 +568,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
       {/* Hidden File Inputs */}
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
       <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleGalleryUpload} />
+      <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="hidden" onChange={handleVideoUpload} />
       <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" className="hidden" onChange={handleDocumentUpload} />
       <input ref={thumbnailInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} />
 
@@ -976,24 +1051,125 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
                 )}
               </div>
 
-              {/* Video Dokumentasi & Lampiran Berkas Multi */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">Video YouTube Liputan</label>
-                  <div className="relative">
-                    <Video className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="url"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="https://youtube.com/watch?v=..."
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                    />
+              {/* Video Dokumentasi & Liputan (Durasi Maksimal 60 Detik) */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-rose-600" />
+                    <label className="block font-bold text-slate-800">
+                      Video Liputan & Dokumentasi <span className="text-slate-400 font-normal">(Maksimal 60 Detik)</span>
+                    </label>
                   </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                    Maks. 60 Detik
+                  </span>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">Tautan Google Drive Dokumentasi</label>
+                {/* Status Pengecekan Durasi */}
+                {isVideoChecking && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-700">
+                    <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span>Memverifikasi durasi berkas video...</span>
+                  </div>
+                )}
+
+                {/* Pesan Error Durasi Melebihi 60 Detik */}
+                {videoError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-800 animate-fadeIn">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <strong className="block font-bold text-rose-900">Durasi Video Tidak Valid</strong>
+                      <span>{videoError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setVideoError(null)}
+                      className="text-rose-400 hover:text-rose-700"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Upload Action / Video Player Preview */}
+                {!videoUrl ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div
+                      onClick={() => videoInputRef.current?.click()}
+                      className="p-3.5 border-2 border-dashed border-rose-200 hover:border-rose-400 bg-rose-50/40 hover:bg-rose-50 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center text-center group"
+                    >
+                      <Video className="w-6 h-6 text-rose-600 mb-1 group-hover:scale-105 transition-transform" />
+                      <span className="text-[11px] font-bold text-rose-700">Upload Video Dokumentasi</span>
+                      <span className="text-[9px] text-slate-500 mt-0.5">MP4 / WebM / MOV · Durasi Maks. 60 Detik</span>
+                    </div>
+
+                    <div className="space-y-1.5 flex flex-col justify-center">
+                      <label className="text-[11px] font-semibold text-slate-600">Atau Tautan Video / YouTube Liputan:</label>
+                      <div className="relative">
+                        <Video className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="url"
+                          value={videoUrl}
+                          onChange={(e) => {
+                            setVideoUrl(e.target.value);
+                            setVideoError(null);
+                          }}
+                          placeholder="https://youtube.com/watch?v=... atau https://..."
+                          className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-400">*Video singkat kegiatan/reels berdurasi maksimal 60 detik</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-slate-900 rounded-2xl border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between text-white">
+                      <div className="flex items-center gap-2">
+                        <Video className="w-4 h-4 text-rose-400" />
+                        <span className="text-xs font-bold text-slate-100">Pratinjau Video Dokumentasi</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {videoDuration && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            ⏱️ {videoDuration} Detik (Lolos Uji ≤ 60s)
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => videoInputRef.current?.click()}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-semibold transition-colors"
+                        >
+                          Ganti
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveVideo}
+                          className="px-2.5 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white text-[10px] font-semibold transition-colors flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="w-full rounded-xl overflow-hidden bg-black flex items-center justify-center max-h-56">
+                      {videoUrl.startsWith('data:video') || videoUrl.includes('.mp4') || videoUrl.includes('.webm') ? (
+                        <video src={videoUrl} controls preload="metadata" className="w-full max-h-56 object-contain" />
+                      ) : (
+                        <div className="p-4 text-center text-slate-300 text-xs">
+                          <p className="font-semibold text-white mb-1">Tautan Video Terpasang:</p>
+                          <p className="font-mono text-[11px] text-blue-400 truncate max-w-sm mx-auto">{videoUrl}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Google Drive Link */}
+                <div className="pt-1">
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Tautan Google Drive Dokumentasi Tambahan <span className="text-slate-400 font-normal">(Opsional)</span>
+                  </label>
                   <div className="relative">
                     <LinkIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
@@ -1505,6 +1681,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
           coverCaption,
           galleryPhotos,
           videoUrl,
+          videoDuration: videoDuration || undefined,
           documentFiles,
           driveUrl,
           participantCount,

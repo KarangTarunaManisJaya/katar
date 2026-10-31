@@ -231,19 +231,61 @@ export function resetQuotaBackoff(): void {
   quotaExhaustedUntil = 0;
 }
 
+/**
+ * Recursively remove undefined values from objects and arrays for Firestore compatibility.
+ * Firestore strictly rejects documents containing undefined field values.
+ */
+export function sanitizeForFirestore<T = any>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as any;
+  }
+  if (typeof obj !== 'object') {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForFirestore(item)) as any;
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (typeof value === 'object' && value !== null) {
+        clean[key] = sanitizeForFirestore(value);
+      } else {
+        clean[key] = value;
+      }
+    }
+  }
+  return clean as T;
+}
+
 // Test Connection safely without throwing unhandled quota exceptions
 export async function testConnection(): Promise<boolean> {
   if (Date.now() < quotaExhaustedUntil) {
     return false;
   }
   try {
-    const testDoc = await getDoc(doc(db, 'organizations', 'manisjaya', 'live', 'state'));
-    return testDoc.exists();
+    const docRef = doc(db, 'organizations', 'manisjaya', 'live', 'state');
+    const testDoc = await getDocFromServer(docRef).catch(() => getDoc(docRef));
+    if (!testDoc.exists()) {
+      await setDoc(
+        docRef,
+        {
+          connectionPing: true,
+          lastPingISO: new Date().toISOString(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+    return true;
   } catch (error: any) {
     if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota exceeded')) {
       quotaExhaustedUntil = Date.now() + 10 * 60 * 1000;
       console.warn('Firebase client: Quota tercapai. Mode offline diaktifkan.');
     }
+    console.warn('testConnection notice:', error?.message || error);
     return false;
   }
 }
@@ -341,12 +383,20 @@ export const collectLocalSyncData = (): Record<string, any> => {
       try {
         const parsed = JSON.parse(val);
         if ((key === 'kt_news_v1' || key === 'kt_activities_v1') && Array.isArray(parsed)) {
-          data[key] = parsed.map((item: any) => ({
-            ...item,
-            photos: Array.isArray(item.photos) ? item.photos.slice(0, 4) : [],
-          }));
+          data[key] = parsed.map((item: any) => {
+            const clean = { ...item };
+            // Strip oversized video data URLs from the aggregate state doc to stay under 1MB
+            if (clean.videoUrl && typeof clean.videoUrl === 'string' && clean.videoUrl.startsWith('data:video/')) {
+              clean.videoUrl = '';
+              clean.hasLocalVideo = true;
+            }
+            if (Array.isArray(clean.photos)) {
+              clean.photos = clean.photos.slice(0, 3);
+            }
+            return sanitizeForFirestore(clean);
+          });
         } else {
-          data[key] = parsed;
+          data[key] = sanitizeForFirestore(parsed);
         }
       } catch {
         data[key] = val;
@@ -363,18 +413,21 @@ export const collectLocalSyncData = (): Record<string, any> => {
  * - /organizations/manisjaya/agenda
  * - /organizations/manisjaya/letters
  * - /organizations/manisjaya/kas
+ * - /organizations/manisjaya/news
+ * - /organizations/manisjaya/votings
  */
-const syncGranularCollections = async (localData: Record<string, any>) => {
+export const syncGranularCollections = async (localData: Record<string, any>): Promise<void> => {
   try {
     const orgDoc = doc(db, 'organizations', 'manisjaya');
 
     // Sync Members
     const members = localData['kt_members_v3'] || localData['kt_users_list_v3'];
     if (Array.isArray(members) && members.length > 0) {
-      for (const m of members.slice(0, 50)) {
+      for (const m of members.slice(0, 60)) {
         if (m?.id || m?.username) {
           const docRef = doc(collection(orgDoc, 'members'), String(m.id || m.username));
-          await setDoc(docRef, { ...m, updatedAt: new Date().toISOString() }, { merge: true });
+          const cleanM = sanitizeForFirestore({ ...m, updatedAt: new Date().toISOString() });
+          await setDoc(docRef, cleanM, { merge: true });
         }
       }
     }
@@ -382,10 +435,11 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
     // Sync Assets
     const assets = localData['kt_assets_v1'];
     if (Array.isArray(assets) && assets.length > 0) {
-      for (const a of assets.slice(0, 50)) {
+      for (const a of assets.slice(0, 60)) {
         if (a?.id) {
           const docRef = doc(collection(orgDoc, 'assets'), String(a.id));
-          await setDoc(docRef, { ...a, updatedAt: new Date().toISOString() }, { merge: true });
+          const cleanA = sanitizeForFirestore({ ...a, updatedAt: new Date().toISOString() });
+          await setDoc(docRef, cleanA, { merge: true });
         }
       }
     }
@@ -393,10 +447,11 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
     // Sync Agenda
     const agenda = localData['kt_agenda_v1'];
     if (Array.isArray(agenda) && agenda.length > 0) {
-      for (const ag of agenda.slice(0, 50)) {
+      for (const ag of agenda.slice(0, 60)) {
         if (ag?.id) {
           const docRef = doc(collection(orgDoc, 'agenda'), String(ag.id));
-          await setDoc(docRef, { ...ag, updatedAt: new Date().toISOString() }, { merge: true });
+          const cleanAg = sanitizeForFirestore({ ...ag, updatedAt: new Date().toISOString() });
+          await setDoc(docRef, cleanAg, { merge: true });
         }
       }
     }
@@ -404,10 +459,11 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
     // Sync Letters (Surat)
     const letters = localData['kt_surat_items_v2'];
     if (Array.isArray(letters) && letters.length > 0) {
-      for (const l of letters.slice(0, 50)) {
+      for (const l of letters.slice(0, 60)) {
         if (l?.id) {
           const docRef = doc(collection(orgDoc, 'letters'), String(l.id));
-          await setDoc(docRef, { ...l, updatedAt: new Date().toISOString() }, { merge: true });
+          const cleanL = sanitizeForFirestore({ ...l, updatedAt: new Date().toISOString() });
+          await setDoc(docRef, cleanL, { merge: true });
         }
       }
     }
@@ -415,10 +471,11 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
     // Sync Kas
     const kas = localData['kt_kas_entries_v2'];
     if (Array.isArray(kas) && kas.length > 0) {
-      for (const k of kas.slice(0, 50)) {
+      for (const k of kas.slice(0, 60)) {
         if (k?.id) {
           const docRef = doc(collection(orgDoc, 'kas'), String(k.id));
-          await setDoc(docRef, { ...k, updatedAt: new Date().toISOString() }, { merge: true });
+          const cleanK = sanitizeForFirestore({ ...k, updatedAt: new Date().toISOString() });
+          await setDoc(docRef, cleanK, { merge: true });
         }
       }
     }
@@ -426,26 +483,37 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
     // Sync News & Dokumentasi Kegiatan
     const newsList = localData['kt_news_v1'] || localData['kt_activities_v1'];
     if (Array.isArray(newsList) && newsList.length > 0) {
-      for (const n of newsList.slice(0, 50)) {
+      for (const n of newsList.slice(0, 60)) {
         if (n?.id) {
           const docRef = doc(collection(orgDoc, 'news'), String(n.id));
-          await setDoc(docRef, { ...n, updatedAt: new Date().toISOString() }, { merge: true });
+          let cleanN = sanitizeForFirestore({ ...n, updatedAt: new Date().toISOString() });
+          if (JSON.stringify(cleanN).length > 900000) {
+            if (cleanN.videoUrl && typeof cleanN.videoUrl === 'string' && cleanN.videoUrl.startsWith('data:video/')) {
+              cleanN.videoUrl = '';
+              cleanN.hasLocalVideo = true;
+            }
+            if (Array.isArray(cleanN.photos) && cleanN.photos.length > 2) {
+              cleanN.photos = cleanN.photos.slice(0, 2);
+            }
+          }
+          await setDoc(docRef, cleanN, { merge: true });
         }
       }
     }
+
     // Sync Votings & Pengambilan Keputusan Real-Time
     const votingsList = localData['kt_votings_v1'];
     if (Array.isArray(votingsList) && votingsList.length > 0) {
-      for (const v of votingsList.slice(0, 50)) {
+      for (const v of votingsList.slice(0, 60)) {
         if (v?.id) {
           const docRef = doc(collection(orgDoc, 'votings'), String(v.id));
-          await setDoc(docRef, { ...v, updatedAt: new Date().toISOString() }, { merge: true });
+          const cleanV = sanitizeForFirestore({ ...v, updatedAt: new Date().toISOString() });
+          await setDoc(docRef, cleanV, { merge: true });
         }
       }
     }
   } catch (err) {
-    // Non-blocking for offline / permissions
-    console.debug('Granular subcollections sync handled:', err);
+    console.warn('Granular subcollections sync handled:', err);
   }
 };
 
@@ -455,15 +523,12 @@ const syncGranularCollections = async (localData: Record<string, any>) => {
 export const saveVotingToFirestore = async (item: VotingItem): Promise<void> => {
   try {
     const docRef = doc(db, 'organizations', 'manisjaya', 'votings', String(item.id));
-    await setDoc(
-      docRef,
-      {
-        ...item,
-        updatedAt: new Date().toISOString(),
-        deviceId: DEVICE_ID,
-      },
-      { merge: true }
-    );
+    const payload = sanitizeForFirestore({
+      ...item,
+      updatedAt: new Date().toISOString(),
+      deviceId: DEVICE_ID,
+    });
+    await setDoc(docRef, payload, { merge: true });
   } catch (err) {
     console.warn('saveVotingToFirestore notice:', err);
   }
@@ -516,17 +581,30 @@ export const subscribeVotingsFromFirestore = (
 export const saveNewsToFirestore = async (item: ActivityItem): Promise<void> => {
   try {
     const docRef = doc(db, 'organizations', 'manisjaya', 'news', String(item.id));
-    await setDoc(
-      docRef,
-      {
-        ...item,
-        updatedAt: new Date().toISOString(),
-        deviceId: DEVICE_ID,
-      },
-      { merge: true }
-    );
+    let cleanItem = sanitizeForFirestore({
+      ...item,
+      updatedAt: (item as any).updatedAt || new Date().toISOString(),
+      deviceId: DEVICE_ID,
+    });
+
+    // Guard against 1 MiB single document limit in Firestore
+    const estimatedBytes = JSON.stringify(cleanItem).length;
+    if (estimatedBytes > 900000) {
+      console.warn(`[Firestore] News item "${item.title}" is large (${estimatedBytes} bytes). Omitting base64 video from Cloud doc.`);
+      if (cleanItem.videoUrl && typeof cleanItem.videoUrl === 'string' && cleanItem.videoUrl.startsWith('data:video/')) {
+        cleanItem.videoUrl = '';
+        cleanItem.hasLocalVideo = true;
+      }
+      if (Array.isArray(cleanItem.photos) && cleanItem.photos.length > 2) {
+        cleanItem.photos = cleanItem.photos.slice(0, 2);
+      }
+    }
+
+    await setDoc(docRef, cleanItem, { merge: true });
+    console.info(`[Firestore] Berita "${item.title}" (${item.id}) berhasil disimpan ke database cloud.`);
   } catch (err) {
     console.warn('saveNewsToFirestore notice:', err);
+    throw err;
   }
 };
 
@@ -548,15 +626,12 @@ export const deleteNewsFromFirestore = async (itemId: string): Promise<void> => 
 export const saveAssetToFirestore = async (item: AssetItem): Promise<void> => {
   try {
     const docRef = doc(db, 'organizations', 'manisjaya', 'assets', String(item.id));
-    await setDoc(
-      docRef,
-      {
-        ...item,
-        updatedAt: new Date().toISOString(),
-        deviceId: DEVICE_ID,
-      },
-      { merge: true }
-    );
+    const cleanItem = sanitizeForFirestore({
+      ...item,
+      updatedAt: new Date().toISOString(),
+      deviceId: DEVICE_ID,
+    });
+    await setDoc(docRef, cleanItem, { merge: true });
   } catch (err) {
     console.warn('saveAssetToFirestore notice:', err);
   }
@@ -589,7 +664,9 @@ export const subscribeAssetsFromFirestore = (
         snapshot.forEach((d) => {
           remoteList.push({ id: d.id, ...d.data() } as AssetItem);
         });
-        callback(remoteList);
+        if (remoteList.length > 0) {
+          callback(remoteList);
+        }
       },
       (err) => {
         console.debug('subscribeAssets notice:', err);
@@ -598,27 +675,6 @@ export const subscribeAssetsFromFirestore = (
     return unsub;
   } catch {
     return () => {};
-  }
-};
-
-/**
- * Membersihkan seluruh dokumen berita dan aset dari Firestore saat peluncuran sistem
- */
-export const purgeCloudNewsAndAssets = async (): Promise<void> => {
-  try {
-    const newsCol = collection(db, 'organizations', 'manisjaya', 'news');
-    const newsSnap = await getDocs(newsCol);
-    for (const d of newsSnap.docs) {
-      await deleteDoc(doc(db, 'organizations', 'manisjaya', 'news', d.id));
-    }
-    const assetCol = collection(db, 'organizations', 'manisjaya', 'assets');
-    const assetSnap = await getDocs(assetCol);
-    for (const d of assetSnap.docs) {
-      await deleteDoc(doc(db, 'organizations', 'manisjaya', 'assets', d.id));
-    }
-    console.info('Cloud news & assets successfully purged for production launch.');
-  } catch (e) {
-    console.debug('Purge notice:', e);
   }
 };
 
@@ -644,7 +700,8 @@ export const pushLocalDataToCloud = async (
   }
 
   try {
-    const localData = collectLocalSyncData();
+    const rawLocalData = collectLocalSyncData();
+    const localData = sanitizeForFirestore(rawLocalData);
     const dataString = JSON.stringify(localData);
     const dataHash = simpleHash(dataString);
 
@@ -668,6 +725,11 @@ export const pushLocalDataToCloud = async (
       { merge: true }
     );
 
+    // Asynchronously update granular collections so both representation models remain fresh
+    syncGranularCollections(localData).catch((err) => {
+      console.debug('Background granular sync notice:', err);
+    });
+
     lastPushedDataHash = dataHash;
     clearOfflineQueue();
   } catch (err: any) {
@@ -680,9 +742,24 @@ export const pushLocalDataToCloud = async (
       quotaExhaustedUntil = Date.now() + 10 * 60 * 1000; // 10 minutes backoff
       console.warn('Cloud Firestore quota reached. Switching seamlessly to offline local storage mode.');
     } else {
-      console.warn('Penyimpanan lokal Cloud Firestore aktif (offline/cache):', err?.message || err);
+      console.warn('Penyimpanan Cloud Firestore notice:', err?.message || err);
     }
     addToOfflineQueue(reason);
+  }
+};
+
+/**
+ * Explicitly force synchronize all local data to Cloud Firestore immediately
+ */
+export const forceSyncAllToCloud = async (userName = 'Pengurus'): Promise<{ success: boolean; message: string }> => {
+  try {
+    const rawLocalData = collectLocalSyncData();
+    const localData = sanitizeForFirestore(rawLocalData);
+    await pushLocalDataToCloud('Sinkronisasi manual penuh semua data', userName);
+    await syncGranularCollections(localData);
+    return { success: true, message: 'Seluruh data berhasil disinkronkan ke Cloud Firestore!' };
+  } catch (err: any) {
+    return { success: false, message: `Gagal menyinkronkan data: ${err?.message || err}` };
   }
 };
 
@@ -844,17 +921,19 @@ export const startRealtimeSync = (
     newsColRef,
     (snapshot) => {
       if (snapshot.empty) {
+        // DO NOT wipe local news when snapshot is empty!
+        // Instead, check if local news exists and automatically seed it to Firestore
         const currentStr = localStorage.getItem('kt_news_v1');
         if (currentStr && currentStr !== '[]') {
-          localStorage.setItem('kt_news_v1', '[]');
-          localStorage.setItem('kt_activities_v1', '[]');
-          window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: [] } }));
-          window.dispatchEvent(
-            new CustomEvent('kt_cloud_sync_update', {
-              detail: { modifiedKeys: ['kt_news_v1', 'kt_activities_v1'] },
-            })
-          );
-          onRemoteUpdateReceived?.(['kt_news_v1', 'kt_activities_v1']);
+          try {
+            const localNews: ActivityItem[] = JSON.parse(currentStr);
+            if (Array.isArray(localNews) && localNews.length > 0) {
+              console.info(`[Firestore] Cloud news collection is empty. Auto-seeding ${localNews.length} local items to Firestore...`);
+              localNews.forEach((item) => {
+                saveNewsToFirestore(item).catch(() => {});
+              });
+            }
+          } catch {}
         }
         return;
       }
@@ -862,8 +941,8 @@ export const startRealtimeSync = (
       const newsList: ActivityItem[] = [];
       snapshot.forEach((d) => {
         const item = d.data() as ActivityItem;
-        if (item && item.id) {
-          newsList.push(item);
+        if (item && (item.id || d.id)) {
+          newsList.push({ ...item, id: item.id || d.id });
         }
       });
 
@@ -874,12 +953,34 @@ export const startRealtimeSync = (
         return String(timeB).localeCompare(String(timeA));
       });
 
+      // Preserve full local video if Cloud doc omitted base64 video payload
+      let existingLocalMap: Record<string, ActivityItem> = {};
+      try {
+        const saved = localStorage.getItem('kt_news_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((item) => {
+              if (item?.id) existingLocalMap[item.id] = item;
+            });
+          }
+        }
+      } catch {}
+
+      const mergedNewsList = newsList.map((item) => {
+        const local = existingLocalMap[item.id];
+        if (local && !item.videoUrl && local.videoUrl) {
+          return { ...item, videoUrl: local.videoUrl };
+        }
+        return item;
+      });
+
       const currentStr = localStorage.getItem('kt_news_v1');
-      const newStr = JSON.stringify(newsList);
+      const newStr = JSON.stringify(mergedNewsList);
       if (currentStr !== newStr) {
         localStorage.setItem('kt_news_v1', newStr);
         localStorage.setItem('kt_activities_v1', newStr);
-        window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: newsList } }));
+        window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: mergedNewsList } }));
         window.dispatchEvent(
           new CustomEvent('kt_cloud_sync_update', {
             detail: { modifiedKeys: ['kt_news_v1', 'kt_activities_v1'] },
