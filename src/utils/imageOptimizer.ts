@@ -6,8 +6,8 @@
 
 export async function compressImage(
   source: File | string,
-  maxDimension = 1000,
-  quality = 0.78
+  maxDimension = 900,
+  quality = 0.72
 ): Promise<string> {
   // If already a static asset path or http URL, keep as is
   if (typeof source === 'string') {
@@ -15,7 +15,7 @@ export async function compressImage(
       return source;
     }
     // If it's already a very small data url (under 40KB), no need to recompress
-    if (source.startsWith('data:image/') && source.length < 55000) {
+    if (source.startsWith('data:image/') && source.length < 50000) {
       return source;
     }
   }
@@ -92,10 +92,36 @@ export async function compressImage(
 
 export async function compressMultipleImages(
   files: FileList | File[],
-  maxDimension = 1000,
-  quality = 0.75
+  maxDimension = 850,
+  quality = 0.70
 ): Promise<string[]> {
   const fileArray = Array.from(files);
   const promises = fileArray.map((file) => compressImage(file, maxDimension, quality));
   return Promise.all(promises);
+}
+
+/**
+ * Optimizes an activity/news item for cloud Firestore storage and browser localStorage,
+ * ensuring it stays safely below limits (< 500KB per item).
+ */
+export function optimizeNewsItemForStorage(item: any): any {
+  if (!item || typeof item !== 'object') return item;
+  const copy = { ...item };
+
+  // Limit number of photos stored in a single document
+  if (Array.isArray(copy.photos) && copy.photos.length > 4) {
+    copy.photos = copy.photos.slice(0, 4);
+    copy.photoCount = item.photoCount || item.photos.length;
+  }
+
+  // If video is base64 and large (> 300KB), remove base64 string from cloud document
+  if (copy.videoUrl && typeof copy.videoUrl === 'string' && copy.videoUrl.startsWith('data:video/')) {
+    if (copy.videoUrl.length > 300000) {
+      copy.hasLocalVideo = true;
+      copy.videoUrl = '';
+      copy.videoNote = 'Video tersimpan pada perangkat pengunggah (Maks 60 Detik)';
+    }
+  }
+
+  return copy;
 }

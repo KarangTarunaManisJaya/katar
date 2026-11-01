@@ -28,6 +28,7 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { ActivityItem, ACTIVITIES_DATA } from '../data/workspaceData';
 import { AssetItem } from '../data/assetData';
 import { VotingItem } from '../types/voting';
+import { optimizeNewsItemForStorage } from '../utils/imageOptimizer';
 
 export interface FirebaseConfig {
   projectId: string;
@@ -339,6 +340,7 @@ const DEVICE_ID = `device_${Math.random().toString(36).substring(2, 9)}_${Date.n
 
 // Flag to prevent infinite broadcast loops
 let isApplyingRemoteChange = false;
+let isInitialCloudSyncResolved = false;
 
 // Pending offline mutations tracking
 const QUEUE_STORAGE_KEY = 'kt_firestore_offline_queue_v1';
@@ -373,28 +375,34 @@ const clearOfflineQueue = () => {
 };
 
 /**
- * Collects current localStorage operational data into a sync packet
+ * Collects current localStorage operational data into a sync packet.
+ * Streamlined to strictly stay below Firestore's 1MB single-document ceiling.
  */
 export const collectLocalSyncData = (): Record<string, any> => {
   const data: Record<string, any> = {};
   SYNC_KEYS.forEach((key) => {
+    // Avoid double payload of identical arrays
+    if (key === 'kt_activities_v1') return;
+
     const val = localStorage.getItem(key);
     if (val !== null) {
       try {
         const parsed = JSON.parse(val);
-        if ((key === 'kt_news_v1' || key === 'kt_activities_v1') && Array.isArray(parsed)) {
-          data[key] = parsed.map((item: any) => {
-            const clean = { ...item };
-            // Strip oversized video data URLs from the aggregate state doc to stay under 1MB
+        if (key === 'kt_news_v1' && Array.isArray(parsed)) {
+          const processedNews = parsed.map((item: any) => {
+            const clean = optimizeNewsItemForStorage(item);
+            // In aggregate live/state doc, keep thumbnail and maximum 2 photos to guarantee tiny footprint
             if (clean.videoUrl && typeof clean.videoUrl === 'string' && clean.videoUrl.startsWith('data:video/')) {
               clean.videoUrl = '';
               clean.hasLocalVideo = true;
             }
-            if (Array.isArray(clean.photos)) {
-              clean.photos = clean.photos.slice(0, 3);
+            if (Array.isArray(clean.photos) && clean.photos.length > 2) {
+              clean.photos = clean.photos.slice(0, 2);
             }
             return sanitizeForFirestore(clean);
           });
+          data['kt_news_v1'] = processedNews;
+          data['kt_activities_v1'] = processedNews;
         } else {
           data[key] = sanitizeForFirestore(parsed);
         }
@@ -581,22 +589,24 @@ export const subscribeVotingsFromFirestore = (
 export const saveNewsToFirestore = async (item: ActivityItem): Promise<void> => {
   try {
     const docRef = doc(db, 'organizations', 'manisjaya', 'news', String(item.id));
+    const optimized = optimizeNewsItemForStorage(item);
     let cleanItem = sanitizeForFirestore({
-      ...item,
+      ...optimized,
       updatedAt: (item as any).updatedAt || new Date().toISOString(),
       deviceId: DEVICE_ID,
     });
 
     // Guard against 1 MiB single document limit in Firestore
     const estimatedBytes = JSON.stringify(cleanItem).length;
-    if (estimatedBytes > 900000) {
-      console.warn(`[Firestore] News item "${item.title}" is large (${estimatedBytes} bytes). Omitting base64 video from Cloud doc.`);
+    if (estimatedBytes > 650000) {
+      console.warn(`[Firestore] News item "${item.title}" is large (${estimatedBytes} bytes). Optimizing for Cloud Firestore.`);
       if (cleanItem.videoUrl && typeof cleanItem.videoUrl === 'string' && cleanItem.videoUrl.startsWith('data:video/')) {
         cleanItem.videoUrl = '';
         cleanItem.hasLocalVideo = true;
+        cleanItem.videoNote = 'Video dokumentasi (maks 60 detik) tersimpan pada perangkat pengunggah';
       }
-      if (Array.isArray(cleanItem.photos) && cleanItem.photos.length > 2) {
-        cleanItem.photos = cleanItem.photos.slice(0, 2);
+      if (Array.isArray(cleanItem.photos) && cleanItem.photos.length > 3) {
+        cleanItem.photos = cleanItem.photos.slice(0, 3);
       }
     }
 
@@ -693,6 +703,21 @@ export const pushLocalDataToCloud = async (
     return;
   }
 
+  // Do NOT push unverified local state to cloud before initial cloud sync has resolved,
+  // unless this is an explicit user mutation (e.g. adding or updating data).
+  const isExplicitUserMutation =
+    reason.includes('Tambah') ||
+    reason.includes('manual') ||
+    reason.includes('Hapus') ||
+    reason.includes('Ubah') ||
+    reason.includes('Arsip') ||
+    reason.includes('Pulihkan') ||
+    reason.includes('Inisialisasi');
+
+  if (!isInitialCloudSyncResolved && !isExplicitUserMutation) {
+    return;
+  }
+
   // If quota limit was reached on the backend, seamlessly operate offline without spamming errors
   if (Date.now() < quotaExhaustedUntil) {
     addToOfflineQueue(reason);
@@ -702,6 +727,13 @@ export const pushLocalDataToCloud = async (
   try {
     const rawLocalData = collectLocalSyncData();
     const localData = sanitizeForFirestore(rawLocalData);
+
+    // Safeguard: Never overwrite cloud news with empty array on fresh devices unless explicit deletion
+    if ((!localData.kt_news_v1 || localData.kt_news_v1.length === 0) && !reason.includes('Hapus')) {
+      delete localData.kt_news_v1;
+      delete localData.kt_activities_v1;
+    }
+
     const dataString = JSON.stringify(localData);
     const dataHash = simpleHash(dataString);
 
@@ -818,6 +850,7 @@ export const startRealtimeSync = (
       }
 
       const cloudPayload = snapshot.data();
+      isInitialCloudSyncResolved = true;
       if (!cloudPayload) return;
 
       // Handle offline or pending write state
@@ -975,11 +1008,19 @@ export const startRealtimeSync = (
         return item;
       });
 
+      isInitialCloudSyncResolved = true;
       const currentStr = localStorage.getItem('kt_news_v1');
       const newStr = JSON.stringify(mergedNewsList);
       if (currentStr !== newStr) {
-        localStorage.setItem('kt_news_v1', newStr);
-        localStorage.setItem('kt_activities_v1', newStr);
+        isApplyingRemoteChange = true;
+        try {
+          localStorage.setItem('kt_news_v1', newStr);
+          localStorage.setItem('kt_activities_v1', newStr);
+        } finally {
+          setTimeout(() => {
+            isApplyingRemoteChange = false;
+          }, 400);
+        }
         window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: mergedNewsList } }));
         window.dispatchEvent(
           new CustomEvent('kt_cloud_sync_update', {

@@ -48,6 +48,7 @@ import {
 import { ActivityItem } from '../../data/workspaceData';
 import { UserAccount } from '../../types/auth';
 import { compressImage, compressMultipleImages } from '../../utils/imageOptimizer';
+import { uploadToFilebase } from '../../services/filebaseService';
 import { BERITA_TEMPLATES, BeritaTemplate } from './berita/TambahBeritaTemplates';
 import { RundownSection, RundownItem, VipGuest } from './berita/RundownSection';
 import { SeoMedsosPreview } from './berita/SeoMedsosPreview';
@@ -353,7 +354,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       onToast('Mengoptimalkan foto cover...');
-      const optimized = await compressImage(file, 1200, 0.8);
+      const optimized = await compressImage(file, 900, 0.72);
       if (optimized) {
         setCoverPhoto(optimized);
         onToast('Foto cover berhasil diunggah!');
@@ -365,7 +366,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     const files = e.target.files;
     if (files && files.length > 0) {
       onToast(`Mengoptimalkan ${files.length} foto dokumentasi...`);
-      const optimized = await compressMultipleImages(files, 1000, 0.75);
+      const optimized = await compressMultipleImages(files, 850, 0.70);
       const valid = optimized.filter((p) => Boolean(p));
       if (valid.length > 0) {
         setGalleryPhotos((prev) => [...prev, ...valid]);
@@ -555,6 +556,18 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
 
     onSaveActivity(newItem, asDraft);
     setCreatedItem(newItem);
+
+    // Arsipkan otomatis ke Filebase S3 / IPFS (console.filebase.com)
+    uploadToFilebase({
+      key: `berita/artikel/${newItem.slug || newItem.id}.json`,
+      name: `${newItem.title}.json`,
+      content: JSON.stringify(newItem, null, 2),
+      contentType: 'application/json',
+      category: 'berita',
+      notes: `Berita: ${newItem.title} (${newItem.date})`,
+    }).catch((fbErr) => {
+      console.warn('Filebase auto-sync notice:', fbErr);
+    });
 
     if (asDraft) {
       onToast(`Draft "${title}" berhasil disimpan!`);

@@ -48,7 +48,9 @@ import {
   deleteNewsFromFirestore,
   notifyLocalDataChanged,
   CloudSyncStatus,
+  db,
 } from './services/firestoreSyncService';
+import { collection, getDocs } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
 
 function AppContent() {
@@ -70,12 +72,43 @@ function AppContent() {
     return [];
   });
 
+  // Direct cloud fetch on initial mount so any client (phone or PC) immediately pulls latest news from Firestore
   useEffect(() => {
-    try {
-      localStorage.setItem('kt_news_v1', JSON.stringify(activities));
-      localStorage.setItem('kt_activities_v1', JSON.stringify(activities));
-    } catch {}
-  }, [activities]);
+    let isMounted = true;
+    const fetchInitialNews = async () => {
+      try {
+        const colRef = collection(db, 'organizations', 'manisjaya', 'news');
+        const snap = await getDocs(colRef);
+        if (!snap.empty && isMounted) {
+          const list: ActivityItem[] = [];
+          snap.forEach((d) => {
+            const item = d.data() as ActivityItem;
+            if (item && (item.id || d.id)) {
+              list.push({ ...item, id: item.id || d.id });
+            }
+          });
+          list.sort((a, b) => {
+            const timeA = (a as any).updatedAt || a.date;
+            const timeB = (b as any).updatedAt || b.date;
+            return String(timeB).localeCompare(String(timeA));
+          });
+          if (list.length > 0) {
+            setActivities(list);
+            try {
+              localStorage.setItem('kt_news_v1', JSON.stringify(list));
+              localStorage.setItem('kt_activities_v1', JSON.stringify(list));
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.warn('Initial direct news fetch notice:', err);
+      }
+    };
+    fetchInitialNews();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
   const [showAddNews, setShowAddNews] = useState(false);
   const [showFirebaseModal, setShowFirebaseModal] = useState(false);
@@ -265,15 +298,31 @@ function AppContent() {
   const handleAddActivity = async (newAct: ActivityItem) => {
     const updated = [newAct, ...activities.filter((a) => a.id !== newAct.id)];
     setActivities(updated);
+
     try {
       localStorage.setItem('kt_news_v1', JSON.stringify(updated));
       localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
     } catch (e) {
       console.warn('Storage save notice:', e);
+      // Fallback: If quota exceeded due to large video/photos, save sanitized copy without oversized video data
+      try {
+        const lightweight = updated.map((act) => ({
+          ...act,
+          videoUrl: act.videoUrl?.startsWith('data:video/') ? '' : act.videoUrl,
+          photos: Array.isArray(act.photos) ? act.photos.slice(0, 2) : [],
+        }));
+        localStorage.setItem('kt_news_v1', JSON.stringify(lightweight));
+        localStorage.setItem('kt_activities_v1', JSON.stringify(lightweight));
+      } catch {}
     }
 
     // Direct real-time write to Firestore News collection + aggregate state
-    saveNewsToFirestore(newAct).catch((err) => console.warn('Firestore news write:', err));
+    try {
+      await saveNewsToFirestore(newAct);
+    } catch (err) {
+      console.warn('Firestore news write notice:', err);
+    }
+
     pushLocalDataToCloud(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
 

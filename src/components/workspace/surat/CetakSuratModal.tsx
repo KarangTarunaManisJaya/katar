@@ -10,6 +10,7 @@ import {
   Building,
   Loader2,
   ExternalLink,
+  HardDrive,
 } from 'lucide-react';
 import {
   SuratKeluarItem,
@@ -18,6 +19,7 @@ import {
 import { OfficialKopSurat } from './OfficialKopSurat';
 import { OfficialSignatureBlock } from './OfficialSignatureBlock';
 import { downloadElementAsPdf, printElementDirectly, openPrintInNewWindow } from '../../../utils/pdfExport';
+import { uploadToFilebase } from '../../../services/filebaseService';
 
 interface CetakSuratModalProps {
   isOpen: boolean;
@@ -96,6 +98,43 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
     }
   };
 
+  const [isSavingToFilebase, setIsSavingToFilebase] = useState(false);
+
+  const handleSaveToFilebase = async () => {
+    try {
+      setIsSavingToFilebase(true);
+      const rawNomor = suratKeluar?.nomorSurat || lembarDisposisi?.nomorDisposisi || 'dokumen';
+      const cleanNomor = rawNomor.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = suratKeluar ? `Surat_${cleanNomor}.json` : `Disposisi_${cleanNomor}.json`;
+      const key = `pdf/surat/${filename}`;
+      const docPayload = {
+        title: suratKeluar ? `Surat Dinas: ${suratKeluar.perihal}` : `Lembar Disposisi: ${lembarDisposisi?.nomorDisposisi}`,
+        timestamp: new Date().toISOString(),
+        details: suratKeluar || lembarDisposisi,
+        htmlContent: printDocRef.current?.innerHTML || '',
+      };
+
+      const res = await uploadToFilebase({
+        key,
+        name: filename,
+        content: JSON.stringify(docPayload, null, 2),
+        contentType: 'application/json',
+        category: 'pdf',
+        notes: `Dokumen resmi nomor ${rawNomor} (Akun jalansuci19@gmail.com)`,
+      });
+
+      if (res.success) {
+        onToast(`Dokumen berhasil disimpan ke Filebase S3 / IPFS!`);
+      } else {
+        onToast(res.message);
+      }
+    } catch (err: any) {
+      onToast(`Gagal menyimpan ke Filebase: ${err.message}`);
+    } finally {
+      setIsSavingToFilebase(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto print:static print:p-0 print:m-0 print:bg-white print:overflow-visible print:block print:inset-auto">
       <div className="bg-white rounded-2xl max-w-4xl w-full my-auto shadow-2xl border border-slate-300 flex flex-col max-h-[96vh] print:w-full print:max-w-none print:shadow-none print:border-none print:rounded-none print:max-h-none print:m-0 print:p-0">
@@ -123,6 +162,18 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
                 <Copy className="w-3.5 h-3.5" /> Salin Teks
               </button>
             )}
+
+            {/* Tombol Simpan ke Filebase (console.filebase.com) */}
+            <button
+              type="button"
+              onClick={handleSaveToFilebase}
+              disabled={isSavingToFilebase}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+              title="Simpan dokumen ini ke Filebase (console.filebase.com)"
+            >
+              <HardDrive className="w-3.5 h-3.5 text-indigo-200" />
+              <span>{isSavingToFilebase ? 'Menyimpan...' : 'Simpan ke Filebase'}</span>
+            </button>
 
             {/* Tombol Unduh PDF Asli (.pdf) */}
             <button

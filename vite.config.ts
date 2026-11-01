@@ -371,6 +371,149 @@ Instruksi: Jawab dengan CEPAT, LUGAS, MASUK AKAL SECARA LOGIKA, dan MUDAH DIPAHA
               return;
             }
 
+            // Endpoint POST untuk mengunggah berkas ke Filebase S3 / IPFS (https://console.filebase.com)
+            if (req.url && req.url.startsWith('/api/filebase/upload') && req.method === 'POST') {
+              let body = '';
+              req.on('data', (chunk) => { body += chunk; });
+              req.on('end', async () => {
+                try {
+                  const data = JSON.parse(body || '{}');
+                  const {
+                    accessKey,
+                    secretKey,
+                    bucket = 'karang-taruna-manisjaya',
+                    endpoint = 'https://s3.filebase.com',
+                    key,
+                    content,
+                    isBase64,
+                    contentType = 'application/octet-stream',
+                  } = data;
+
+                  const s3Key = (accessKey || process.env.FILEBASE_ACCESS_KEY || '').trim();
+                  const s3Secret = (secretKey || process.env.FILEBASE_SECRET_KEY || '').trim();
+
+                  if (!s3Key || !s3Secret) {
+                    res.statusCode = 400;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                      success: false,
+                      error: 'Kredensial Filebase (Access Key & Secret Key) diperlukan. Silakan dapatkan di https://console.filebase.com/keys',
+                    }));
+                    return;
+                  }
+
+                  const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+                  const client = new S3Client({
+                    endpoint,
+                    region: 'us-east-1',
+                    credentials: {
+                      accessKeyId: s3Key,
+                      secretAccessKey: s3Secret,
+                    },
+                    forcePathStyle: true,
+                  });
+
+                  let buffer: Buffer;
+                  if (isBase64) {
+                    buffer = Buffer.from(content, 'base64');
+                  } else {
+                    buffer = Buffer.from(content, 'utf-8');
+                  }
+
+                  const cmd = new PutObjectCommand({
+                    Bucket: bucket,
+                    Key: key,
+                    Body: buffer,
+                    ContentType: contentType,
+                  });
+
+                  const s3Res = await client.send(cmd);
+                  const ipfsCid = (s3Res as any)?.$metadata?.httpHeaders?.['x-amz-meta-cid'] ||
+                                  (s3Res as any)?.$metadata?.httpHeaders?.['x-amz-ipfs-cid'] ||
+                                  null;
+
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({
+                    success: true,
+                    key,
+                    bucket,
+                    etag: s3Res.ETag,
+                    ipfsCid,
+                    ipfsGatewayUrl: ipfsCid ? `https://ipfs.filebase.io/ipfs/${ipfsCid}` : null,
+                  }));
+                } catch (fbErr: any) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ success: false, error: fbErr.message || 'Gagal mengunggah ke Filebase S3' }));
+                }
+              });
+              return;
+            }
+
+            // Endpoint POST untuk test koneksi Filebase (https://console.filebase.com)
+            if (req.url && req.url.startsWith('/api/filebase/test-connection') && req.method === 'POST') {
+              let body = '';
+              req.on('data', (chunk) => { body += chunk; });
+              req.on('end', async () => {
+                try {
+                  const data = JSON.parse(body || '{}');
+                  const {
+                    accessKey,
+                    secretKey,
+                    bucket = 'karang-taruna-manisjaya',
+                    endpoint = 'https://s3.filebase.com',
+                  } = data;
+
+                  const s3Key = (accessKey || process.env.FILEBASE_ACCESS_KEY || '').trim();
+                  const s3Secret = (secretKey || process.env.FILEBASE_SECRET_KEY || '').trim();
+
+                  if (!s3Key || !s3Secret) {
+                    res.statusCode = 400;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({
+                      success: false,
+                      error: 'Access Key dan Secret Key belum diisi.',
+                    }));
+                    return;
+                  }
+
+                  const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+                  const client = new S3Client({
+                    endpoint,
+                    region: 'us-east-1',
+                    credentials: {
+                      accessKeyId: s3Key,
+                      secretAccessKey: s3Secret,
+                    },
+                    forcePathStyle: true,
+                  });
+
+                  const cmd = new ListObjectsV2Command({
+                    Bucket: bucket,
+                    MaxKeys: 1,
+                  });
+
+                  await client.send(cmd);
+
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({
+                    success: true,
+                    message: `Berhasil terhubung ke bucket "${bucket}" di Filebase S3 / IPFS!`,
+                  }));
+                } catch (testErr: any) {
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({
+                    success: false,
+                    error: testErr.message || 'Gagal terhubung ke Filebase. Periksa kembali nama bucket dan kunci API.',
+                  }));
+                }
+              });
+              return;
+            }
+
             next();
           });
         },
