@@ -11,6 +11,7 @@ import {
   Loader2,
   ExternalLink,
   HardDrive,
+  Cloud,
 } from 'lucide-react';
 import {
   SuratKeluarItem,
@@ -124,12 +125,12 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
       });
 
       if (res.success) {
-        onToast(`Dokumen berhasil disimpan ke Filebase S3 / IPFS!`);
+        onToast(`Dokumen berhasil disimpan otomatis ke Cloud!`);
       } else {
         onToast(res.message);
       }
     } catch (err: any) {
-      onToast(`Gagal menyimpan ke Filebase: ${err.message}`);
+      onToast(`Gagal menyimpan ke Cloud: ${err.message}`);
     } finally {
       setIsSavingToFilebase(false);
     }
@@ -163,16 +164,16 @@ export const CetakSuratModal: React.FC<CetakSuratModalProps> = ({
               </button>
             )}
 
-            {/* Tombol Simpan ke Filebase (console.filebase.com) */}
+            {/* Tombol Simpan Otomatis ke Cloud */}
             <button
               type="button"
               onClick={handleSaveToFilebase}
               disabled={isSavingToFilebase}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
-              title="Simpan dokumen ini ke Filebase (console.filebase.com)"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer"
+              title="Simpan dokumen ini otomatis ke Cloud Karang Taruna"
             >
-              <HardDrive className="w-3.5 h-3.5 text-indigo-200" />
-              <span>{isSavingToFilebase ? 'Menyimpan...' : 'Simpan ke Filebase'}</span>
+              <Cloud className="w-3.5 h-3.5 text-emerald-100" />
+              <span>{isSavingToFilebase ? 'Menyimpan...' : 'Simpan ke Cloud'}</span>
             </button>
 
             {/* Tombol Unduh PDF Asli (.pdf) */}

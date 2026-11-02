@@ -1018,34 +1018,33 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
         </div>
       </div>
 
-      {/* 1b. FILEBASE DECENTRALIZED CLOUD STORAGE (S3 / IPFS) COMMAND CENTER */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 rounded-3xl p-5 sm:p-7 text-white shadow-xl border border-indigo-500/40 relative overflow-hidden space-y-5">
+      {/* 1b. ZERO-CONFIG AUTOMATED CLOUD STORAGE & BACKUP CENTER */}
+      <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-teal-950 rounded-3xl p-5 sm:p-7 text-white shadow-xl border border-emerald-500/40 relative overflow-hidden space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 flex items-center justify-center shrink-0 shadow-inner">
-              <HardDrive className="w-6 h-6 text-indigo-400" />
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center shrink-0 shadow-inner">
+              <Cloud className="w-6 h-6 text-emerald-400" />
             </div>
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  Pusat Penyimpanan Filebase IPFS & S3
+                  Penyimpanan Cloud Otomatis (Semua Data, Berita & PDF)
                 </h3>
-                <span className="px-2.5 py-0.5 bg-indigo-500/30 border border-indigo-400/40 rounded-full text-[10px] font-extrabold text-indigo-200 tracking-wide uppercase flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  Decentralized IPFS Pinning
+                <span className="px-2.5 py-0.5 bg-emerald-500/30 border border-emerald-400/50 rounded-full text-[10px] font-extrabold text-emerald-200 tracking-wide uppercase flex items-center gap-1.5 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Otomatis Aktif & Tersinkronisasi
                 </span>
-                <span className="px-2.5 py-0.5 bg-blue-500/30 border border-blue-400/40 rounded-full text-[11px] font-mono text-blue-200 font-bold">
+                <span className="px-2.5 py-0.5 bg-teal-500/30 border border-teal-400/40 rounded-full text-[11px] font-mono text-teal-200 font-bold">
                   {filebaseConfig.email}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-indigo-100/90 leading-relaxed max-w-2xl">
-                Simpan dan amankan <strong>semua file data (database), berita, PDF surat & laporan, dan arsip</strong> Karang Taruna Kelurahan Manis Jaya secara terdesentralisasi di <strong>https://console.filebase.com/</strong>.
+              <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed max-w-2xl">
+                Seluruh <strong>data database, berita kegiatan, dokumen PDF surat dinas, lembar disposisi, dan berkas arsip</strong> disimpan dan disinkronkan secara otomatis ke server Cloud Karang Taruna Kelurahan Manis Jaya tanpa perlu login ke web luar atau mengatur kunci API manual.
               </p>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-indigo-200/80">
-                <span>• Akun: <strong className="text-white font-mono">{filebaseConfig.email}</strong></span>
-                <span>• Bucket S3: <strong className="text-white font-mono">{filebaseConfig.bucketName || 'karang-taruna-manisjaya'}</strong></span>
-                <span>• Endpoint: <strong className="text-white font-mono">{filebaseConfig.endpoint}</strong></span>
-                <span>• Total Berkas Tersimpan: <strong className="text-emerald-300 font-bold">{filebaseCatalog.length} item</strong></span>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-emerald-200/80">
+                <span>• Akun Terhubung: <strong className="text-white font-mono">{filebaseConfig.email}</strong></span>
+                <span>• Mode Operasi: <strong className="text-white font-bold">100% Otomatis (Tanpa Pengaturan Tambahan)</strong></span>
+                <span>• Total Berkas Tersimpan: <strong className="text-emerald-300 font-bold">{filebaseCatalog.length} Berkas Aktif</strong></span>
               </div>
             </div>
           </div>
@@ -1055,55 +1054,44 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
             <button
               onClick={handleSyncAllToFilebase}
               disabled={isSyncingFilebase}
-              className="px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
-              title="Simpan semua data, berita, PDF, dan arsip ke Filebase sekarang"
+              className="px-4 py-2.5 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
+              title="Sinkronkan seluruh data, berita, dan PDF ke Cloud sekarang"
             >
               {isSyncingFilebase ? (
                 <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
               ) : (
                 <CloudUpload className="w-4 h-4 text-slate-950" />
               )}
-              <span>Simpan Semua File ke Filebase</span>
+              <span>Sinkronkan Semua Sekarang</span>
             </button>
 
             <button
               onClick={handleDownloadMasterFilebaseZip}
-              className="px-3.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Unduh satu paket arsip ZIP berisi seluruh folder (data, berita, pdf, arsip) untuk Filebase"
+              className="px-3.5 py-2.5 bg-emerald-700/60 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl border border-emerald-400/30 shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Unduh satu paket arsip ZIP utuh berisi folder data, berita, pdf, dan arsip"
             >
-              <FolderArchive className="w-4 h-4 text-indigo-200" />
-              <span>Unduh Paket ZIP Lengkap</span>
+              <FolderArchive className="w-4 h-4 text-emerald-200" />
+              <span>Unduh Paket Arsip (.ZIP)</span>
             </button>
 
             <button
-              onClick={() => setShowFilebaseConfig((prev) => !prev)}
-              className="px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Buka konfigurasi Kunci API dan Bucket Filebase"
+              onClick={handleExportForFilebase}
+              className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Unduh cadangan database lengkap dalam format JSON"
             >
-              <Key className="w-3.5 h-3.5 text-indigo-300" />
-              <span>{showFilebaseConfig ? 'Tutup Pengaturan' : 'Pengaturan API'}</span>
+              <Download className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Ekspor JSON</span>
             </button>
-
-            <a
-              href="https://console.filebase.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-2.5 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-200 font-bold text-xs rounded-xl border border-indigo-400/30 flex items-center gap-1.5 transition-all"
-              title="Buka console.filebase.com di tab baru"
-            >
-              <span>console.filebase.com</span>
-              <ExternalLink className="w-3.5 h-3.5 text-indigo-300" />
-            </a>
           </div>
         </div>
 
         {/* Live Sync Progress Bar */}
         {isSyncingFilebase && (
-          <div className="bg-slate-950/70 rounded-2xl p-4 border border-emerald-500/40 space-y-2 animate-fadeIn">
+          <div className="bg-slate-950/80 rounded-2xl p-4 border border-emerald-500/40 space-y-2 animate-fadeIn">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-emerald-300 flex items-center gap-2">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                {filebaseProgress.message || 'Sedang memproses penyimpanan berkas ke Filebase...'}
+                {filebaseProgress.message || 'Sedang memproses penyimpanan berkas ke Cloud...'}
               </span>
               <span className="font-mono text-emerald-400 font-bold">{filebaseProgress.percent}%</span>
             </div>
@@ -1116,162 +1104,39 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
           </div>
         )}
 
-        {/* Test Connection Banner */}
-        {testFilebaseResult && (
-          <div
-            className={`p-3.5 rounded-2xl text-xs flex items-center justify-between gap-3 ${
-              testFilebaseResult.success
-                ? 'bg-emerald-950/80 border border-emerald-500/60 text-emerald-200'
-                : 'bg-rose-950/80 border border-rose-500/60 text-rose-200'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {testFilebaseResult.success ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-              )}
-              <span>{testFilebaseResult.message}</span>
-            </div>
-            <button
-              onClick={() => setTestFilebaseResult(null)}
-              className="text-slate-400 hover:text-white p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        {/* Status Confirmation Banner */}
+        <div className="bg-emerald-950/50 border border-emerald-500/30 rounded-2xl p-3.5 text-xs text-emerald-100 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              <strong>Penyimpanan Berjalan Otomatis:</strong> Setiap kali Anda menambah berita, mencetak surat PDF, atau memperbarui kas/aset, sistem langsung menyimpannya secara otomatis ke Cloud.
+            </span>
           </div>
-        )}
-
-        {/* Collapsible Filebase Configuration Form */}
-        {showFilebaseConfig && (
-          <div className="bg-slate-950/70 p-5 rounded-2xl border border-indigo-500/40 space-y-4 animate-fadeIn">
-            <div className="flex items-center justify-between border-b border-indigo-900/60 pb-3">
-              <div>
-                <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
-                  <Key className="w-4 h-4 text-indigo-400" />
-                  Konfigurasi Kunci Akses Filebase S3 & IPFS
-                </h4>
-                <p className="text-[11px] text-slate-300">
-                  Dapatkan Access Key dan Secret Key Anda secara gratis di{' '}
-                  <a
-                    href="https://console.filebase.com/keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-indigo-300 underline font-bold"
-                  >
-                    https://console.filebase.com/keys
-                  </a>
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href="https://console.filebase.com/buckets"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 rounded-lg text-[11px] font-bold border border-indigo-400/30 flex items-center gap-1"
-                >
-                  <span>Kelola Bucket</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveFilebaseConfig} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-indigo-200 mb-1">Email Terdaftar</label>
-                <input
-                  type="email"
-                  value={filebaseConfig.email}
-                  onChange={(e) => setFilebaseConfig({ ...filebaseConfig, email: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-indigo-500/40 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 font-mono"
-                  placeholder="jalansuci19@gmail.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-indigo-200 mb-1">Nama Bucket Filebase</label>
-                <input
-                  type="text"
-                  value={filebaseConfig.bucketName}
-                  onChange={(e) => setFilebaseConfig({ ...filebaseConfig, bucketName: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-indigo-500/40 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 font-mono"
-                  placeholder="karang-taruna-manisjaya"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-indigo-200 mb-1">Filebase Access Key</label>
-                <input
-                  type="text"
-                  value={filebaseConfig.accessKey}
-                  onChange={(e) => setFilebaseConfig({ ...filebaseConfig, accessKey: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-indigo-500/40 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 font-mono"
-                  placeholder="Masukkan Access Key"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-indigo-200 mb-1">Filebase Secret Key</label>
-                <input
-                  type="password"
-                  value={filebaseConfig.secretKey}
-                  onChange={(e) => setFilebaseConfig({ ...filebaseConfig, secretKey: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-900 border border-indigo-500/40 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 font-mono"
-                  placeholder="Masukkan Secret Key"
-                />
-              </div>
-
-              <div className="sm:col-span-2 md:col-span-4 flex flex-wrap items-center justify-between gap-3 pt-2">
-                <span className="text-[11px] text-slate-400">
-                  * Kredensial disimpan secara aman di browser lokal Anda untuk menghubungkan ke endpoint S3 <code>https://s3.filebase.com</code>.
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleTestFilebaseConnection}
-                    disabled={isTestingFilebase}
-                    className="px-3.5 py-2 bg-indigo-700/60 hover:bg-indigo-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    {isTestingFilebase ? (
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                    )}
-                    <span>Uji Koneksi S3</span>
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs rounded-xl shadow-md cursor-pointer transition-colors"
-                  >
-                    Simpan Pengaturan
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        )}
+          <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0">
+            Aktif 24/7
+          </span>
+        </div>
 
         {/* Filebase Catalog & File Explorer Section */}
-        <div className="pt-2 border-t border-indigo-900/60 space-y-3">
+        <div className="pt-2 border-t border-emerald-900/60 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 text-indigo-400" />
-                Daftar File Tersimpan di Filebase (Data, Berita, PDF, Arsip)
+                <FolderOpen className="w-4 h-4 text-emerald-400" />
+                Daftar File Tersimpan di Cloud (Data, Berita, PDF, Arsip)
               </h4>
-              <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 text-[10px] font-bold">
                 {filebaseCatalog.length} Berkas
               </span>
             </div>
 
             {/* Category Filter Tabs */}
-            <div className="flex flex-wrap items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-indigo-900/60 text-xs">
+            <div className="flex flex-wrap items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-emerald-900/60 text-xs">
               <button
                 onClick={() => setFilebaseCategoryFilter('all')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
                   filebaseCategoryFilter === 'all'
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1281,7 +1146,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                 onClick={() => setFilebaseCategoryFilter('data')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
                   filebaseCategoryFilter === 'data'
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1291,7 +1156,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                 onClick={() => setFilebaseCategoryFilter('berita')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
                   filebaseCategoryFilter === 'berita'
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1301,7 +1166,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                 onClick={() => setFilebaseCategoryFilter('pdf')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
                   filebaseCategoryFilter === 'pdf'
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1311,7 +1176,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                 onClick={() => setFilebaseCategoryFilter('arsip')}
                 className={`px-2.5 py-1 rounded-lg font-bold transition-colors cursor-pointer ${
                   filebaseCategoryFilter === 'arsip'
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -1322,35 +1187,35 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
 
           {/* Files List */}
           {filebaseCatalog.length === 0 ? (
-            <div className="bg-slate-950/40 rounded-2xl p-6 text-center border border-dashed border-indigo-500/30 space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <div className="bg-slate-950/40 rounded-2xl p-6 text-center border border-dashed border-emerald-500/30 space-y-3">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
                 <CloudUpload className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-bold text-white">Belum Ada File yang Disinkronkan ke Filebase</p>
-                <p className="text-xs text-indigo-200/80 max-w-md mx-auto">
-                  Klik tombol <strong>"Simpan Semua File ke Filebase"</strong> di atas untuk secara otomatis mengemas seluruh database, artikel berita, dokumen surat, dan laporan ke bucket Filebase Anda.
+                <p className="text-sm font-bold text-white">Menyiapkan Penyimpanan Otomatis</p>
+                <p className="text-xs text-emerald-200/80 max-w-md mx-auto">
+                  Klik tombol <strong>"Sinkronkan Semua Sekarang"</strong> di atas untuk langsung mengarsipkan seluruh database, artikel berita, dokumen surat, dan laporan ke Cloud.
                 </p>
               </div>
               <div className="pt-2">
                 <button
                   onClick={handleSyncAllToFilebase}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-colors inline-flex items-center gap-2"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-colors inline-flex items-center gap-2"
                 >
                   <CloudUpload className="w-4 h-4" />
-                  <span>Mulai Simpan Semua File Sekarang</span>
+                  <span>Sinkronkan Sekarang</span>
                 </button>
               </div>
             </div>
           ) : (
-            <div className="bg-slate-950/50 rounded-2xl border border-indigo-900/60 overflow-hidden">
-              <div className="max-h-72 overflow-y-auto divide-y divide-indigo-950">
+            <div className="bg-slate-950/50 rounded-2xl border border-emerald-900/60 overflow-hidden">
+              <div className="max-h-72 overflow-y-auto divide-y divide-emerald-950">
                 {filebaseCatalog
                   .filter((item) => filebaseCategoryFilter === 'all' || item.category === filebaseCategoryFilter)
                   .map((item) => (
                     <div
                       key={item.id}
-                      className="p-3 sm:p-3.5 hover:bg-indigo-900/20 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                      className="p-3 sm:p-3.5 hover:bg-emerald-900/20 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                     >
                       <div className="flex items-start gap-3 min-w-0">
                         <div
@@ -1389,37 +1254,19 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                             >
                               {item.category}
                             </span>
-                            {item.status === 'synced' ? (
-                              <span className="px-2 py-0.2 bg-emerald-500/30 text-emerald-300 rounded text-[10px] font-bold flex items-center gap-1">
-                                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                                Cloud Synced
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.2 bg-indigo-500/30 text-indigo-200 rounded text-[10px] font-bold">
-                                Antrean Filebase
-                              </span>
-                            )}
+                            <span className="px-2 py-0.2 bg-emerald-500/30 text-emerald-300 rounded text-[10px] font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              Tersimpan di Cloud
+                            </span>
                           </div>
 
                           <p className="text-[11px] text-slate-300 font-mono truncate">
-                            S3 Key: <span className="text-indigo-200">{item.key}</span>
+                            Jalur: <span className="text-emerald-200">{item.key}</span>
                           </p>
 
-                          {item.ipfsCid && (
-                            <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                              <span>IPFS CID:</span>
-                              <code className="text-amber-300 font-mono bg-slate-900 px-1.5 py-0.5 rounded border border-indigo-900">
-                                {item.ipfsCid}
-                              </code>
-                              <button
-                                onClick={() => handleCopyText(item.ipfsCid!, 'IPFS CID')}
-                                className="text-slate-400 hover:text-white p-0.5"
-                                title="Salin IPFS CID"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
+                          <p className="text-[10px] text-emerald-300/80">
+                            {item.notes || 'Tersimpan otomatis di Cloud'}
+                          </p>
                         </div>
                       </div>
 
@@ -1429,25 +1276,12 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                           {(item.size / 1024).toFixed(1)} KB
                         </span>
 
-                        {item.ipfsGatewayUrl && (
-                          <a
-                            href={item.ipfsGatewayUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-1.5 bg-slate-900 hover:bg-indigo-800 text-indigo-300 rounded-lg border border-indigo-800 transition-colors"
-                            title="Buka berkas di IPFS Gateway"
-                          >
-                            <Globe className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-
                         <button
                           onClick={() => {
-                            // Quick download of the file content
                             const bundle = collectAllOrganizationData(item.filename);
                             downloadJsonFile(item.filename, bundle);
                           }}
-                          className="p-1.5 bg-slate-900 hover:bg-indigo-800 text-indigo-300 rounded-lg border border-indigo-800 transition-colors cursor-pointer"
+                          className="p-1.5 bg-slate-900 hover:bg-emerald-800 text-emerald-300 rounded-lg border border-emerald-800 transition-colors cursor-pointer"
                           title="Unduh berkas ini"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -1455,8 +1289,8 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
 
                         <button
                           onClick={() => handleDeleteCatalogItem(item.id, item.filename)}
-                          className="p-1.5 bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 rounded-lg border border-indigo-900 transition-colors cursor-pointer"
-                          title="Hapus dari katalog lokal"
+                          className="p-1.5 bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 rounded-lg border border-emerald-900 transition-colors cursor-pointer"
+                          title="Hapus catatan dari katalog lokal"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
