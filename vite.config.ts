@@ -18,7 +18,7 @@ export default defineConfig(() => {
         configureServer(server) {
           const pdfStore = new Map<string, { filename: string; buffer: Buffer; timestamp: number }>();
 
-          server.middlewares.use((req, res, next) => {
+          server.middlewares.use(async (req, res, next) => {
             if (req.url && req.url.includes('ManisJaya_KarangTaruna_v1.2.0.apk')) {
               res.setHeader('Content-Type', 'application/vnd.android.package-archive');
               res.setHeader('Content-Disposition', 'attachment; filename="ManisJaya_KarangTaruna_v1.2.0.apk"');
@@ -81,6 +81,65 @@ export default defineConfig(() => {
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ error: 'PDF file not found or download expired. Please click download again.' }));
                 return;
+              }
+            }
+
+            // Dedicated static file & video streaming handler for /filebase_vault/*
+            if (req.url && req.url.startsWith('/filebase_vault/')) {
+              try {
+                const fs = await import('fs');
+                const pathMod = await import('path');
+                const urlPath = req.url.split('?')[0];
+                const relPath = decodeURIComponent(urlPath.replace(/^\/filebase_vault\//, ''));
+                const filePath = pathMod.join(process.cwd(), 'public', 'filebase_vault', relPath);
+
+                if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                  const stat = fs.statSync(filePath);
+                  const total = stat.size;
+                  const ext = pathMod.extname(filePath).toLowerCase();
+                  const mimeMap: Record<string, string> = {
+                    '.mp4': 'video/mp4',
+                    '.webm': 'video/webm',
+                    '.mov': 'video/quicktime',
+                    '.json': 'application/json',
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.pdf': 'application/pdf',
+                    '.txt': 'text/plain',
+                  };
+                  const contentType = mimeMap[ext] || 'application/octet-stream';
+
+                  // Handle HTTP Range for smooth video seeking & streaming
+                  const range = req.headers.range;
+                  if (range && range.startsWith('bytes=')) {
+                    const parts = range.replace(/bytes=/, '').split('-');
+                    const start = parseInt(parts[0], 10);
+                    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+                    const chunksize = end - start + 1;
+                    const stream = fs.createReadStream(filePath, { start, end });
+
+                    res.writeHead(206, {
+                      'Content-Range': `bytes ${start}-${end}/${total}`,
+                      'Accept-Ranges': 'bytes',
+                      'Content-Length': chunksize,
+                      'Content-Type': contentType,
+                    });
+                    stream.pipe(res);
+                    return;
+                  } else {
+                    res.writeHead(200, {
+                      'Content-Length': total,
+                      'Accept-Ranges': 'bytes',
+                      'Content-Type': contentType,
+                      'Cache-Control': 'public, max-age=31536000',
+                    });
+                    fs.createReadStream(filePath).pipe(res);
+                    return;
+                  }
+                }
+              } catch (serveErr) {
+                console.warn('Vault file stream error:', serveErr);
               }
             }
 

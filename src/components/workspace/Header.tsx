@@ -160,13 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
         {syncStatus && (
           <div
             onClick={onOpenFirebaseConfig}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer hover:shadow-xs ${
-              syncStatus.state === 'connected'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-2xs hover:bg-emerald-100/80'
-                : syncStatus.state === 'syncing'
-                ? 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100/80'
-                : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100/80'
-            }`}
+            className="hidden"
             title="Kelola Akun & Ganti Database Firebase (Klik untuk membuka)"
           >
             {syncStatus.state === 'offline' ? (
@@ -204,14 +198,13 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-
-        {/* Tanya AI Button */}
+        {/* Tanya AI Button - Hidden as requested */}
         <button
           type="button"
           onClick={() => {
             window.dispatchEvent(new CustomEvent('open-ai-chat'));
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 border border-blue-200/90 text-xs font-bold transition-all shadow-2xs cursor-pointer group active:scale-95"
+          className="hidden"
           title="Tanya AI (Bisa Tanya Apa Saja, Berpikir Logis & Karang Taruna)"
         >
           <Sparkles className="w-3.5 h-3.5 text-blue-600 group-hover:rotate-12 transition-transform" />

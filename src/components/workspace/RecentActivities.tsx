@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon, Archive, Video } from 'lucide-react';
+import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon, Archive, Video, Play } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { resolveAssetUrl } from '../../utils/assetUrl';
 
@@ -145,12 +145,19 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
                 </div>
 
                 {item.videoUrl && (
-                  <div className="absolute bottom-2.5 left-2.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white shadow-xs">
-                      <Video className="w-3 h-3" />
-                      <span>Video (≤60s)</span>
-                    </span>
-                  </div>
+                  <>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/35 transition-colors pointer-events-none">
+                      <div className="w-10 h-10 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform pl-0.5">
+                        <Play className="w-4 h-4 fill-current" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2.5 left-2.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-600 text-white shadow-xs">
+                        <Video className="w-3 h-3" />
+                        <span>Video (≤60s)</span>
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
 

@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Award,
   Video,
+  Play,
   Paperclip,
   Trash2,
   Archive,
@@ -307,6 +308,20 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                   {featuredItem.category || featuredItem.badge}
                 </span>
               </div>
+
+              {featuredItem.videoUrl && (
+                <>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors pointer-events-none">
+                    <div className="w-14 h-14 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform pl-0.5">
+                      <Play className="w-6 h-6 fill-current" />
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 left-4 px-2.5 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-md">
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Video Liputan (≤60s)</span>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-between space-y-4">
@@ -390,12 +405,19 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                       )}
                     </div>
 
-                    {/* Video badge */}
+                    {/* Video badge & play overlay */}
                     {act.videoUrl && (
-                      <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-lg bg-rose-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-sm backdrop-blur-xs">
-                        <Video className="w-3 h-3" />
-                        <span>Video (≤60s)</span>
-                      </div>
+                      <>
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/35 transition-colors pointer-events-none">
+                          <div className="w-11 h-11 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform pl-0.5">
+                            <Play className="w-5 h-5 fill-current" />
+                          </div>
+                        </div>
+                        <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-lg bg-rose-600 text-white text-[10px] font-bold flex items-center gap-1 shadow-sm backdrop-blur-xs">
+                          <Video className="w-3 h-3" />
+                          <span>Video (≤60s)</span>
+                        </div>
+                      </>
                     )}
 
                     {/* Photo count pill */}
@@ -527,12 +549,19 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
               >
                 <div className="flex items-start gap-4 flex-1">
                   {/* Mini image */}
-                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
                     {act.image ? (
                       <img src={act.image} alt={act.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-300">
                         <ImageIcon className="w-6 h-6" />
+                      </div>
+                    )}
+                    {act.videoUrl && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-sm pl-0.5">
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                        </div>
                       </div>
                     )}
                   </div>

@@ -49,6 +49,11 @@ import { ActivityItem } from '../../data/workspaceData';
 import { UserAccount } from '../../types/auth';
 import { compressImage, compressMultipleImages } from '../../utils/imageOptimizer';
 import { uploadToFilebase } from '../../services/filebaseService';
+import {
+  extractVideoMetaAndThumbnail,
+  uploadVideoToServerVault,
+  saveVideoBlobToIndexedDb,
+} from '../../utils/videoManager';
 import { BERITA_TEMPLATES, BeritaTemplate } from './berita/TambahBeritaTemplates';
 import { RundownSection, RundownItem, VipGuest } from './berita/RundownSection';
 import { SeoMedsosPreview } from './berita/SeoMedsosPreview';
@@ -175,6 +180,8 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isVideoChecking, setIsVideoChecking] = useState(false);
+  const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const pendingVideoFileRef = useRef<File | null>(null);
   const [documentFiles, setDocumentFiles] = useState<Array<{ name: string; size?: string }>>([]);
   const [driveUrl, setDriveUrl] = useState('');
 
@@ -396,9 +403,9 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
   };
 
   /**
-   * Video Upload Handler dengan Verifikasi Durasi Maksimal 60 Detik
+   * Video Upload Handler dengan Verifikasi Durasi Maksimal 60 Detik & Penyimpanan Server Vault
    */
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -406,17 +413,11 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
     setIsVideoChecking(true);
     onToast('Memeriksa durasi video (maksimal 60 detik)...');
 
-    const videoElem = document.createElement('video');
-    videoElem.preload = 'metadata';
-    const objectUrl = URL.createObjectURL(file);
-    videoElem.src = objectUrl;
-
-    videoElem.onloadedmetadata = () => {
-      URL.revokeObjectURL(objectUrl);
-      setIsVideoChecking(false);
-      const duration = videoElem.duration;
+    try {
+      const { duration, thumbnail, objectUrl } = await extractVideoMetaAndThumbnail(file);
 
       if (isNaN(duration) || duration <= 0) {
+        setIsVideoChecking(false);
         setVideoError('Format video tidak didukung atau durasi tidak dapat dibaca.');
         onToast('Gagal memverifikasi durasi video.');
         return;
@@ -424,8 +425,9 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
 
       const durationSec = Math.round(duration);
 
-      // Verifikasi durasi maksimal 60 detik (diberi toleransi 0.5s untuk rounding)
+      // Verifikasi durasi maksimal 60 detik (diberi toleransi 0.5s)
       if (duration > 60.5) {
+        setIsVideoChecking(false);
         const errorMsg = `Durasi video ${durationSec} detik melebihi batas maksimal 60 detik! Silakan potong video atau pilih klip berdurasi maksimal 1 menit.`;
         setVideoError(errorMsg);
         onToast(`⚠️ Durasi video ${durationSec} detik melebihi batas maksimal 60 detik!`);
@@ -433,29 +435,51 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
         return;
       }
 
-      // Valid: simpan video dan durasi
-      setVideoDuration(durationSec);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const resultBase64 = reader.result as string;
-        setVideoUrl(resultBase64);
-        onToast(`Video dokumentasi (${durationSec} detik) berhasil ditambahkan!`);
-      };
-      reader.readAsDataURL(file);
-    };
-
-    videoElem.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
       setIsVideoChecking(false);
-      setVideoError('Gagal memuat berkas video. Pastikan format video valid (MP4, WebM, MOV).');
+      setVideoDuration(durationSec);
+      pendingVideoFileRef.current = file;
+
+      // Jika belum ada foto cover, jadikan thumbnail frame video sebagai cover otomatis
+      if (!coverPhoto && thumbnail) {
+        setCoverPhoto(thumbnail);
+        onToast('Frame video otomatis dijadikan foto sampul liputan!');
+      }
+
+      // Unggah ke Server Vault agar tersimpan permanen tanpa melebihi kuota browser
+      setIsVideoUploading(true);
+      onToast('Mengunggah video ke Server Vault & menyiapkan pratinjau...');
+
+      try {
+        const vaultRes = await uploadVideoToServerVault(file);
+        const finalUrl = vaultRes.fileUrl;
+        setVideoUrl(finalUrl);
+
+        // Simpan juga ke IndexedDB untuk pemutaran instan offline
+        await saveVideoBlobToIndexedDb(finalUrl, file);
+
+        setIsVideoUploading(false);
+        onToast(`Video dokumentasi (${durationSec} detik) berhasil disimpan & siap dipublikasikan!`);
+      } catch (uploadErr) {
+        console.warn('Gagal upload ke vault, menggunakan cache lokal:', uploadErr);
+        const localKey = `video_${Date.now()}`;
+        await saveVideoBlobToIndexedDb(localKey, file);
+        setVideoUrl(objectUrl);
+        setIsVideoUploading(false);
+        onToast(`Video (${durationSec}s) tersimpan di memori perangkat.`);
+      }
+    } catch (err: any) {
+      setIsVideoChecking(false);
+      setIsVideoUploading(false);
+      setVideoError(err.message || 'Gagal memuat berkas video. Pastikan format video valid (MP4, WebM, MOV).');
       onToast('Gagal memuat berkas video.');
-    };
+    }
   };
 
   const handleRemoveVideo = () => {
     setVideoUrl('');
     setVideoDuration(null);
     setVideoError(null);
+    pendingVideoFileRef.current = null;
     if (videoInputRef.current) videoInputRef.current.value = '';
     onToast('Video dokumentasi dihapus.');
   };
@@ -553,6 +577,13 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
       metaDescription,
       socialCaption,
     };
+
+    if (pendingVideoFileRef.current) {
+      saveVideoBlobToIndexedDb(newItem.id, pendingVideoFileRef.current);
+      if (newItem.videoUrl) {
+        saveVideoBlobToIndexedDb(newItem.videoUrl, pendingVideoFileRef.current);
+      }
+    }
 
     onSaveActivity(newItem, asDraft);
     setCreatedItem(newItem);
@@ -1082,7 +1113,15 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
                 {isVideoChecking && (
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-700">
                     <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
-                    <span>Memverifikasi durasi berkas video...</span>
+                    <span>Memverifikasi durasi berkas video (maksimal 60 detik)...</span>
+                  </div>
+                )}
+
+                {/* Status Upload ke Vault Server */}
+                {isVideoUploading && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-800">
+                    <span className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                    <span>Menyimpan & mengamankan video ke Server Vault...</span>
                   </div>
                 )}
 
@@ -1166,8 +1205,13 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
                     </div>
 
                     <div className="w-full rounded-xl overflow-hidden bg-black flex items-center justify-center max-h-56">
-                      {videoUrl.startsWith('data:video') || videoUrl.includes('.mp4') || videoUrl.includes('.webm') ? (
-                        <video src={videoUrl} controls preload="metadata" className="w-full max-h-56 object-contain" />
+                      {videoUrl.startsWith('data:video') ||
+                      videoUrl.startsWith('blob:') ||
+                      videoUrl.includes('/filebase_vault/') ||
+                      videoUrl.includes('.mp4') ||
+                      videoUrl.includes('.webm') ||
+                      videoUrl.includes('.mov') ? (
+                        <video src={videoUrl} controls preload="metadata" playsInline className="w-full max-h-56 object-contain" />
                       ) : (
                         <div className="p-4 text-center text-slate-300 text-xs">
                           <p className="font-semibold text-white mb-1">Tautan Video Terpasang:</p>

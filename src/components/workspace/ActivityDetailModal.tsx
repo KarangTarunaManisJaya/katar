@@ -25,9 +25,11 @@ import {
   Archive,
   ArchiveRestore,
   Video,
+  Play,
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
+import { getVideoBlobFromIndexedDb } from '../../utils/videoManager';
 
 interface ActivityDetailModalProps {
   activity: ActivityItem | null;
@@ -48,6 +50,30 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const printableRef = useRef<HTMLDivElement>(null);
+
+  const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string>(activity?.videoUrl || '');
+  const [mediaViewMode, setMediaViewMode] = useState<'video' | 'photo'>(
+    activity?.videoUrl ? 'video' : 'photo'
+  );
+
+  React.useEffect(() => {
+    let isMounted = true;
+    if (activity?.videoUrl) {
+      setResolvedVideoUrl(activity.videoUrl);
+      setMediaViewMode('video');
+    } else if (activity?.id) {
+      getVideoBlobFromIndexedDb(activity.id).then((blob) => {
+        if (blob && isMounted) {
+          const localUrl = URL.createObjectURL(blob);
+          setResolvedVideoUrl(localUrl);
+          setMediaViewMode('video');
+        }
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activity?.id, activity?.videoUrl]);
 
   if (!activity) return null;
 
@@ -271,8 +297,62 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
               </div>
             )}
 
+            {/* Media Mode Switcher (Video & Foto) */}
+            {resolvedVideoUrl && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMediaViewMode('video')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    mediaViewMode === 'video'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  <span>Video Liputan (≤60s)</span>
+                </button>
+                {currentMainPhoto && (
+                  <button
+                    type="button"
+                    onClick={() => setMediaViewMode('photo')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      mediaViewMode === 'photo'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Galeri Foto ({allPhotos.length})</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Main Visual Display */}
-            {currentMainPhoto ? (
+            {mediaViewMode === 'video' && resolvedVideoUrl ? (
+              <div className="rounded-2xl overflow-hidden border border-slate-900 bg-black aspect-[16/9] flex items-center justify-center shadow-lg relative group">
+                {resolvedVideoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/) ? (
+                  <iframe
+                    src={`https://www.youtube.com/embed/${resolvedVideoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/)![1]}?autoplay=1`}
+                    title="Video Liputan"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full border-0"
+                  />
+                ) : (
+                  <video
+                    src={resolvedVideoUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    poster={currentMainPhoto || undefined}
+                    preload="auto"
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            ) : currentMainPhoto ? (
               <div className="space-y-2">
                 <div
                   onClick={() => setLightboxOpen(true)}
@@ -407,7 +487,7 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
             )}
 
             {/* Video Liputan & Dokumentasi (Durasi Maksimal 60 Detik) */}
-            {activity.videoUrl && (
+            {resolvedVideoUrl && (
               <div className="space-y-2 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-md">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -421,10 +501,10 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                   </span>
                 </div>
 
-                {activity.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/) ? (
+                {resolvedVideoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/) ? (
                   <div className="w-full aspect-video rounded-xl overflow-hidden shadow-inner">
                     <iframe
-                      src={`https://www.youtube.com/embed/${activity.videoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/)![1]}`}
+                      src={`https://www.youtube.com/embed/${resolvedVideoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/)![1]}`}
                       title="Video Liputan"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -434,9 +514,10 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                 ) : (
                   <div className="w-full rounded-xl overflow-hidden bg-black max-h-96 flex items-center justify-center">
                     <video
-                      src={activity.videoUrl}
+                      src={resolvedVideoUrl}
                       controls
                       preload="metadata"
+                      playsInline
                       className="w-full max-h-96 object-contain"
                     />
                   </div>
