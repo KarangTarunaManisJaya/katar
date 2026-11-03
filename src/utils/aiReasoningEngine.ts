@@ -122,19 +122,27 @@ export function generateLogicalAnswer(rawQuery: string, context?: ReasoningConte
     return handleCriticalThinkingLogic(q, query);
   }
 
-  // 8. Sapaan
+  // 8. Obrolan Santai & Sapaan Manusiawi
   if (
     q === 'halo' ||
     q === 'hai' ||
     q.startsWith('halo ') ||
     q.startsWith('hai ') ||
     q.includes('siapa kamu') ||
+    q.includes('siapa namamu') ||
+    q.includes('nama kamu') ||
     q.includes('apa kabar') ||
+    q.includes('gimana kabar') ||
+    q.includes('lagi apa') ||
+    q.includes('sedang apa') ||
+    q.includes('makasih') ||
+    q.includes('terima kasih') ||
     q.includes('selamat pagi') ||
     q.includes('selamat siang') ||
+    q.includes('selamat sore') ||
     q.includes('selamat malam')
   ) {
-    return handleGreetingLogic(context);
+    return handleGreetingLogic(q, context);
   }
 
   // 9. Pertanyaan Umum Lainnya
@@ -147,42 +155,46 @@ export function generateLogicalAnswer(rawQuery: string, context?: ReasoningConte
 function handleKarangTarunaLogic(q: string, query: string, context?: ReasoningContext): string {
   if (q.includes('program') || q.includes('kerja') || q.includes('kegiatan')) {
     return (
-      `Program kerja Karang Taruna Kelurahan Manis Jaya terbagi dalam **5 pilar utama**:\n\n` +
-      `1. **Olahraga & Pemuda:** Turnamen futsal dan bulutangkis antar-RW.\n` +
-      `2. **Sosial Kemanusiaan:** Donor darah rutin, santunan yatim/lansia, dan tanggap bencana lingkungan.\n` +
-      `3. **Lingkungan Hidup:** Kerja bakti drainase dan program Bank Sampah Pemuda.\n` +
-      `4. **Ekonomi & UMKM:** Pelatihan wirausaha digital dan pendampingan UMKM pemuda.\n` +
-      `5. **Seni & Tradisi:** Peringatan 17 Agustus dan pentas kreasi seni pemuda.\n\n` +
-      `Seluruh jadwal dapat dilihat langsung pada menu **Katalog Kegiatan & Jadwal** di panel sebelah kiri.`
+      `Halo! Senang kamu tertarik dengan kegiatan pemuda di sini. 😊\n\n` +
+      `Karang Taruna Kelurahan Manis Jaya punya **5 pilar kegiatan utama** yang rutin bergerak di RW 01 sampai RW 08:\n\n` +
+      `1. **Olahraga & Pemuda:** Ada turnamen futsal, bulutangkis, dan senam sehat warga antar-RW.\n` +
+      `2. **Sosial & Kepedulian:** Bakti sosial, donor darah, santunan adik-adik yatim/lansia, serta tanggap bencana.\n` +
+      `3. **Lingkungan Hidup:** Gotong royong bersih drainase dan Bank Sampah Pemuda agar lingkungan Manis Jaya asri.\n` +
+      `4. **Wirausaha & UMKM:** Pelatihan bisnis digital dan pendampingan buat usaha pemuda lokal.\n` +
+      `5. **Seni, Budaya & Kreativitas:** Semarak 17 Agustus, pentas seni, dan kreasi konten pemuda.\n\n` +
+      `Kamu juga bisa cek agenda terdekat di menu **Katalog Kegiatan & Jadwal** ya. Dari 5 bidang tadi, kamu paling tertarik ikutan di bidang yang mana nih?`
     );
   }
 
   if (q.includes('surat') || q.includes('ttd') || q.includes('nomor surat')) {
     return (
-      `Untuk membuat surat dinas resmi di portal ini:\n\n` +
-      `1. Buka menu **Surat Menyurat** di panel kiri, lalu klik **+ Buat Surat Baru**.\n` +
-      `2. Pilih jenis surat (Surat Tugas, Undangan, atau Permohonan) dan lengkapi data tujuan.\n` +
-      `3. Sistem otomatis menyematkan **Nomor Surat Baku**, **QR Code legalitas**, dan tanda tangan digital Ketua & Sekretaris.\n` +
-      `4. Klik simpan dan Anda dapat langsung mengunduh atau mencetak file PDF resminya.`
+      `Gampang banget kok buat bikin surat dinas resmi di portal ini! Langkahnya simpel banget:\n\n` +
+      `1. Buka menu **Surat Menyurat** di sidebar kiri, lalu klik tombol **+ Buat Surat Baru**.\n` +
+      `2. Pilih jenis surat yang kamu butuhkan (misal Surat Undangan, Surat Tugas, atau Permohonan) dan isi tujuannya.\n` +
+      `3. Hebatnya, sistem kita otomatis membuatkan **Nomor Surat Baku**, **QR Code legalitas**, dan tanda tangan digital Ketua & Sekretaris.\n` +
+      `4. Klik simpan, lalu surat langsung siap dicetak atau diunduh sebagai file PDF rapi berstandar dinas.\n\n` +
+      `Lagi ada draft surat apa nih yang mau kamu buat hari ini? Biar saya bantu arahkan!`
     );
   }
 
   if (q.includes('kta') || q.includes('anggota') || q.includes('daftar') || q.includes('kartu')) {
     return (
-      `Cara pendaftaran dan penerbitan KTA Digital:\n\n` +
-      `1. Masuk ke menu **Data Anggota & KTA**.\n` +
-      `2. Isi identitas (NIK e-KTP, nama lengkap, WhatsApp, dan asal RW 01 - RW 08 Kelurahan Manis Jaya).\n` +
-      `3. Pilih bidang minat (Olahraga, Humas, Sosial, Lingkungan, atau UMKM).\n` +
-      `4. Setelah diverifikasi pengurus, KTA Digital langsung terbit lengkap dengan pasfoto, barcode verifikasi, dan stempel resmi yang siap dicetak.`
+      `Mau gabung dan punya KTA Digital resmi Karang Taruna Manis Jaya? Boleh banget, prosesnya cepat dan gratis kok:\n\n` +
+      `1. Masuk ke menu **Data Anggota & KTA** di sebelah kiri.\n` +
+      `2. Isi formulir data diri (nama lengkap, NIK e-KTP, nomor WhatsApp, dan asal RW kamu di Manis Jaya).\n` +
+      `3. Pilih bidang minat yang paling cocok dengan hobi kamu (Olahraga, Humas, Sosial, Lingkungan, atau UMKM).\n` +
+      `4. Begitu diverifikasi, KTA Digital kamu langsung terbit lengkap dengan foto, barcode verifikasi, dan stempel resmi yang bisa langsung kamu cetak atau simpan di HP.\n\n` +
+      `Yuk langsung daftar! Ada pertanyaan soal pengisian datanya?`
     );
   }
 
   if (q.includes('aset') || q.includes('pinjam') || q.includes('inventaris') || q.includes('sound') || q.includes('tenda')) {
     return (
-      `Tata cara peminjaman aset inventaris (sound system, tenda, kursi, dll):\n\n` +
-      `1. Buka menu **Aset Organisasi**, cek ketersediaan barang pada tanggal yang diinginkan.\n` +
-      `2. Isi formulir peminjaman: nama penanggung jawab, asal RT/RW, keperluan, serta tanggal pinjam & kembali.\n` +
-      `3. Pengurus memverifikasi pengajuan. Saat serah terima, kondisi barang dicek bersama dan wajib dikembalikan tepat waktu dalam kondisi baik.`
+      `Bisa banget! Karang Taruna Manis Jaya menyediakan perlengkapan untuk mendukung kegiatan warga (seperti sound system, tenda, kursi, dan proyektor). Alur pinjamnya seperti ini:\n\n` +
+      `1. Buka menu **Aset Organisasi**, kamu bisa lihat barang apa saja yang lagi tersedia dan siap pakai.\n` +
+      `2. Isi formulir peminjaman singkat: nama penanggung jawab, asal RT/RW, keperluan acara, serta tanggal pinjam & kembali.\n` +
+      `3. Pengurus akan segera memverifikasi. Saat serah terima, kita cek kondisi barang bareng-bareng dan dijaga baik-baik ya.\n\n` +
+      `Rencananya kamu mau pinjam perlengkapan apa dan buat acara tanggal berapa nih?`
     );
   }
 
@@ -344,43 +356,49 @@ function handleHealthLogic(q: string, query: string): string {
 function handlePsychologyLogic(q: string, query: string): string {
   if (q.includes('malas') || q.includes('menunda') || q.includes('prokrastinasi')) {
     return (
-      `Rasa malas atau menunda pekerjaan terjadi karena otak emosi menghindari tugas yang terasa berat. Cara mengatasinya secara logis:\n\n` +
-      `1. **Gunakan Aturan 2 Menit:** Mulai kerjakan bagian paling kecil selama 2 menit saja tanpa memikirkan beban keseluruhan. Begitu dimulai, kelembaman malas akan hilang.\n` +
-      `2. **Pecah Menjadi Langkah Mikro:** Bagi tugas besar menjadi 3-5 tugas kecil yang bisa diselesaikan dalam 15 menit.\n` +
-      `3. **Eliminasi Distraksi:** Jauhkan ponsel dari jangkauan pandangan saat mulai bekerja.\n` +
-      `4. **Tentukan Waktu Spesifik:** Tulis jam dan tempat pelaksanaan secara pasti, bukan sekadar "nanti".`
+      `Wajar banget kok, kita semua pasti pernah ngalamin fase malas atau rasanya berat banget mau mulai sesuatu. 😊\n\n` +
+      `Biasanya rasa malas itu muncul bukan karena kita nggak mampu, tapi karena otak kita ngerasa tugasnya terlalu besar atau membebani. Nah, ada trik psikologi yang gampang banget dicoba:\n\n` +
+      `1. **Trik 2 Menit:** Janjian sama diri sendiri: "Oke, aku cuma bakal ngerjain ini 2 menit aja." Begitu kamu mulai gerak, kelembaman malasnya bakal hilang dengan sendirinya.\n` +
+      `2. **Pecah Jadi Potongan Kecil:** Jangan bayangkan tugasnya sebagai gunung besar. Ambil satu langkah kecil yang bisa selesai dalam 10 menit.\n` +
+      `3. **Jauhkan HP Sebentar:** Taruh ponsel di ruangan lain atau di luar jangkauan tangan selama kamu mulai.\n` +
+      `4. **Kasih Hadiah ke Diri Sendiri:** Kalau satu target kecil udah kelar, boleh istirahat santai sejenak sambil ngopi atau minum teh.\n\n` +
+      `Yuk, coba ambil satu tugas paling gampang sekarang dan lakuin 2 menit dulu. Mau mulai dari hal apa nih?`
     );
   }
 
   if (q.includes('waktu') || q.includes('mengatur waktu')) {
     return (
-      `Manajemen waktu efektif menggunakan **Matriks Eisenhower**:\n\n` +
-      `1. **Penting & Mendesak:** Kerjakan langsung sekarang (krisis, tenggat hari ini).\n` +
-      `2. **Penting & Tidak Mendesak:** Jadwalkan secara disiplin (belajar, olahraga, perencanaan).\n` +
-      `3. **Mendesak tapi Tidak Penting:** Delegasikan atau batasi (notifikasi obrolan sepele).\n` +
-      `4. **Tidak Penting & Tidak Mendesak:** Kurangi atau hapus (scrolling medsos tanpa tujuan).`
+      `Mengatur waktu itu sebenarnya seni mengatur prioritas energi kita, bukan sekadar bikin jadwal padat yang bikin pusing. 😉\n\n` +
+      `Cara paling simpel adalah pakai metode 4 kuadran:\n` +
+      `1. **Penting & Mendesak:** Kerjakan duluan tanpa ditunda (tugas mendesak hari ini).\n` +
+      `2. **Penting tapi Nggak Mendesak:** Ini kunci masa depan kamu! Jadwalkan waktu khususnya (belajar skill baru, olahraga, istirahat cukup).\n` +
+      `3. **Mendesak tapi Kurang Penting:** Batasi atau minta tolong rekan lain.\n` +
+      `4. **Nggak Penting & Nggak Mendesak:** Hindari jebakan scrolling medsos berjam-jam tanpa arah.\n\n` +
+      `Kira-kira apa yang paling sering menyita waktu kamu belakangan ini? Cerita yuk!`
     );
   }
 
   if (q.includes('pemimpin') || q.includes('bos')) {
     return (
-      `Perbedaan esensial Pemimpin vs Bos:\n\n` +
-      `• **Bos:** Mengandalkan wewenang jabatan, memerintah dari atas, dan menyalahkan orang saat terjadi masalah.\n` +
-      `• **Pemimpin:** Menggerakkan dengan keteladanan, membimbing dan bekerja bersama tim, serta bertanggung jawab mencari solusi saat terjadi kegagalan.`
+      `Pertanyaan keren nih! Perbedaan utamanya ada di **hati dan cara menggerakkan orang**: ✨\n\n` +
+      `• **Seorang Bos:** Mengandalkan kekuasaan jabatan. Katanya "Kerjakan!", suka mencari siapa yang salah kalau ada masalah, dan membuat orang bekerja karena takut.\n` +
+      `• **Seorang Pemimpin:** Menggerakkan dengan teladan dan empati. Katanya "Ayo kita kerjakan bareng!", membimbing saat timnya bingung, dan ikut bertanggung jawab saat menghadapi tantangan.\n\n` +
+      `Di Karang Taruna, kita selalu menanamkan jiwa kepemimpinan yang merangkul dan mendengar, bukan sekadar menyuruh. Menurut kamu, sifat apa lagi yang wajib dipunyai seorang pemimpin idaman?`
     );
   }
 
   if (q.includes('stres') || q.includes('burnout')) {
     return (
-      `Mengatasi stres secara rasional menggunakan prinsip kendali:\n\n` +
-      `1. Pisahkan hal yang berada dalam kendali Anda (tindakan, respons, istirahat) dari hal di luar kendali Anda (reaksi orang lain, situasi eksternal).\n` +
-      `2. Fokuskan 100% energi hanya pada tindakan konkret yang dapat Anda lakukan hari ini.\n` +
-      `3. Istirahatkan tubuh dan pikiran untuk memulihkan kapasitas energi mental.`
+      `Kalau kamu lagi ngerasa stres atau lelah banget, tarik napas dalam-dalam dulu ya. Kamu nggak sendirian kok. 🌿\n\n` +
+      `Coba ingat prinsip lingkaran kendali:\n` +
+      `1. **Lepaskan yang di luar kendali kita:** Komentar orang lain, masa lalu, atau hal-hal yang belum terjadi.\n` +
+      `2. **Fokuskan energi pada apa yang bisa kamu lakukan detik ini:** Rehat sejenak, minum air putih, jalan kaki sebentar, dan tidur yang cukup.\n\n` +
+      `Kesehatan mental dan fisikmu jauh lebih berharga dari apa pun. Mau cerita sedikit apa yang lagi bikin kamu kepikiran?`
     );
   }
 
   return (
-    `Kunci produktivitas dan ketenangan berpikir adalah memecah masalah besar menjadi langkah-langkah kecil terukur yang dapat dieksekusi saat ini juga.`
+    `Kunci ketenangan dan produktivitas adalah membagi hal besar menjadi langkah-langkah kecil yang bisa kita nikmati prosesnya saat ini juga. Kalau ada yang mau diobrolin, jangan sungkan ya!`
   );
 }
 
@@ -413,28 +431,54 @@ function handleCriticalThinkingLogic(q: string, query: string): string {
 }
 
 // -------------------------------------------------------------
-// 8. Sapaan
+// 8. Sapaan Ramah & Percakapan Manusiawi (Singkat & Natural)
 // -------------------------------------------------------------
-function handleGreetingLogic(context?: ReasoningContext): string {
-  const name = context?.userName || 'Warga';
-  return (
-    `Halo ${name}! Saya asisten resmi Karang Taruna Kelurahan Manis Jaya.\n\n` +
-    `Saya siap menjawab pertanyaan Anda secara lugas dan cepat mengenai:\n` +
-    `• Program kerja 5 pilar pemuda Manis Jaya (RW 01 s/d RW 08).\n` +
-    `• Pembuatan surat dinas resmi, KTA Digital, inventaris aset, dan agenda kegiatan.\n` +
-    `• Maupun pertanyaan umum seputar sains, logika, produktivitas, dan teknologi.\n\n` +
-    `Silakan ajukan pertanyaan Anda.`
-  );
+function handleGreetingLogic(q: string, context?: ReasoningContext): string {
+  const name = context?.userName ? ` ${context.userName}` : '';
+
+  if (q.includes('apa kabar') || q.includes('gimana kabar')) {
+    return 'Kabar baik! Bagaimana denganmu hari ini?';
+  }
+
+  if (q.includes('siapa kamu') || q.includes('siapa namamu') || q.includes('nama kamu')) {
+    return 'Aku Kawan Manis Jaya, asisten AI Karang Taruna Kelurahan Manis Jaya. Salam kenal ya!';
+  }
+
+  if (q.includes('lagi apa') || q.includes('sedang apa')) {
+    return 'Lagi standby nemenin kamu nih. Ada yang mau diobrolin atau dibantu?';
+  }
+
+  if (q.includes('makasih') || q.includes('terima kasih') || q.includes('thanks')) {
+    return 'Sama-sama! Senang bisa bantu kamu. Kalau ada apa-apa lagi, langsung tanyakan ya!';
+  }
+
+  if (q.includes('selamat pagi')) {
+    return `Selamat pagi${name}! Semangat buat harimu ya. Ada yang bisa kubantu?`;
+  }
+
+  if (q.includes('selamat siang')) {
+    return `Selamat siang${name}! Gimana harimu sejauh ini?`;
+  }
+
+  if (q.includes('selamat sore')) {
+    return `Selamat sore${name}! Semoga harimu menyenangkan. Ada yang mau diobrolin?`;
+  }
+
+  if (q.includes('selamat malam')) {
+    return `Selamat malam${name}! Waktunya istirahat santai. Ada yang mau kamu diskusikan?`;
+  }
+
+  return `Halo${name}! Senang bisa ngobrol bareng kamu. Ada yang bisa kubantu hari ini?`;
 }
 
 // -------------------------------------------------------------
-// 9. Pertanyaan Umum Terbuka (Direct & Concise)
+// 9. Pertanyaan Umum Terbuka (Mengalir & Seperti Manusia)
 // -------------------------------------------------------------
 function handleGeneralDirectLogic(query: string): string {
   const clean = query.replace(/[?.,!]/g, '').trim();
   return (
-    `Mengenai "${clean}":\n\n` +
-    `Secara logika dan fakta objektif, hal ini ditentukan oleh keterkaitan sebab-akibat yang mendasarinya. Langkah paling efektif adalah mengidentifikasi pokok persoalannya, menguji data atau bukti pendukungnya, lalu mengambil tindakan yang terukur dan realistis.\n\n` +
-    `Jika Anda membutuhkan rincian teknis atau panduan langkah demi langkah yang lebih spesifik, silakan sampaikan detail pertanyaannya.`
+    `Wah, menarik nih pertanyaannya soal "${clean}"! 😊\n\n` +
+    `Kalau kita obrolin secara santai tapi masuk akal, hal ini biasanya sangat berkaitan dengan bagaimana kita melihat pokok persoalannya secara jernih. Begitu kita urai faktor-faktornya satu per satu, biasanya langkah atau kesimpulannya bakal jauh lebih terang dan mudah dipahami.\n\n` +
+    `Kira-kira ada hal spesifik atau sudut pandang tertentu dari "${clean}" yang ingin kita bedah lebih dalam? Kasih tahu saya ya, biar obrolan kita makin seru!`
   );
 }

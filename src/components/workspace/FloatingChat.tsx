@@ -39,15 +39,14 @@ interface ChatMessage {
 }
 
 const QUICK_TOPICS = [
-  { id: 'bebas_refleksi', label: '💡 Mengatasi Malas', query: 'Gimana ya cara mengatasi rasa malas dan menunda pekerjaan secara masuk akal?' },
-  { id: 'bebas_sains', label: '🔬 Kenapa Langit Biru?', query: 'Kenapa ya langit warnanya biru pas siang hari, bukan ungu atau hijau?' },
-  { id: 'program', label: '📋 Program Kerja Pemuda', query: 'Apa saja 5 pilar program kerja Karang Taruna Manis Jaya dan kegiatannya?' },
-  { id: 'tatacara_kta', label: '💳 Cara Buat KTA Digital', query: 'Bagaimana cara mendaftar dan mencetak KTA digital Karang Taruna Manis Jaya?' },
-  { id: 'tatacara_surat', label: '✉️ Buat Surat Dinas Resmi', query: 'Bagaimana cara membuat surat dinas resmi dengan barcode dan tanda tangan digital?' },
-  { id: 'jadwal', label: '📅 Jadwal & Agenda', query: 'Kapan jadwal kegiatan dan agenda pemuda terdekat di Manis Jaya?' },
-  { id: 'bebas_tidur', label: '😴 Kenapa Kita Mengantuk?', query: 'Secara sains, kenapa manusia bisa mengantuk dan wajib tidur?' },
-  { id: 'aset', label: '📦 Pinjam Sound / Aset', query: 'Bagaimana prosedur meminjam sound system dan perlengkapan organisasi?' },
-  { id: 'bebas_pemimpin', label: '🤝 Pemimpin vs Bos', query: 'Menurutmu, apa perbedaan mendasar antara seorang pemimpin sejati dan bos?' },
+  { id: 'bebas_refleksi', label: '💡 Tips Mengatasi Malas', query: 'Halo! Gimana ya tips ampuh mengatasi rasa malas dan suka menunda-nunda pekerjaan?' },
+  { id: 'program', label: '📋 Kegiatan Seru Pemuda', query: 'Halo, boleh ceritakan apa saja kegiatan seru dan program kerja Karang Taruna Manis Jaya saat ini?' },
+  { id: 'tatacara_kta', label: '💳 Cara Bikin KTA Digital', query: 'Halo, gimana ya cara daftar dan cetak KTA digital anggota Karang Taruna Manis Jaya?' },
+  { id: 'tatacara_surat', label: '✉️ Buat Surat Dinas Resmi', query: 'Bisa bantu pandu saya cara buat surat dinas resmi dengan barcode tanda tangan digital?' },
+  { id: 'bebas_sains', label: '🔬 Kenapa Langit Berwarna Biru?', query: 'Mau tanya dong, secara sains kenapa sih langit pas siang hari itu warnanya biru?' },
+  { id: 'jadwal', label: '📅 Jadwal Kegiatan Terdekat', query: 'Ada agenda atau jadwal kegiatan pemuda terdekat apa ya di Kelurahan Manis Jaya?' },
+  { id: 'aset', label: '📦 Pinjam Tenda / Sound System', query: 'Kalau mau pinjam perlengkapan seperti sound system atau tenda untuk acara warga, prosedurnya gimana ya?' },
+  { id: 'bebas_pemimpin', label: '🤝 Pemimpin vs Bos', query: 'Menurutmu, apa sih perbedaan mendasar antara seorang pemimpin yang disukai dan seorang bos?' },
 ];
 
 export const FloatingChat: React.FC<FloatingChatProps> = ({
@@ -73,7 +72,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const initialBotWelcome: ChatMessage = {
     id: 'welcome-1',
     sender: 'bot',
-    text: `Halo ${currentUser?.name ? currentUser.name : 'Warga'}! 👋\n\nSaya asisten AI resmi Karang Taruna Kelurahan Manis Jaya. Saya siap memberikan jawaban yang **cepat, lugas, dan logis** sesuai pertanyaan Anda.\n\nAnda dapat menanyakan topik apa pun:\n• **Karang Taruna Manis Jaya:** 5 pilar program kerja di 8 RW, tata cara surat dinas resmi & barcode TTD digital, pendaftaran KTA digital, peminjaman aset (sound/tenda), hingga jadwal kegiatan pemuda.\n• **Topik Umum & Logika:** Sains, teknologi, psikologi/cara mengatasi malas, manajemen waktu, hingga penalaran logis sehari-hari.\n\nSilakan sampaikan pertanyaan Anda di bawah!`,
+    text: `Halo ${currentUser?.name ? currentUser.name : 'Kawan'}! 👋 Senang bisa ngobrol bareng kamu.\n\nSaya rekan ngobrol AI Karang Taruna Kelurahan Manis Jaya. Anggap aja kita lagi ngobrol santai ya, nggak perlu kaku sama sekali!\n\nKamu bebas tanya atau diskusiin apa saja:\n• **Karang Taruna Manis Jaya:** Kegiatan pemuda di 8 RW, cara bikin KTA digital, buat surat resmi ber-barcode, pinjam tenda/sound system, sampai jadwal agenda terdekat.\n• **Diskusi Bebas & Tanya Jawab:** Tips produktivitas & cara atasi malas, motivasi diri, teknologi, sains, atau curhat logika kehidupan sehari-hari.\n\nAda hal seru apa yang lagi mau kamu tanyakan atau obrolin hari ini? 😊`,
     time: 'Baru saja',
     isTyping: false,
   };
@@ -485,14 +484,14 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="text-sm font-black tracking-tight leading-tight truncate">
-                    Teman Ngobrol (Seperti ChatGPT)
+                    Teman Ngobrol AI (Tanya Jawab Santai)
                   </h4>
 
                   {/* Status Indicator showing human reading/thinking/typing progression */}
                   {thinkingState === 'reading' && (
                     <div className="flex items-center gap-1.5 bg-blue-500/25 text-blue-200 border border-blue-400/40 px-2 py-0.5 rounded-full text-[10px] font-bold animate-pulse shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-300" />
-                      <span>Mencerna...</span>
+                      <span>Membaca...</span>
                     </div>
                   )}
 
@@ -506,7 +505,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   {thinkingState === 'typing' && (
                     <div className="flex items-center gap-1.5 bg-amber-400/25 text-amber-200 border border-amber-400/40 px-2 py-0.5 rounded-full text-[10px] font-bold animate-pulse shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-ping" />
-                      <span>Mengetik santai...</span>
+                      <span>Mengetik...</span>
                     </div>
                   )}
 
@@ -519,12 +518,12 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 </div>
                 <p className="text-[11px] text-blue-200 truncate mt-0.5">
                   {thinkingState === 'typing'
-                    ? 'Sedang mengetik jawaban perlahan...'
+                    ? 'Sedang mengetik jawaban...'
                     : thinkingState === 'thinking'
-                    ? 'Menyusun tanggapan yang hangat & logis...'
+                    ? 'Menyiapkan jawaban yang enak dibaca...'
                     : thinkingState === 'reading'
-                    ? 'Membaca dan memahami pesanmu...'
-                    : 'Bisa ngobrol apa saja: sains, kehidupan, teknologi & Karang Taruna'}
+                    ? 'Membaca dan memahami pertanyaanmu...'
+                    : 'Bisa ngobrol apa saja: sains, kehidupan, Karang Taruna & tips santai'}
                 </p>
               </div>
             </div>
@@ -711,12 +710,12 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
               onChange={(e) => setInputText(e.target.value)}
               placeholder={
                 thinkingState === 'typing'
-                  ? 'Sedang mengetik balasan perlahan...'
+                  ? 'Sedang mengetik jawaban...'
                   : thinkingState === 'thinking'
-                  ? 'Sedang menimbang dan memikirkan logika...'
+                  ? 'Sedang memikirkan tanggapan buat kamu...'
                   : thinkingState === 'reading'
-                  ? 'Sedang membaca pesan Anda...'
-                  : 'Tanyakan apa saja (sains, logika, nasihat hidup, Karang Taruna)...'
+                  ? 'Sedang membaca pesanmu...'
+                  : 'Tanyakan apa saja atau ketik pesanmu di sini... (Enter)'
               }
               disabled={thinkingState !== 'idle'}
               className="flex-1 px-4 py-2.5 text-xs bg-slate-100 rounded-2xl border border-transparent focus:border-blue-400 focus:bg-white focus:outline-none transition-all placeholder:text-slate-400 disabled:opacity-75"
