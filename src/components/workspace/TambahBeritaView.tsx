@@ -1143,6 +1143,30 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
                   </div>
                 )}
 
+                {/* Preset Fast Video Picker */}
+                <div className="flex items-center gap-1.5 flex-wrap pb-1">
+                  <span className="text-[10px] font-bold text-slate-500">Preset Video Liputan:</span>
+                  {[
+                    { label: '🎬 Bakti Sosial (15s)', url: '/filebase_vault/video/video_baksos_manisjaya.mp4', duration: 15 },
+                    { label: '🎬 Kerja Bakti (15s)', url: '/filebase_vault/video/video_kerjabakti_manisjaya.mp4', duration: 15 },
+                    { label: '🎬 Turnamen Pemuda (15s)', url: '/filebase_vault/video/video_futsal_manisjaya.mp4', duration: 15 },
+                  ].map((p, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setVideoUrl(p.url);
+                        setVideoDuration(p.duration);
+                        setVideoError(null);
+                        onToast(`Preset ${p.label} dipilih!`);
+                      }}
+                      className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md text-[10px] font-semibold transition-colors border border-rose-200/80 cursor-pointer"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Upload Action / Video Player Preview */}
                 {!videoUrl ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

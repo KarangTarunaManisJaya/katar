@@ -1,38 +1,138 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Manis Jaya — Workspace Karang Taruna</title>
-    <meta name="description" content="Platform manajemen organisasi modern untuk anggota, surat menyurat, proposal, laporan, dan kegiatan Karang Taruna Manis Jaya, Kelurahan Manis Jaya, Kota Tangerang." />
-    <meta property="og:title" content="Manis Jaya — Workspace Karang Taruna" />
-    <meta property="og:description" content="Platform manajemen organisasi modern untuk anggota, surat menyurat, proposal, laporan, dan kegiatan Karang Taruna Manis Jaya, Kelurahan Manis Jaya, Kota Tangerang." />
+    <title>Karang Taruna Manis Jaya | Organisasi Pemuda Tangerang</title>
+    
+    <!-- Meta SEO & Indeks Mesin Pencari Google -->
+    <meta name="description" content="Portal resmi Karang Taruna Manis Jaya, Tangerang. Wadah kegiatan pemuda dalam pembangunan sosial, kemasyarakatan, inovasi kepemudaan, dan bakti warga." />
+    <meta name="keywords" content="Karang Taruna Manis Jaya, Tangerang, organisasi pemuda Tangerang, kegiatan pemuda, sosial, kemasyarakatan, Kelurahan Manis Jaya, Jatiuwung Tangerang, pemuda Banten, warta kepemudaan" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <link rel="canonical" href="https://karangtarunamanisjaya.my.id/" />
+    <meta name="author" content="Karang Taruna Manis Jaya" />
+
+    <!-- Metadata Geografis & Wilayah (Tangerang, Banten, Indonesia) -->
+    <meta name="geo.region" content="ID-BT" />
+    <meta name="geo.placename" content="Tangerang, Banten, Indonesia" />
+    <meta name="geo.position" content="-6.1950;106.5828" />
+    <meta name="ICBM" content="-6.1950, 106.5828" />
+
+    <!-- Open Graph Protocol untuk Facebook, WhatsApp, LinkedIn -->
+    <meta property="og:site_name" content="Karang Taruna Manis Jaya" />
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:url" content="https://karangtarunamanisjaya.my.id/" />
+    <meta property="og:title" content="Karang Taruna Manis Jaya | Organisasi Pemuda Tangerang" />
+    <meta property="og:description" content="Portal resmi Karang Taruna Manis Jaya, Tangerang. Wadah kegiatan pemuda dalam pembangunan sosial, kemasyarakatan, inovasi kepemudaan, dan bakti warga." />
     <meta property="og:image" content="https://karangtarunamanisjaya.my.id/logo.png?v=2" />
     <meta property="og:image:secure_url" content="https://karangtarunamanisjaya.my.id/logo.png?v=2" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="512" />
     <meta property="og:image:height" content="512" />
-    <meta property="og:image:alt" content="Logo Karang Taruna Kelurahan Manis Jaya" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Manis Jaya — Workspace Karang Taruna" />
-    <meta name="twitter:description" content="Platform manajemen organisasi modern untuk anggota, surat menyurat, proposal, laporan, dan kegiatan Karang Taruna Manis Jaya." />
+    <meta property="og:image:alt" content="Logo Resmi Karang Taruna Manis Jaya Kota Tangerang" />
+
+    <!-- Twitter Card Metadata -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Karang Taruna Manis Jaya | Organisasi Pemuda Tangerang" />
+    <meta name="twitter:description" content="Portal resmi Karang Taruna Manis Jaya, Tangerang. Wadah kegiatan pemuda dalam pembangunan sosial, kemasyarakatan, dan kepemudaan." />
     <meta name="twitter:image" content="https://karangtarunamanisjaya.my.id/logo.png?v=2" />
+    <meta name="twitter:image:alt" content="Logo Resmi Karang Taruna Manis Jaya Kota Tangerang" />
+
+    <!-- Format & Web App Settings -->
     <meta name="theme-color" content="#2563eb" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Manis Jaya" />
+    <meta name="apple-mobile-web-app-title" content="Karang Taruna Manis Jaya" />
+    
+    <!-- Favicon & Touch Icons -->
     <link rel="icon" type="image/svg+xml" href="./logo.svg?v=2" />
     <link rel="icon" type="image/x-icon" href="./favicon.ico?v=2" />
     <link rel="shortcut icon" href="./favicon.ico?v=2" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png?v=2" />
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-512.png?v=2" />
     <link rel="manifest" href="./manifest.json?v=2" />
+    
+    <!-- Tipografi Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+
+    <!-- Schema.org Structured Data (JSON-LD) - Organization & WebSite -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": ["Organization", "NGO"],
+          "@id": "https://karangtarunamanisjaya.my.id/#organization",
+          "name": "Karang Taruna Manis Jaya",
+          "alternateName": [
+            "Karang Taruna Kelurahan Manis Jaya",
+            "KT Manis Jaya",
+            "Karang Taruna Manis Jaya Tangerang"
+          ],
+          "url": "https://karangtarunamanisjaya.my.id/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://karangtarunamanisjaya.my.id/logo.png",
+            "width": 512,
+            "height": 512,
+            "caption": "Logo Resmi Karang Taruna Manis Jaya Kota Tangerang"
+          },
+          "image": "https://karangtarunamanisjaya.my.id/logo.png",
+          "description": "Organisasi pemuda Karang Taruna Kelurahan Manis Jaya, Kecamatan Jatiuwung, Kota Tangerang, Banten. Bergerak dalam pembinaan generasi muda, kegiatan sosial, kemasyarakatan, olahraga, dan pemberdayaan lingkungan.",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Jl. Manis Jaya, Kelurahan Manis Jaya, Kecamatan Jatiuwung",
+            "addressLocality": "Kota Tangerang",
+            "addressRegion": "Banten",
+            "postalCode": "15136",
+            "addressCountry": "ID"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": -6.1950,
+            "longitude": 106.5828
+          },
+          "areaServed": {
+            "@type": "AdministrativeArea",
+            "name": "Kelurahan Manis Jaya, Kota Tangerang, Banten"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "Sekretariat & Hubungan Masyarakat",
+            "areaServed": "ID",
+            "availableLanguage": ["id", "en"]
+          },
+          "sameAs": [
+            "https://instagram.com/karangtaruna_manisjaya",
+            "https://facebook.com/ktmanisjaya"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://karangtarunamanisjaya.my.id/#website",
+          "url": "https://karangtarunamanisjaya.my.id/",
+          "name": "Karang Taruna Manis Jaya",
+          "description": "Portal resmi organisasi pemuda Karang Taruna Manis Jaya, Tangerang. Informasi kegiatan pemuda, sosial, kemasyarakatan, warta rilis, dan jadwal agenda.",
+          "publisher": {
+            "@id": "https://karangtarunamanisjaya.my.id/#organization"
+          },
+          "inLanguage": "id-ID",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://karangtarunamanisjaya.my.id/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
+
     <script>
-      // Clean up any stale service workers in development / preview iframe to avoid blank screens
+      // Clean up stale service workers in development or iframe preview
       if ('serviceWorker' in navigator) {
         const isProdSite = window.location.hostname.includes('github.io') || window.location.hostname.includes('karangtarunamanisjaya.my.id');
         if (!isProdSite) {
@@ -50,9 +150,37 @@
     </script>
   </head>
   <body class="bg-slate-50 text-slate-800 antialiased selection:bg-blue-600 selection:text-white">
-    <div id="root"></div>
+    <!-- Prerender Snapshot & Semantic Container for Search Engine Crawlers -->
+    <div id="root">
+      <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-sans">
+        <header class="max-w-2xl mx-auto space-y-3">
+          <img src="/logo.png" alt="Logo Karang Taruna Manis Jaya Tangerang" class="w-20 h-20 mx-auto" width="80" height="80" />
+          <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Karang Taruna Manis Jaya | Organisasi Pemuda Tangerang</h1>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            Portal resmi Karang Taruna Kelurahan Manis Jaya, Kecamatan Jatiuwung, Kota Tangerang, Banten, Indonesia.
+            Wadah kegiatan pemuda dalam pembangunan sosial, kemasyarakatan, inovasi kepemudaan, dan pemberdayaan warga.
+          </p>
+        </header>
+        <main class="mt-8 max-w-xl mx-auto text-left text-xs text-slate-500 space-y-2">
+          <p class="font-semibold text-slate-700">Modul Layanan Publik:</p>
+          <ul class="list-disc list-inside space-y-1">
+            <li>Warta & Berita Kegiatan Pemuda Manis Jaya</li>
+            <li>Jadwal & Kalender Agenda Kemasyarakatan</li>
+            <li>Aspirasi & Polling Partisipasi Warga</li>
+            <li>Arsip Dokumentasi & Prestasi Pemuda Tangerang</li>
+          </ul>
+        </main>
+      </div>
+    </div>
+    
+    <noscript>
+      <div style="padding: 20px; font-family: sans-serif; text-align: center; background: #fff; color: #1e293b;">
+        <h1>Karang Taruna Manis Jaya | Organisasi Pemuda Tangerang</h1>
+        <p>Portal resmi organisasi pemuda Karang Taruna Manis Jaya, Tangerang. Memuat informasi kegiatan pemuda, sosial, dan kemasyarakatan di Kelurahan Manis Jaya, Tangerang, Banten, Indonesia.</p>
+      </div>
+    </noscript>
+
     <div id="print-mount-point"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

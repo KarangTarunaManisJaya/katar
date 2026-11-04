@@ -30,6 +30,30 @@ export default defineConfig(() => {
               return next();
             }
 
+            // SEO static crawlers endpoints
+            if (req.url === '/robots.txt' || req.url?.startsWith('/robots.txt')) {
+              try {
+                const fs = await import('fs');
+                const filePath = path.resolve(__dirname, 'public/robots.txt');
+                if (fs.existsSync(filePath)) {
+                  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+                  res.end(fs.readFileSync(filePath, 'utf-8'));
+                  return;
+                }
+              } catch {}
+            }
+            if (req.url === '/sitemap.xml' || req.url?.startsWith('/sitemap.xml')) {
+              try {
+                const fs = await import('fs');
+                const filePath = path.resolve(__dirname, 'public/sitemap.xml');
+                if (fs.existsSync(filePath)) {
+                  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+                  res.end(fs.readFileSync(filePath, 'utf-8'));
+                  return;
+                }
+              } catch {}
+            }
+
             // Endpoint POST untuk menyimpan file PDF sementara
             if (req.url && req.url.startsWith('/api/prepare-download-pdf') && req.method === 'POST') {
               let body = '';

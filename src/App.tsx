@@ -52,24 +52,29 @@ import {
 } from './services/firestoreSyncService';
 import { collection, getDocs } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
+import { updatePageSeo, DEFAULT_SEO } from './utils/seoHelper';
 
 function AppContent() {
   const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState<WorkspaceTab>('beranda');
   const [activities, setActivities] = useState<ActivityItem[]>(() => {
     try {
-      const savedNews = localStorage.getItem('kt_news_v1');
+      const savedNews = localStorage.getItem('kt_news_v1') || localStorage.getItem('kt_activities_v1');
       if (savedNews) {
         const parsed = JSON.parse(savedNews);
-        if (Array.isArray(parsed)) return parsed;
-      }
-      const savedAct = localStorage.getItem('kt_activities_v1');
-      if (savedAct) {
-        const parsed = JSON.parse(savedAct);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: any) => {
+            const defaultMatch = ACTIVITIES_DATA.find((d) => d.id === item.id);
+            return {
+              ...item,
+              videoUrl: item.videoUrl || defaultMatch?.videoUrl || '',
+              videoDuration: item.videoDuration || defaultMatch?.videoDuration || (item.videoUrl ? 15 : undefined),
+            };
+          });
+        }
       }
     } catch {}
-    return [];
+    return ACTIVITIES_DATA;
   });
 
   // Direct cloud fetch on initial mount so any client (phone or PC) immediately pulls latest news from Firestore
@@ -123,6 +128,103 @@ function AppContent() {
     isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
     pendingOfflineCount: 0,
   });
+
+  // Sinkronisasi Hash URL dengan Tab & Deep-linking Berita untuk Crawler dan Pengunjung
+  useEffect(() => {
+    const handleHash = () => {
+      if (typeof window === 'undefined') return;
+      const rawHash = window.location.hash.replace(/^#/, '').trim();
+      if (!rawHash) return;
+
+      if (rawHash.startsWith('berita-')) {
+        const targetId = rawHash.replace('berita-', '');
+        const matched = activities.find(
+          (a) => a.id === targetId || (a.slug && a.slug === targetId)
+        );
+        if (matched) {
+          setCurrentTab('berita');
+          setSelectedActivity(matched);
+          return;
+        }
+      }
+
+      const validTabs: WorkspaceTab[] = [
+        'beranda',
+        'berita',
+        'jadwal',
+        'voting',
+        'ringkasan',
+        'arsip_kegiatan',
+        'galeri',
+        'kategori',
+        'surat',
+        'anggota',
+        'proposal',
+        'laporan',
+        'aset',
+        'pengaturan',
+        'akses',
+        'database',
+      ];
+
+      const cleanHash = rawHash === 'kegiatan' ? 'ringkasan' : rawHash;
+      if (validTabs.includes(cleanHash as WorkspaceTab)) {
+        setCurrentTab(cleanHash as WorkspaceTab);
+      }
+    };
+
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [activities]);
+
+  // Dynamic SEO Synchronization per Tab Publik jika tidak ada modal artikel yang terbuka
+  useEffect(() => {
+    if (selectedActivity) return;
+
+    const tabSeoMap: Record<string, { title?: string; desc: string }> = {
+      beranda: {
+        title: undefined,
+        desc: DEFAULT_SEO.description,
+      },
+      berita: {
+        title: 'Warta & Berita Kegiatan Pemuda',
+        desc: 'Kumpulan berita resmi, dokumentasi, dan warta kegiatan sosial kemasyarakatan Karang Taruna Kelurahan Manis Jaya, Tangerang.',
+      },
+      jadwal: {
+        title: 'Jadwal & Kalender Agenda Pemuda',
+        desc: 'Kalender agenda kegiatan, jadwal rapat kepemudaan, gotong royong warga, dan program kerja Karang Taruna Manis Jaya Tangerang.',
+      },
+      voting: {
+        title: 'Aspirasi & Polling Pemuda Manis Jaya',
+        desc: 'Ruang partisipasi aspirasi warga dan voting program kepemudaan Karang Taruna Kelurahan Manis Jaya Kota Tangerang.',
+      },
+      ringkasan: {
+        title: 'Program Kerja & Kegiatan Pemuda',
+        desc: 'Daftar program kerja aktif, realisasi kegiatan sosial, dan pencapaian Karang Taruna Manis Jaya Tangerang.',
+      },
+      arsip_kegiatan: {
+        title: 'Arsip Dokumentasi & Prestasi Pemuda',
+        desc: 'Arsip rekam jejak kegiatan lampau dan dokumentasi bakti sosial pemuda Karang Taruna Kelurahan Manis Jaya Tangerang.',
+      },
+      galeri: {
+        title: 'Galeri Foto Dokumentasi Kegiatan',
+        desc: 'Album dokumentasi visual dan foto resolusi tinggi seluruh kegiatan kepemudaan Karang Taruna Manis Jaya.',
+      },
+    };
+
+    const targetSeo = tabSeoMap[currentTab];
+    if (targetSeo) {
+      updatePageSeo({
+        title: targetSeo.title,
+        description: targetSeo.desc,
+        canonicalUrl:
+          currentTab === 'beranda'
+            ? 'https://karangtarunamanisjaya.my.id/'
+            : `https://karangtarunamanisjaya.my.id/#${currentTab}`,
+      });
+    }
+  }, [currentTab, selectedActivity]);
 
   const sanitizeUser = (user: any): UserAccount => {
     if (!user) return GUEST_USER;
@@ -514,6 +616,24 @@ function AppContent() {
   const archivedActivitiesCount = activities.filter((a) => a.isArchived === true).length;
   // Dashboard & kegiatan aktif: kegiatan yang belum diarsipkan
   const activeActivities = filteredActivities.filter((act) => !act.isArchived);
+
+  const handleUpdateActivity = async (updatedAct: ActivityItem) => {
+    const updated = activities.map((a) => (a.id === updatedAct.id ? updatedAct : a));
+    setActivities(updated);
+    setSelectedActivity(updatedAct);
+    try {
+      localStorage.setItem('kt_news_v1', JSON.stringify(updated));
+      localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
+    } catch {}
+    try {
+      await saveNewsToFirestore(updatedAct);
+    } catch (err) {
+      console.warn('Firestore update news notice:', err);
+    }
+    pushLocalDataToCloud(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
+    notifyLocalDataChanged('Pembaruan Berita Kegiatan');
+    showToast('Video liputan & berkas warta berhasil diperbarui!');
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased font-sans selection:bg-blue-600 selection:text-white">
@@ -1072,6 +1192,7 @@ function AppContent() {
           onToast={showToast}
           onDelete={handleDeleteActivity}
           onToggleArchive={handleToggleArchiveActivity}
+          onUpdateActivity={handleUpdateActivity}
         />
       )}
 

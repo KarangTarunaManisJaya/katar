@@ -391,13 +391,16 @@ export const collectLocalSyncData = (): Record<string, any> => {
         if (key === 'kt_news_v1' && Array.isArray(parsed)) {
           const processedNews = parsed.map((item: any) => {
             const clean = optimizeNewsItemForStorage(item);
-            // In aggregate live/state doc, keep thumbnail and maximum 2 photos to guarantee tiny footprint
             if (clean.videoUrl && typeof clean.videoUrl === 'string' && clean.videoUrl.startsWith('data:video/')) {
               clean.videoUrl = '';
               clean.hasLocalVideo = true;
             }
-            if (Array.isArray(clean.photos) && clean.photos.length > 2) {
-              clean.photos = clean.photos.slice(0, 2);
+            // In aggregate live/state doc, keep image compact so the document stays well within 1MB
+            if (clean.image && typeof clean.image === 'string' && clean.image.length > 30000) {
+              clean.image = clean.image.slice(0, 1000);
+            }
+            if (Array.isArray(clean.photos) && clean.photos.length > 1) {
+              clean.photos = clean.photos.slice(0, 1);
             }
             return sanitizeForFirestore(clean);
           });

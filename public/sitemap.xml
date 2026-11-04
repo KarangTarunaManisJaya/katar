@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- Halaman Utama Karang Taruna Manis Jaya -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://karangtarunamanisjaya.my.id/logo.png</image:loc>
+      <image:title>Logo Resmi Karang Taruna Manis Jaya Kota Tangerang</image:title>
+      <image:caption>Karang Taruna Manis Jaya - Wadah persatuan dan kreasi generasi muda Kelurahan Manis Jaya Tangerang</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Beranda Portal Publik -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#beranda</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Warta & Berita Kegiatan Pemuda -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#berita</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Jadwal & Kalender Agenda Pemuda -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#jadwal</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Aspirasi & Voting Anggota -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#voting</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Program Kerja & Kegiatan -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#kegiatan</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Arsip Dokumentasi Kegiatan -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#arsip_kegiatan</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Galeri Foto Dokumentasi -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#galeri</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Berita Unggulan 1: Bakti Sosial dan Santunan Anak Yatim RW 05 -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#berita-act-1793672627421</loc>
+    <lastmod>2026-10-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://karangtarunamanisjaya.my.id/baksos_karang_taruna_1790589027203.jpg</image:loc>
+      <image:title>Bakti Sosial dan Santunan Anak Yatim RW 05 Karang Taruna Manis Jaya Tangerang</image:title>
+    </image:image>
+  </url>
+
+  <!-- Berita Unggulan 2: Kerja Bakti Massal dan Penanaman 100 Pohon -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#berita-act-1793677100580</loc>
+    <lastmod>2026-10-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://karangtarunamanisjaya.my.id/activity_gotong_royong_1790587890085.jpg</image:loc>
+      <image:title>Kerja Bakti Massal dan Penanaman Pohon Pemuda Karang Taruna Manis Jaya Tangerang</image:title>
+    </image:image>
+  </url>
+
+  <!-- Berita Unggulan 3: Turnamen Futsal Pemuda Antar-RW -->
+  <url>
+    <loc>https://karangtarunamanisjaya.my.id/#berita-act-1793677100581</loc>
+    <lastmod>2026-10-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://karangtarunamanisjaya.my.id/activity_sports_youth_1790587904269.jpg</image:loc>
+      <image:title>Turnamen Futsal Pemuda Karang Taruna Kelurahan Manis Jaya Tangerang</image:title>
+    </image:image>
+  </url>
+
+</urlset>

@@ -292,7 +292,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
               {featuredItem.image ? (
                 <img
                   src={featuredItem.image}
-                  alt={featuredItem.title}
+                  alt={`${featuredItem.title} - Karang Taruna Kelurahan Manis Jaya Tangerang`}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
               ) : (
@@ -383,7 +383,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                     {act.image ? (
                       <img
                         src={act.image}
-                        alt={act.title}
+                        alt={`${act.title} - Dokumentasi Kegiatan Karang Taruna Manis Jaya Tangerang`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
@@ -551,7 +551,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                   {/* Mini image */}
                   <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
                     {act.image ? (
-                      <img src={act.image} alt={act.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <img src={act.image} alt={`${act.title} - Karang Taruna Manis Jaya Tangerang`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-300">
                         <ImageIcon className="w-6 h-6" />

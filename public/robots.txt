@@ -1,0 +1,42 @@
+# Robots.txt untuk Website Resmi Karang Taruna Manis Jaya
+# Domain: https://karangtarunamanisjaya.my.id/
+# Lokasi: Tangerang, Banten, Indonesia
+
+User-agent: *
+Allow: /
+Allow: /#*
+Allow: /sitemap.xml
+Allow: /logo.png
+Allow: /favicon.ico
+Allow: /manifest.json
+Allow: /filebase_vault/
+
+# Cegah bot mengindeks modul internal, data anggota rahasia, formulir surat & sistem kas
+Disallow: /admin
+Disallow: /admin/
+Disallow: /api/
+Disallow: /surat
+Disallow: /surat/
+Disallow: /kas
+Disallow: /kas/
+Disallow: /anggota
+Disallow: /anggota/
+Disallow: /akses
+Disallow: /akses/
+Disallow: /pengaturan
+Disallow: /pengaturan/
+Disallow: /database
+Disallow: /database/
+
+# Googlebot spesifik
+User-agent: Googlebot
+Allow: /
+Allow: /sitemap.xml
+
+# Bingbot spesifik
+User-agent: Bingbot
+Allow: /
+Allow: /sitemap.xml
+
+# Lokasi Peta Situs Resmi (Sitemap)
+Sitemap: https://karangtarunamanisjaya.my.id/sitemap.xml

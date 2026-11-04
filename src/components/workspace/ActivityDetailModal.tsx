@@ -26,10 +26,42 @@ import {
   ArchiveRestore,
   Video,
   Play,
+  Plus,
+  Upload,
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
-import { getVideoBlobFromIndexedDb } from '../../utils/videoManager';
+import {
+  getVideoBlobFromIndexedDb,
+  extractVideoMetaAndThumbnail,
+  uploadVideoToServerVault,
+  saveVideoBlobToIndexedDb,
+} from '../../utils/videoManager';
+import { updatePageSeo, resetDefaultSeo } from '../../utils/seoHelper';
+
+export const OFFICIAL_PRESET_VIDEOS = [
+  {
+    title: 'Bakti Sosial & Santunan RW 05',
+    url: '/filebase_vault/video/video_baksos_manisjaya.mp4',
+    duration: 15,
+    tag: 'Sosial',
+    description: 'Dokumentasi penyerahan santunan anak yatim & aksi peduli sesama.',
+  },
+  {
+    title: 'Kerja Bakti Massal & Penghijauan RW 01 - RW 08',
+    url: '/filebase_vault/video/video_kerjabakti_manisjaya.mp4',
+    duration: 15,
+    tag: 'Lingkungan',
+    description: 'Aksi pemuda & warga gotong royong membersihkan lingkungan & tanam pohon.',
+  },
+  {
+    title: 'Turnamen Futsal & Olahraga Pemuda',
+    url: '/filebase_vault/video/video_futsal_manisjaya.mp4',
+    duration: 15,
+    tag: 'Olahraga',
+    description: 'Cuplikan pertandingan futsal persahabatan generasi muda antar RW.',
+  },
+];
 
 interface ActivityDetailModalProps {
   activity: ActivityItem | null;
@@ -37,6 +69,7 @@ interface ActivityDetailModalProps {
   onToast: (msg: string) => void;
   onDelete?: (id: string) => void;
   onToggleArchive?: (activity: ActivityItem) => void;
+  onUpdateActivity?: (updated: ActivityItem) => void;
 }
 
 export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
@@ -45,16 +78,20 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
   onToast,
   onDelete,
   onToggleArchive,
+  onUpdateActivity,
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const printableRef = useRef<HTMLDivElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [resolvedVideoUrl, setResolvedVideoUrl] = useState<string>(activity?.videoUrl || '');
   const [mediaViewMode, setMediaViewMode] = useState<'video' | 'photo'>(
     activity?.videoUrl ? 'video' : 'photo'
   );
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [showPresetPicker, setShowPresetPicker] = useState(false);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -74,6 +111,133 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
       isMounted = false;
     };
   }, [activity?.id, activity?.videoUrl]);
+
+  // Dynamic SEO Synchronization untuk artikel/kegiatan yang sedang dibuka
+  React.useEffect(() => {
+    if (activity) {
+      const canonicalArticleUrl = `https://karangtarunamanisjaya.my.id/#berita-${activity.id}`;
+      const articleImg =
+        activity.image ||
+        (activity.photos && activity.photos.length > 0
+          ? activity.photos[0]
+          : 'https://karangtarunamanisjaya.my.id/logo.png?v=2');
+      const articleSnippet =
+        activity.metaDescription ||
+        activity.description ||
+        activity.subtitle ||
+        `Dokumentasi dan informasi warta kegiatan ${activity.title} Karang Taruna Kelurahan Manis Jaya, Tangerang.`;
+
+      updatePageSeo({
+        title: activity.title,
+        description: articleSnippet.slice(0, 160),
+        canonicalUrl: canonicalArticleUrl,
+        imageUrl: articleImg.startsWith('/') ? `https://karangtarunamanisjaya.my.id${articleImg}` : articleImg,
+        type: 'article',
+        articleData: {
+          headline: activity.title,
+          datePublished: activity.date,
+          authorName: activity.author || 'Karang Taruna Manis Jaya',
+          category: activity.category || activity.badge || 'Warta Pemuda',
+          description: articleSnippet,
+          location: activity.location,
+        },
+      });
+    }
+
+    return () => {
+      resetDefaultSeo();
+    };
+  }, [activity]);
+
+  const handleAttachPresetVideo = (preset: typeof OFFICIAL_PRESET_VIDEOS[0]) => {
+    setResolvedVideoUrl(preset.url);
+    setMediaViewMode('video');
+    setShowPresetPicker(false);
+    if (activity && onUpdateActivity) {
+      const updated: ActivityItem = {
+        ...activity,
+        videoUrl: preset.url,
+        videoDuration: preset.duration,
+      };
+      onUpdateActivity(updated);
+    }
+    onToast(`Video "${preset.title}" (${preset.duration}s) berhasil disematkan ke berita!`);
+  };
+
+  const handleModalVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activity) return;
+
+    setIsUploadingVideo(true);
+    onToast('Memeriksa durasi video (maksimal 60 detik)...');
+
+    try {
+      const { duration, thumbnail, objectUrl } = await extractVideoMetaAndThumbnail(file);
+
+      if (isNaN(duration) || duration <= 0) {
+        setIsUploadingVideo(false);
+        onToast('Format video tidak didukung atau durasi tidak terbaca.');
+        return;
+      }
+
+      const durationSec = Math.round(duration);
+      if (duration > 60.5) {
+        setIsUploadingVideo(false);
+        onToast(`⚠️ Durasi video ${durationSec} detik melebihi batas maksimal 60 detik!`);
+        if (videoInputRef.current) videoInputRef.current.value = '';
+        return;
+      }
+
+      onToast('Mengunggah video ke Server Vault & mengamankan ke berita...');
+
+      try {
+        const vaultRes = await uploadVideoToServerVault(file);
+        const finalUrl = vaultRes.fileUrl;
+        setResolvedVideoUrl(finalUrl);
+        setMediaViewMode('video');
+
+        await saveVideoBlobToIndexedDb(finalUrl, file);
+        await saveVideoBlobToIndexedDb(activity.id, file);
+
+        const updated: ActivityItem = {
+          ...activity,
+          videoUrl: finalUrl,
+          videoDuration: durationSec,
+          image: activity.image || thumbnail,
+        };
+
+        if (onUpdateActivity) {
+          onUpdateActivity(updated);
+        }
+
+        setIsUploadingVideo(false);
+        onToast(`Video dokumentasi (${durationSec} detik) berhasil ditambahkan ke berita ini!`);
+      } catch (uploadErr) {
+        console.warn('Vault upload fallback:', uploadErr);
+        await saveVideoBlobToIndexedDb(activity.id, file);
+        setResolvedVideoUrl(objectUrl);
+        setMediaViewMode('video');
+
+        const updated: ActivityItem = {
+          ...activity,
+          videoUrl: objectUrl,
+          videoDuration: durationSec,
+          hasLocalVideo: true,
+          image: activity.image || thumbnail,
+        };
+
+        if (onUpdateActivity) {
+          onUpdateActivity(updated);
+        }
+
+        setIsUploadingVideo(false);
+        onToast(`Video (${durationSec}s) tersimpan & aktif di berita!`);
+      }
+    } catch (err: any) {
+      setIsUploadingVideo(false);
+      onToast(err.message || 'Gagal memproses berkas video.');
+    }
+  };
 
   if (!activity) return null;
 
@@ -186,9 +350,9 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                 )}
               </div>
 
-              <h3 className="text-lg sm:text-2xl font-black text-slate-900 leading-snug">
+              <h1 className="text-lg sm:text-2xl font-black text-slate-900 leading-snug">
                 {activity.title}
-              </h3>
+              </h1>
 
               {activity.subtitle && (
                 <p className="text-xs sm:text-sm font-medium text-slate-500 italic">
@@ -297,21 +461,32 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
               </div>
             )}
 
-            {/* Media Mode Switcher (Video & Foto) */}
-            {resolvedVideoUrl && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMediaViewMode('video')}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                    mediaViewMode === 'video'
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  <Video className="w-3.5 h-3.5" />
-                  <span>Video Liputan (≤60s)</span>
-                </button>
+            {/* Hidden Video Input */}
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              onChange={handleModalVideoUpload}
+              className="hidden"
+            />
+
+            {/* Media Mode Switcher (Video & Foto) + Quick Video Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                {resolvedVideoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setMediaViewMode('video')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      mediaViewMode === 'video'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Video Liputan (≤60s)</span>
+                  </button>
+                )}
                 {currentMainPhoto && (
                   <button
                     type="button"
@@ -326,6 +501,123 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                     <span>Galeri Foto ({allPhotos.length})</span>
                   </button>
                 )}
+              </div>
+
+              {/* Action buttons: Upload Video & Pilih Preset Video */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  disabled={isUploadingVideo}
+                  onClick={() => videoInputRef.current?.click()}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 text-[11px] font-bold border border-slate-200 transition-all flex items-center gap-1 cursor-pointer"
+                  title="Unggah berkas video liputan lokal (Maks. 60 Detik)"
+                >
+                  {isUploadingVideo ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-rose-600 border-t-transparent rounded-full animate-spin" />
+                      <span>Mengunggah...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 text-rose-600" />
+                      <span>{resolvedVideoUrl ? 'Ganti Video' : '+ Unggah Video (≤60s)'}</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPresetPicker(!showPresetPicker)}
+                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                    showPresetPicker
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : 'bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200'
+                  }`}
+                  title="Pilih contoh video liputan resmi Karang Taruna"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Preset Video</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dropdown Preset Video Selector */}
+            {showPresetPicker && (
+              <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl space-y-2 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                    <Video className="w-4 h-4 text-rose-600" />
+                    <span>Pilih Preset Video Liputan Resmi Karang Taruna:</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPresetPicker(false)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {OFFICIAL_PRESET_VIDEOS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleAttachPresetVideo(preset)}
+                      className="p-2.5 bg-white hover:bg-blue-600 hover:text-white rounded-xl border border-blue-100 hover:border-blue-600 text-left transition-all group shadow-2xs cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-blue-100 text-blue-800 group-hover:bg-white/20 group-hover:text-white">
+                          {preset.tag}
+                        </span>
+                        <span className="text-[10px] text-slate-400 group-hover:text-blue-200 font-mono">
+                          ⏱️ {preset.duration}s
+                        </span>
+                      </div>
+                      <p className="font-bold text-xs text-slate-800 group-hover:text-white line-clamp-1">
+                        {preset.title}
+                      </p>
+                      <p className="text-[10px] text-slate-500 group-hover:text-blue-100 line-clamp-1 mt-0.5">
+                        {preset.description}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Banner jika belum ada video */}
+            {!resolvedVideoUrl && (
+              <div className="p-3 bg-rose-50/70 border border-rose-200/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-rose-950 block">
+                      Berita ini belum memiliki video liputan
+                    </span>
+                    <span className="text-rose-700 text-[11px]">
+                      Sematkan video dokumentasi (maksimal 60 detik) untuk memperkaya publikasi.
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => videoInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Video</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPresetPicker(true)}
+                    className="px-3 py-1.5 bg-white hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <span>Pilih Preset</span>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -487,7 +779,7 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
             )}
 
             {/* Video Liputan & Dokumentasi (Durasi Maksimal 60 Detik) */}
-            {resolvedVideoUrl && (
+            {resolvedVideoUrl ? (
               <div className="space-y-2 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-md">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -496,9 +788,18 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                       Video Liputan & Dokumentasi
                     </h4>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                    ⏱️ {activity.videoDuration ? `${activity.videoDuration} Detik` : 'Maks. 60 Detik'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      ⏱️ {activity.videoDuration ? `${activity.videoDuration} Detik` : 'Maks. 60 Detik'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => videoInputRef.current?.click()}
+                      className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-medium transition-colors"
+                    >
+                      Ganti
+                    </button>
+                  </div>
                 </div>
 
                 {resolvedVideoUrl.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/) ? (
@@ -522,6 +823,41 @@ ${activity.subtitle ? `${activity.subtitle}\n\n` : ''}${activity.description}`;
                     />
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 text-white space-y-3 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-rose-400" />
+                    <h4 className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+                      Dokumentasi Video Liputan (Maksimal 60 Detik)
+                    </h4>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    Belum Terpasang
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Lengkapi warta berita ini dengan rekaman video kegiatan singkat atau pilih cuplikan resmi Karang Taruna:
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => videoInputRef.current?.click()}
+                    className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload Video Liputan</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPresetPicker(true)}
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Pilih dari Preset Video Resmi</span>
+                  </button>
+                </div>
               </div>
             )}
 

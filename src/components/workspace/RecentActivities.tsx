@@ -58,9 +58,9 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
             <Sparkles className="w-5 h-5 fill-white/20" />
           </div>
           <div>
-            <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
               Kegiatan Terbaru
-            </h3>
+            </h2>
             <p className="text-xs text-slate-500 leading-snug">
               Dokumentasi dan berita kegiatan Karang Taruna Manis Jaya
             </p>
@@ -111,7 +111,7 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
                 {item.image ? (
                   <img
                     src={item.image}
-                    alt={item.title}
+                    alt={`${item.title} - Dokumentasi Kegiatan Karang Taruna Kelurahan Manis Jaya Tangerang`}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
                       const target = e.currentTarget;
@@ -163,9 +163,9 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
 
               {/* Card Body */}
               <div className="p-4">
-                <h4 className="font-bold text-slate-900 text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
+                <h3 className="font-bold text-slate-900 text-sm leading-snug group-hover:text-blue-600 transition-colors line-clamp-1">
                   {item.title}
-                </h4>
+                </h3>
 
                 {/* Meta Date & Photo count */}
                 <div className="flex items-center justify-between text-xs mt-2.5">
