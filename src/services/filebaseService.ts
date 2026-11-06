@@ -533,3 +533,73 @@ export const syncAllToFilebase = async (
     message: msg,
   };
 };
+
+/**
+ * Simpan atau perbarui berita langsung ke Filebase Vault & Cloud Storage
+ * Memastikan setiap berita tersimpan di Filebase dan tersinkron ke semua perangkat.
+ */
+export const saveNewsToFilebase = async (
+  item: any,
+  action: 'upsert' | 'delete' = 'upsert'
+): Promise<void> => {
+  try {
+    await fetch('/api/filebase/sync-news', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        id: item?.id,
+        item,
+      }),
+    });
+  } catch (err) {
+    console.warn('saveNewsToFilebase notice:', err);
+  }
+};
+
+/**
+ * Mengambil seluruh data berita terkini langsung dari Filebase Storage Gateway
+ */
+export const fetchNewsFromFilebase = async (): Promise<any[]> => {
+  try {
+    const res = await fetch('/api/filebase/news');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.news)) {
+        return data.news;
+      }
+    }
+  } catch (err) {
+    console.warn('fetchNewsFromFilebase notice:', err);
+  }
+  return [];
+};
+
+/**
+ * Berlangganan (polling/realtime) berita dari Filebase Vault agar setiap komputer dan HP
+ * secara otomatis selalu mendapatkan berita yang 100% seragam dan terkini.
+ */
+export const subscribeNewsFromFilebase = (
+  callback: (news: any[]) => void,
+  intervalMs = 6000
+): (() => void) => {
+  let isSubscribed = true;
+
+  const poll = async () => {
+    if (!isSubscribed) return;
+    const news = await fetchNewsFromFilebase();
+    if (news.length > 0 && isSubscribed) {
+      callback(news);
+    }
+  };
+
+  // Immediate fetch
+  poll();
+
+  const timer = setInterval(poll, intervalMs);
+
+  return () => {
+    isSubscribed = false;
+    clearInterval(timer);
+  };
+};

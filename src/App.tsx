@@ -56,73 +56,32 @@ import { addNotification } from './services/notificationService';
 import { updatePageSeo, DEFAULT_SEO } from './utils/seoHelper';
 
 export function normalizeNewsItem(item: any): ActivityItem {
+  if (!item || typeof item !== 'object') return item;
   const defaultMatch = ACTIVITIES_DATA.find((d) => d.id === item.id);
-  const title = (item.title || defaultMatch?.title || '').toLowerCase();
-  const category = (item.category || defaultMatch?.category || item.badge || 'Sosial').toLowerCase();
 
-  // 1. Guaranteed Video Liputan (Maks 60 Detik)
-  const getDefaultVideo = (cat: string, tit: string) => {
-    if (cat.includes('lingkungan') || tit.includes('kerja bakti') || tit.includes('bersih') || tit.includes('gotong')) {
-      return { url: '/filebase_vault/video/video_kerjabakti_manisjaya.mp4', duration: 15 };
-    }
-    if (cat.includes('olahraga') || tit.includes('futsal') || tit.includes('pertandingan') || tit.includes('olahraga')) {
-      return { url: '/filebase_vault/video/video_futsal_manisjaya.mp4', duration: 15 };
-    }
-    return { url: '/filebase_vault/video/video_baksos_manisjaya.mp4', duration: 15 };
-  };
+  // 1. Video Liputan: Prioritaskan persis apa yang diinputkan pengguna
+  let videoUrl = item.videoUrl !== undefined ? item.videoUrl : defaultMatch?.videoUrl;
+  let videoDuration = item.videoDuration !== undefined ? item.videoDuration : defaultMatch?.videoDuration;
 
-  const defVid = getDefaultVideo(category, title);
-  let videoUrl = item.videoUrl;
-  let videoDuration = item.videoDuration;
-
-  if (videoUrl === undefined || videoUrl === null) {
-    if (defaultMatch?.videoUrl) {
-      videoUrl = defaultMatch.videoUrl;
-      videoDuration = defaultMatch.videoDuration || defVid.duration;
-    } else if (defaultMatch) {
-      videoUrl = defVid.url;
-      videoDuration = defVid.duration;
-    } else {
-      videoUrl = '';
-    }
-  }
-
-  // 2. Guaranteed Foto Cover & Galeri Dokumentasi
-  const getDefaultImage = (cat: string, tit: string) => {
-    if (cat.includes('sosial') || tit.includes('sosial') || tit.includes('santunan') || tit.includes('yatim')) {
-      return resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg');
-    }
-    if (cat.includes('lingkungan') || tit.includes('kerja bakti') || tit.includes('bersih') || tit.includes('pohon')) {
-      return resolveAssetUrl('/activity_gotong_royong_1790587890085.jpg');
-    }
-    if (cat.includes('olahraga') || tit.includes('futsal') || tit.includes('pertandingan') || tit.includes('olahraga')) {
-      return resolveAssetUrl('/activity_sports_youth_1790587904269.jpg');
-    }
-    if (cat.includes('umkm') || tit.includes('ekonomi') || tit.includes('kreatif')) {
-      return resolveAssetUrl('/umkm_creative_youth_1790587923367.jpg');
-    }
-    return resolveAssetUrl('/hero_karang_taruna_1790587873230.jpg');
-  };
-
+  // 2. Foto Cover: Prioritaskan gambar unggahan pengguna seutuhnya
   let image = item.image;
-  if (!image || typeof image !== 'string' || image.trim().length < 5 || (image.startsWith('data:') && image.length < 500)) {
-    image = defaultMatch?.image || getDefaultImage(category, title);
+  if (!image || typeof image !== 'string' || image.trim().length === 0) {
+    image = defaultMatch?.image || resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg');
   } else {
     image = resolveAssetUrl(image);
   }
 
+  // 3. Galeri Foto: Pertahankan foto yang diunggah pengguna
   let photos = Array.isArray(item.photos) && item.photos.length > 0
-    ? item.photos.filter((p: any) => typeof p === 'string' && p.trim().length > 4).map(resolveAssetUrl)
+    ? item.photos.filter((p: any) => typeof p === 'string' && p.trim().length > 0).map(resolveAssetUrl)
     : [];
 
   if (photos.length === 0) {
-    photos = defaultMatch?.photos && defaultMatch.photos.length > 0
-      ? defaultMatch.photos.map(resolveAssetUrl)
-      : [
-          image,
-          resolveAssetUrl('/hero_karang_taruna_1790587873230.jpg'),
-          resolveAssetUrl('/manis_jaya_gate_1790588960710.jpg'),
-        ];
+    if (defaultMatch?.photos && defaultMatch.photos.length > 0) {
+      photos = defaultMatch.photos.map(resolveAssetUrl);
+    } else if (image) {
+      photos = [image];
+    }
   }
 
   const ratings = item.ratings && item.ratings.length > 0 ? item.ratings : (defaultMatch?.ratings || []);
@@ -137,9 +96,9 @@ export function normalizeNewsItem(item: any): ActivityItem {
     ...item,
     image,
     photos,
-    photoCount: Math.max(photos.length, item.photoCount || 1),
-    videoUrl,
-    videoDuration: videoDuration || 15,
+    photoCount: Math.max(photos.length, item.photoCount || (image ? 1 : 0)),
+    videoUrl: videoUrl || undefined,
+    videoDuration: videoDuration || undefined,
     ratings,
     averageRating,
     totalRatings,

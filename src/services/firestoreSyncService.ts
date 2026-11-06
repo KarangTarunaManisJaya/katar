@@ -212,8 +212,46 @@ export const db: Firestore = (() => {
 })();
 
 // Quota backoff tracker to prevent resource-exhausted error storms on free/limited projects
-let quotaExhaustedUntil: number = 0;
+const QUOTA_KEY = 'kt_firestore_quota_exhausted_until';
+
+function getStoredQuotaUntil(): number {
+  try {
+    const val = sessionStorage.getItem(QUOTA_KEY) || localStorage.getItem(QUOTA_KEY);
+    return val ? parseInt(val, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+let quotaExhaustedUntil: number = getStoredQuotaUntil();
 let lastPushedDataHash = '';
+
+export function markQuotaExhausted(durationMs: number = 30 * 60 * 1000): void {
+  quotaExhaustedUntil = Date.now() + durationMs;
+  try {
+    sessionStorage.setItem(QUOTA_KEY, String(quotaExhaustedUntil));
+    localStorage.setItem(QUOTA_KEY, String(quotaExhaustedUntil));
+  } catch {}
+}
+
+export function isQuotaExhausted(): boolean {
+  if (quotaExhaustedUntil && Date.now() >= quotaExhaustedUntil) {
+    quotaExhaustedUntil = 0;
+    try {
+      sessionStorage.removeItem(QUOTA_KEY);
+      localStorage.removeItem(QUOTA_KEY);
+    } catch {}
+  }
+  return Date.now() < quotaExhaustedUntil;
+}
+
+export function resetQuotaBackoff(): void {
+  quotaExhaustedUntil = 0;
+  try {
+    sessionStorage.removeItem(QUOTA_KEY);
+    localStorage.removeItem(QUOTA_KEY);
+  } catch {}
+}
 
 function simpleHash(str: string): string {
   let hash = 0;
@@ -222,14 +260,6 @@ function simpleHash(str: string): string {
     hash |= 0;
   }
   return hash.toString();
-}
-
-export function isQuotaExhausted(): boolean {
-  return Date.now() < quotaExhaustedUntil;
-}
-
-export function resetQuotaBackoff(): void {
-  quotaExhaustedUntil = 0;
 }
 
 /**
@@ -417,13 +447,17 @@ export const collectLocalSyncData = (): Record<string, any> => {
  * - /organizations/manisjaya/votings
  */
 export const syncGranularCollections = async (localData: Record<string, any>): Promise<void> => {
+  if (isQuotaExhausted()) return;
+
   try {
     const orgDoc = doc(db, 'organizations', 'manisjaya');
 
+    // Sync only changed subcollections safely without bombarding write quotas
     // Sync Members
     const members = localData['kt_members_v3'] || localData['kt_users_list_v3'];
     if (Array.isArray(members) && members.length > 0) {
-      for (const m of members.slice(0, 60)) {
+      for (const m of members.slice(0, 15)) {
+        if (isQuotaExhausted()) return;
         if (m?.id || m?.username) {
           const docRef = doc(collection(orgDoc, 'members'), String(m.id || m.username));
           const cleanM = sanitizeForFirestore({ ...m, updatedAt: new Date().toISOString() });
@@ -435,7 +469,8 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
     // Sync Assets
     const assets = localData['kt_assets_v1'];
     if (Array.isArray(assets) && assets.length > 0) {
-      for (const a of assets.slice(0, 60)) {
+      for (const a of assets.slice(0, 15)) {
+        if (isQuotaExhausted()) return;
         if (a?.id) {
           const docRef = doc(collection(orgDoc, 'assets'), String(a.id));
           const cleanA = sanitizeForFirestore({ ...a, updatedAt: new Date().toISOString() });
@@ -447,7 +482,8 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
     // Sync Agenda
     const agenda = localData['kt_agenda_v1'];
     if (Array.isArray(agenda) && agenda.length > 0) {
-      for (const ag of agenda.slice(0, 60)) {
+      for (const ag of agenda.slice(0, 15)) {
+        if (isQuotaExhausted()) return;
         if (ag?.id) {
           const docRef = doc(collection(orgDoc, 'agenda'), String(ag.id));
           const cleanAg = sanitizeForFirestore({ ...ag, updatedAt: new Date().toISOString() });
@@ -459,7 +495,8 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
     // Sync Letters (Surat)
     const letters = localData['kt_surat_items_v2'];
     if (Array.isArray(letters) && letters.length > 0) {
-      for (const l of letters.slice(0, 60)) {
+      for (const l of letters.slice(0, 15)) {
+        if (isQuotaExhausted()) return;
         if (l?.id) {
           const docRef = doc(collection(orgDoc, 'letters'), String(l.id));
           const cleanL = sanitizeForFirestore({ ...l, updatedAt: new Date().toISOString() });
@@ -471,7 +508,8 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
     // Sync Kas
     const kas = localData['kt_kas_entries_v2'];
     if (Array.isArray(kas) && kas.length > 0) {
-      for (const k of kas.slice(0, 60)) {
+      for (const k of kas.slice(0, 15)) {
+        if (isQuotaExhausted()) return;
         if (k?.id) {
           const docRef = doc(collection(orgDoc, 'kas'), String(k.id));
           const cleanK = sanitizeForFirestore({ ...k, updatedAt: new Date().toISOString() });
@@ -483,7 +521,8 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
     // Sync News & Dokumentasi Kegiatan
     const newsList = localData['kt_news_v1'] || localData['kt_activities_v1'];
     if (Array.isArray(newsList) && newsList.length > 0) {
-      for (const n of newsList.slice(0, 60)) {
+      for (const n of newsList.slice(0, 15)) {
+        if (isQuotaExhausted()) return;
         if (n?.id) {
           const docRef = doc(collection(orgDoc, 'news'), String(n.id));
           let cleanN = sanitizeForFirestore({ ...n, updatedAt: new Date().toISOString() });
@@ -495,7 +534,8 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
     // Sync Votings & Pengambilan Keputusan Real-Time
     const votingsList = localData['kt_votings_v1'];
     if (Array.isArray(votingsList) && votingsList.length > 0) {
-      for (const v of votingsList.slice(0, 60)) {
+      for (const v of votingsList.slice(0, 15)) {
+        if (isQuotaExhausted()) return;
         if (v?.id) {
           const docRef = doc(collection(orgDoc, 'votings'), String(v.id));
           const cleanV = sanitizeForFirestore({ ...v, updatedAt: new Date().toISOString() });
@@ -503,8 +543,17 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
         }
       }
     }
-  } catch (err) {
-    console.warn('Granular subcollections sync handled:', err);
+  } catch (err: any) {
+    if (
+      err?.code === 'resource-exhausted' ||
+      err?.message?.includes('Quota exceeded') ||
+      err?.message?.includes('resource-exhausted')
+    ) {
+      markQuotaExhausted(30 * 60 * 1000);
+      console.warn('Subcollection sync paused: Firestore write quota exceeded.');
+    } else {
+      console.warn('Granular subcollections sync handled:', err);
+    }
   }
 };
 
@@ -672,6 +721,11 @@ export const subscribeNewsFromFirestore = (
  * Direct real-time save of a single news or activity item to Firestore collection
  */
 export const saveNewsToFirestore = async (item: ActivityItem): Promise<void> => {
+  if (isQuotaExhausted()) {
+    console.warn('[Firestore] Quota exceeded active, saving news to local cache.');
+    return;
+  }
+
   try {
     const docRef = doc(db, 'organizations', 'manisjaya', 'news', String(item.id));
     const optimized = optimizeNewsItemForStorage(item);
@@ -701,9 +755,17 @@ export const saveNewsToFirestore = async (item: ActivityItem): Promise<void> => 
 
     await setDoc(docRef, cleanItem, { merge: true });
     console.info(`[Firestore] Berita "${item.title}" (${item.id}) berhasil disimpan ke database cloud.`);
-  } catch (err) {
-    console.warn('saveNewsToFirestore notice:', err);
-    throw err;
+  } catch (err: any) {
+    if (
+      err?.code === 'resource-exhausted' ||
+      err?.message?.includes('Quota exceeded') ||
+      err?.message?.includes('resource-exhausted')
+    ) {
+      markQuotaExhausted(30 * 60 * 1000);
+      console.warn('saveNewsToFirestore paused: Firestore write quota exceeded.');
+    } else {
+      console.warn('saveNewsToFirestore notice:', err);
+    }
   }
 };
 
@@ -808,7 +870,7 @@ export const pushLocalDataToCloud = async (
   }
 
   // If quota limit was reached on the backend, seamlessly operate offline without spamming errors
-  if (Date.now() < quotaExhaustedUntil) {
+  if (isQuotaExhausted()) {
     addToOfflineQueue(reason);
     return;
   }
@@ -860,7 +922,7 @@ export const pushLocalDataToCloud = async (
       err?.message?.includes('resource-exhausted');
 
     if (isQuota) {
-      quotaExhaustedUntil = Date.now() + 10 * 60 * 1000; // 10 minutes backoff
+      markQuotaExhausted(30 * 60 * 1000);
       console.warn('Cloud Firestore quota reached. Switching seamlessly to offline local storage mode.');
     } else {
       console.warn('Penyimpanan Cloud Firestore notice:', err?.message || err);
@@ -1018,11 +1080,11 @@ export const startRealtimeSync = (
         error?.message?.includes('resource-exhausted');
 
       if (isQuota) {
-        quotaExhaustedUntil = Date.now() + 10 * 60 * 1000;
+        markQuotaExhausted(30 * 60 * 1000);
         console.warn('Firestore server notice: Kuota database Firestore proyek bawaan tercapai. Beralih ke mode offline lokal.');
         updateStatus(
           'offline',
-          'Mode Offline Aktif: Kuota harian Firestore bawaan tercapai. Data Anda tetap tersimpan aman di perangkat & Anda dapat mengganti ke proyek Firebase pribadi di menu Pengaturan.'
+          'Mode Offline: Kuota harian Firestore bawaan tercapai. Data Anda tetap 100% tersimpan aman di browser & Anda dapat menghubungkan Firebase pribadi di Pengaturan.'
         );
       } else {
         console.warn('Firestore real-time listener notice:', error.message);
@@ -1043,20 +1105,6 @@ export const startRealtimeSync = (
     newsColRef,
     (snapshot) => {
       if (snapshot.empty) {
-        // DO NOT wipe local news when snapshot is empty!
-        // Instead, check if local news exists and automatically seed it to Firestore
-        const currentStr = localStorage.getItem('kt_news_v1');
-        if (currentStr && currentStr !== '[]') {
-          try {
-            const localNews: ActivityItem[] = JSON.parse(currentStr);
-            if (Array.isArray(localNews) && localNews.length > 0) {
-              console.info(`[Firestore] Cloud news collection is empty. Auto-seeding ${localNews.length} local items to Firestore...`);
-              localNews.forEach((item) => {
-                saveNewsToFirestore(item).catch(() => {});
-              });
-            }
-          } catch {}
-        }
         return;
       }
 
@@ -1120,16 +1168,23 @@ export const startRealtimeSync = (
       }
     },
     (err) => {
+      const isQuota =
+        err?.code === 'resource-exhausted' ||
+        err?.message?.includes('Quota exceeded') ||
+        err?.message?.includes('resource-exhausted');
+      if (isQuota) {
+        markQuotaExhausted(30 * 60 * 1000);
+      }
       console.warn('Firestore news listener notice:', err.message);
     }
   );
 
   // Network Online / Offline handlers
   const handleOnline = () => {
-    if (Date.now() < quotaExhaustedUntil) {
+    if (isQuotaExhausted()) {
       updateStatus(
         'offline',
-        'Koneksi internet aktif, namun kuota proyek Firebase server saat ini penuh. Data tetap aman di penyimpanan lokal.'
+        'Koneksi internet aktif, kuota database server bawaan penuh. Data aman di penyimpanan lokal.'
       );
       return;
     }
@@ -1176,11 +1231,11 @@ export const enableAutoBroadcast = (getUserName: () => string) => {
 
     if (broadcastDebounceTimer) clearTimeout(broadcastDebounceTimer);
     broadcastDebounceTimer = setTimeout(() => {
-      if (Date.now() < quotaExhaustedUntil) return;
+      if (isQuotaExhausted()) return;
       pushLocalDataToCloud(reason, getUserName()).catch((err) => {
         console.warn('Auto-broadcast notice:', err.message);
       });
-    }, 2000); // 2000ms debounce to prevent burst requests
+    }, 5000); // 5000ms debounce to prevent burst writes and save quota
   };
 
   window.addEventListener('kt_local_data_changed', ((e: CustomEvent) => {

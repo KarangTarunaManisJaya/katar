@@ -680,6 +680,129 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
               return;
             }
 
+            // Endpoint GET & POST untuk Sinkronisasi Berita Kegiatan Terpusat via Filebase Vault
+            // Memastikan SEMUA komputer, laptop, dan HP membaca dan menyimpan data berita yang 100% seragam
+            if (req.url && (req.url === '/api/filebase/news' || req.url.startsWith('/api/filebase/news?'))) {
+              try {
+                const fs = await import('fs');
+                const pathMod = await import('path');
+                const newsFilePath = pathMod.join(process.cwd(), 'public', 'filebase_vault', 'berita', 'semua_berita_kegiatan.json');
+                
+                if (req.method === 'GET') {
+                  if (fs.existsSync(newsFilePath)) {
+                    const raw = fs.readFileSync(newsFilePath, 'utf-8');
+                    const news = JSON.parse(raw || '[]');
+                    const stat = fs.statSync(newsFilePath);
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                    res.end(JSON.stringify({ success: true, count: news.length, lastModified: stat.mtime.toISOString(), news }));
+                    return;
+                  } else {
+                    res.statusCode = 200;
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify({ success: true, count: 0, news: [] }));
+                    return;
+                  }
+                }
+              } catch (e: any) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: false, error: e.message, news: [] }));
+                return;
+              }
+            }
+
+            if (req.url && req.url.startsWith('/api/filebase/sync-news') && req.method === 'POST') {
+              let body = '';
+              req.on('data', (chunk) => { body += chunk; });
+              req.on('end', async () => {
+                try {
+                  const fs = await import('fs');
+                  const pathMod = await import('path');
+                  const payload = JSON.parse(body || '{}');
+                  const incomingNews = Array.isArray(payload.news) ? payload.news : (payload.item ? [payload.item] : []);
+
+                  const newsFilePath = pathMod.join(process.cwd(), 'public', 'filebase_vault', 'berita', 'semua_berita_kegiatan.json');
+                  fs.mkdirSync(pathMod.dirname(newsFilePath), { recursive: true });
+
+                  let existingNews: any[] = [];
+                  if (fs.existsSync(newsFilePath)) {
+                    try {
+                      existingNews = JSON.parse(fs.readFileSync(newsFilePath, 'utf-8') || '[]');
+                    } catch {}
+                  }
+
+                  let finalNews: any[] = [];
+                  if (payload.action === 'replace_all') {
+                    finalNews = incomingNews;
+                  } else if (payload.action === 'delete') {
+                    const targetId = payload.id;
+                    finalNews = existingNews.filter((n: any) => n.id !== targetId);
+                  } else {
+                    // Upsert incoming items
+                    const map = new Map<string, any>();
+                    existingNews.forEach((n: any) => { if (n?.id) map.set(n.id, n); });
+                    incomingNews.forEach((n: any) => { if (n?.id) map.set(n.id, n); });
+                    finalNews = Array.from(map.values());
+                  }
+
+                  // Sort newest first
+                  finalNews.sort((a: any, b: any) => {
+                    const timeA = a.updatedAt || a.date || '';
+                    const timeB = b.updatedAt || b.date || '';
+                    return String(timeB).localeCompare(String(timeA));
+                  });
+
+                  fs.writeFileSync(newsFilePath, JSON.stringify(finalNews, null, 2), 'utf-8');
+
+                  // Simpan juga versi arsip individual
+                  if (payload.item && payload.item.id) {
+                    const singlePath = pathMod.join(process.cwd(), 'public', 'filebase_vault', 'berita', 'artikel', `${payload.item.slug || payload.item.id}.json`);
+                    fs.mkdirSync(pathMod.dirname(singlePath), { recursive: true });
+                    fs.writeFileSync(singlePath, JSON.stringify(payload.item, null, 2), 'utf-8');
+                  }
+
+                  // Juga coba sinkronisasi ke S3 Filebase jika kredensial terpasang
+                  const s3Key = (process.env.FILEBASE_ACCESS_KEY || '').trim();
+                  const s3Secret = (process.env.FILEBASE_SECRET_KEY || '').trim();
+                  if (s3Key && s3Secret) {
+                    try {
+                      const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+                      const client = new S3Client({
+                        endpoint: 'https://s3.filebase.com',
+                        region: 'us-east-1',
+                        credentials: { accessKeyId: s3Key, secretAccessKey: s3Secret },
+                        forcePathStyle: true,
+                      });
+                      await client.send(new PutObjectCommand({
+                        Bucket: 'karang-taruna-manisjaya',
+                        Key: 'berita/semua_berita_kegiatan.json',
+                        Body: Buffer.from(JSON.stringify(finalNews, null, 2), 'utf-8'),
+                        ContentType: 'application/json',
+                      }));
+                    } catch (s3Err) {
+                      console.warn('Filebase S3 cloud sync notice:', s3Err);
+                    }
+                  }
+
+                  res.statusCode = 200;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({
+                    success: true,
+                    count: finalNews.length,
+                    message: 'Berita berhasil disinkronkan ke Filebase Vault & siap dibaca seragam di seluruh komputer/HP.',
+                    news: finalNews,
+                  }));
+                } catch (err: any) {
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ success: false, error: err.message }));
+                }
+              });
+              return;
+            }
+
             next();
           });
         },
