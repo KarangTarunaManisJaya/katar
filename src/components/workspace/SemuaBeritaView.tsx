@@ -28,8 +28,10 @@ import {
   Trash2,
   Archive,
   ArchiveRestore,
+  Star,
 } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
+import { resolveAssetUrl } from '../../utils/assetUrl';
 
 interface SemuaBeritaViewProps {
   activities: ActivityItem[];
@@ -154,7 +156,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                 <span className="text-slate-300 text-[11px]">Foto Dokumentasi</span>
               </div>
               <div className="bg-white/10 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
-                <span className="font-bold text-amber-300 font-mono">RW 01 - RW 08</span>
+                <span className="font-bold text-amber-300 font-mono">RW 01 - RW 05</span>
                 <span className="text-slate-300 text-[11px]">Cakupan Wilayah</span>
               </div>
             </div>
@@ -289,17 +291,18 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
             className="group cursor-pointer bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 grid grid-cols-1 lg:grid-cols-12"
           >
             <div className="lg:col-span-7 h-64 sm:h-96 relative overflow-hidden bg-slate-100">
-              {featuredItem.image ? (
-                <img
-                  src={featuredItem.image}
-                  alt={`${featuredItem.title} - Karang Taruna Kelurahan Manis Jaya Tangerang`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-400">
-                  <ImageIcon className="w-12 h-12" />
-                </div>
-              )}
+              <img
+                src={featuredItem.image || resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg')}
+                alt={`${featuredItem.title} - Karang Taruna Kelurahan Manis Jaya Tangerang`}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.dataset.tried) {
+                    target.dataset.tried = '1';
+                    target.src = resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg');
+                  }
+                }}
+              />
               <div className="absolute top-4 left-4 flex gap-2">
                 <span className="px-3 py-1 rounded-full text-xs font-black bg-blue-600 text-white shadow-md">
                   BERITA UTAMA
@@ -331,6 +334,15 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                     <Calendar className="w-3.5 h-3.5" />
                     {featuredItem.date}
                   </span>
+                  {featuredItem.averageRating && (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        <Star className="w-3 h-3 text-amber-500 fill-amber-400" />
+                        <span>{featuredItem.averageRating}</span>
+                      </span>
+                    </>
+                  )}
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
@@ -380,18 +392,21 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                 <div>
                   {/* Card Image Cover */}
                   <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                    {act.image ? (
-                      <img
-                        src={act.image}
-                        alt={`${act.title} - Dokumentasi Kegiatan Karang Taruna Manis Jaya Tangerang`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-blue-50/50 text-blue-300">
-                        <ImageIcon className="w-10 h-10 mb-1" />
-                        <span className="text-[11px] font-bold text-blue-400">Dokumentasi Liputan</span>
-                      </div>
-                    )}
+                    <img
+                      src={act.image || resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg')}
+                      alt={`${act.title} - Dokumentasi Kegiatan Karang Taruna Manis Jaya Tangerang`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.dataset.tried) {
+                          target.dataset.tried = '1';
+                          target.src = resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg');
+                        } else if (target.dataset.tried === '1') {
+                          target.dataset.tried = '2';
+                          target.src = resolveAssetUrl('/hero_karang_taruna_1790587873230.jpg');
+                        }
+                      }}
+                    />
 
                     {/* Top Badges */}
                     <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
@@ -429,19 +444,27 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
 
                   {/* Card Body */}
                   <div className="p-5 space-y-3">
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="flex items-center gap-1 font-semibold text-blue-600">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {act.date}
-                      </span>
-                      {act.time && (
-                        <>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            {act.time} WIB
-                          </span>
-                        </>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 font-semibold text-blue-600">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {act.date}
+                        </span>
+                        {act.time && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {act.time} WIB
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {act.averageRating && (
+                        <span className="flex items-center gap-1 font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                          <Star className="w-3 h-3 text-amber-500 fill-amber-400" />
+                          <span>{act.averageRating}</span>
+                        </span>
                       )}
                     </div>
 
@@ -550,13 +573,18 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                 <div className="flex items-start gap-4 flex-1">
                   {/* Mini image */}
                   <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 relative">
-                    {act.image ? (
-                      <img src={act.image} alt={`${act.title} - Karang Taruna Manis Jaya Tangerang`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                    )}
+                    <img
+                      src={act.image || resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg')}
+                      alt={`${act.title} - Karang Taruna Manis Jaya Tangerang`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (!target.dataset.tried) {
+                          target.dataset.tried = '1';
+                          target.src = resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg');
+                        }
+                      }}
+                    />
                     {act.videoUrl && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/25">
                         <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-sm pl-0.5">

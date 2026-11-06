@@ -391,17 +391,6 @@ export const collectLocalSyncData = (): Record<string, any> => {
         if (key === 'kt_news_v1' && Array.isArray(parsed)) {
           const processedNews = parsed.map((item: any) => {
             const clean = optimizeNewsItemForStorage(item);
-            if (clean.videoUrl && typeof clean.videoUrl === 'string' && clean.videoUrl.startsWith('data:video/')) {
-              clean.videoUrl = '';
-              clean.hasLocalVideo = true;
-            }
-            // In aggregate live/state doc, keep image compact so the document stays well within 1MB
-            if (clean.image && typeof clean.image === 'string' && clean.image.length > 30000) {
-              clean.image = clean.image.slice(0, 1000);
-            }
-            if (Array.isArray(clean.photos) && clean.photos.length > 1) {
-              clean.photos = clean.photos.slice(0, 1);
-            }
             return sanitizeForFirestore(clean);
           });
           data['kt_news_v1'] = processedNews;
@@ -498,15 +487,6 @@ export const syncGranularCollections = async (localData: Record<string, any>): P
         if (n?.id) {
           const docRef = doc(collection(orgDoc, 'news'), String(n.id));
           let cleanN = sanitizeForFirestore({ ...n, updatedAt: new Date().toISOString() });
-          if (JSON.stringify(cleanN).length > 900000) {
-            if (cleanN.videoUrl && typeof cleanN.videoUrl === 'string' && cleanN.videoUrl.startsWith('data:video/')) {
-              cleanN.videoUrl = '';
-              cleanN.hasLocalVideo = true;
-            }
-            if (Array.isArray(cleanN.photos) && cleanN.photos.length > 2) {
-              cleanN.photos = cleanN.photos.slice(0, 2);
-            }
-          }
           await setDoc(docRef, cleanN, { merge: true });
         }
       }
@@ -587,6 +567,108 @@ export const subscribeVotingsFromFirestore = (
 };
 
 /**
+ * Simpan berkas media (video dokumentasi kegiatan hingga ~3MB) ke Cloud Firestore
+ * secara terchunking aman (maks 600KB per chunk) agar tersimpan 100% di cloud dan dapat diputar
+ * di SEMUA perangkat (komputer, laptop, maupun handphone anggota).
+ */
+export async function saveMediaToFirestore(
+  mediaId: string,
+  dataBase64: string,
+  contentType: string = 'video/mp4',
+  newsId?: string
+): Promise<string> {
+  try {
+    const CHUNK_SIZE = 600000;
+    const chunks: string[] = [];
+    for (let i = 0; i < dataBase64.length; i += CHUNK_SIZE) {
+      chunks.push(dataBase64.slice(i, i + CHUNK_SIZE));
+    }
+
+    const mediaDocRef = doc(db, 'organizations', 'manisjaya', 'media', mediaId);
+    await setDoc(mediaDocRef, {
+      id: mediaId,
+      newsId: newsId || '',
+      contentType,
+      totalChunks: chunks.length,
+      chunks,
+      updatedAt: new Date().toISOString(),
+      deviceId: DEVICE_ID,
+    });
+
+    console.info(`[Firestore] Media "${mediaId}" (${chunks.length} chunk) berhasil disimpan ke Cloud Firestore.`);
+    return `firestore:media/${mediaId}`;
+  } catch (err) {
+    console.warn('saveMediaToFirestore error:', err);
+    throw err;
+  }
+}
+
+/**
+ * Mengambil berkas media dari Cloud Firestore dan menyusunnya kembali menjadi playable Blob URL
+ */
+export async function getMediaFromFirestore(mediaId: string): Promise<string | null> {
+  try {
+    const cleanId = mediaId.replace(/^firestore:media\//, '');
+    const mediaDocRef = doc(db, 'organizations', 'manisjaya', 'media', cleanId);
+    const snap = await getDoc(mediaDocRef);
+    if (!snap.exists()) return null;
+
+    const data = snap.data();
+    const chunks: string[] = Array.isArray(data.chunks) ? data.chunks : [];
+    if (chunks.length === 0) return null;
+
+    const fullBase64 = chunks.join('');
+    const byteCharacters = atob(fullBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: data.contentType || 'video/mp4' });
+    return URL.createObjectURL(blob);
+  } catch (err) {
+    console.warn('getMediaFromFirestore error:', err);
+    return null;
+  }
+}
+
+/**
+ * Dedicated real-time listener for News & Dokumentasi Kegiatan collection
+ */
+export const subscribeNewsFromFirestore = (
+  callback: (news: ActivityItem[]) => void
+): (() => void) => {
+  try {
+    const colRef = collection(db, 'organizations', 'manisjaya', 'news');
+    return onSnapshot(
+      colRef,
+      (snapshot) => {
+        if (snapshot.empty) return;
+        const list: ActivityItem[] = [];
+        snapshot.forEach((d) => {
+          const item = d.data() as ActivityItem;
+          if (item && (item.id || d.id)) {
+            list.push({ ...item, id: item.id || d.id });
+          }
+        });
+        list.sort((a, b) => {
+          const timeA = (a as any).updatedAt || a.date;
+          const timeB = (b as any).updatedAt || b.date;
+          return String(timeB).localeCompare(String(timeA));
+        });
+        callback(list);
+      },
+      (err) => {
+        console.warn('subscribeNewsFromFirestore listener notice:', err);
+      }
+    );
+  } catch (e) {
+    console.warn('subscribeNewsFromFirestore init notice:', e);
+    return () => {};
+  }
+};
+
+/**
  * Direct real-time save of a single news or activity item to Firestore collection
  */
 export const saveNewsToFirestore = async (item: ActivityItem): Promise<void> => {
@@ -599,17 +681,21 @@ export const saveNewsToFirestore = async (item: ActivityItem): Promise<void> => 
       deviceId: DEVICE_ID,
     });
 
-    // Guard against 1 MiB single document limit in Firestore
-    const estimatedBytes = JSON.stringify(cleanItem).length;
-    if (estimatedBytes > 650000) {
-      console.warn(`[Firestore] News item "${item.title}" is large (${estimatedBytes} bytes). Optimizing for Cloud Firestore.`);
-      if (cleanItem.videoUrl && typeof cleanItem.videoUrl === 'string' && cleanItem.videoUrl.startsWith('data:video/')) {
-        cleanItem.videoUrl = '';
-        cleanItem.hasLocalVideo = true;
-        cleanItem.videoNote = 'Video dokumentasi (maks 60 detik) tersimpan pada perangkat pengunggah';
-      }
-      if (Array.isArray(cleanItem.photos) && cleanItem.photos.length > 3) {
-        cleanItem.photos = cleanItem.photos.slice(0, 3);
+    // If item has a data:video/ payload that would exceed document limit,
+    // automatically offload it to Firestore media chunk collection!
+    if (
+      cleanItem.videoUrl &&
+      typeof cleanItem.videoUrl === 'string' &&
+      cleanItem.videoUrl.startsWith('data:video/')
+    ) {
+      const parts = cleanItem.videoUrl.split(',');
+      const meta = parts[0] || '';
+      const base64Data = parts[1] || '';
+      const mime = meta.match(/:(.*?);/)?.[1] || 'video/mp4';
+      if (base64Data.length > 500000) {
+        const mediaId = `${cleanItem.id}_video`;
+        await saveMediaToFirestore(mediaId, base64Data, mime, cleanItem.id);
+        cleanItem.videoUrl = `firestore:media/${mediaId}`;
       }
     }
 

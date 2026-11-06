@@ -105,7 +105,7 @@ export const AboutSection: React.FC = () => {
                   Empat Pilar Program Pengabdian
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Fokus kerja strategis yang dijalankan bersama warga di 8 Rukun Warga (RW) se-Kelurahan Manis Jaya.
+                  Fokus kerja strategis yang dijalankan bersama warga di 5 Rukun Warga (RW 01 - RW 05) se-Kelurahan Manis Jaya.
                 </p>
               </div>
 

@@ -61,6 +61,57 @@ export interface ActivityItem {
   isArchived?: boolean;
   archivedAt?: string;
   archiveReason?: string;
+  ratings?: ActivityRating[];
+  averageRating?: number;
+  totalRatings?: number;
+  comments?: ActivityComment[];
+}
+
+export type CommentType = 'diskusi' | 'pertanyaan' | 'masukan' | 'apresiasi';
+
+export interface ActivityCommentReply {
+  id: string;
+  commentId: string;
+  userId?: string;
+  authorName: string;
+  authorRole?: string;
+  authorRw?: string;
+  authorAvatar?: string;
+  replyText: string;
+  createdAt: string;
+}
+
+export interface ActivityComment {
+  id: string;
+  activityId?: string;
+  userId?: string;
+  authorName: string;
+  authorRole?: string;
+  authorRw?: string;
+  authorAvatar?: string;
+  comment: string;
+  type?: CommentType;
+  createdAt: string;
+  likesCount?: number;
+  likedByUserIds?: string[];
+  replies?: ActivityCommentReply[];
+}
+
+export interface ActivityRating {
+  id: string;
+  userId?: string;
+  memberName: string;
+  role?: string;
+  rw?: string;
+  avatar?: string;
+  rating: number; // 1 to 5
+  feedback?: string;
+  aspects?: {
+    organization?: number;
+    impact?: number;
+    enthusiasm?: number;
+  };
+  createdAt: string;
 }
 
 export interface WorkspaceMember {
@@ -130,6 +181,88 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     priority: 'Penting',
     status: 'Publikasikan Sekarang',
     isFeatured: true,
+    averageRating: 4.9,
+    totalRatings: 3,
+    ratings: [
+      {
+        id: 'rate-1',
+        memberName: 'Ahmad Fauzi',
+        role: 'Ketua RW 05',
+        rw: 'RW 05',
+        rating: 5,
+        aspects: { organization: 5, impact: 5, enthusiasm: 5 },
+        feedback: 'Alhamdulillah penyaluran santunan sangat tertib dan tepat sasaran. Pemuda Karang Taruna sangat santun dan sigap melayani adik-adik yatim.',
+        createdAt: '28 Okt 2026, 11:45 WIB',
+      },
+      {
+        id: 'rate-2',
+        memberName: 'Rina Marlina',
+        role: 'Anggota Karang Taruna',
+        rw: 'RW 03',
+        rating: 5,
+        aspects: { organization: 5, impact: 5, enthusiasm: 4 },
+        feedback: 'Kekompakan tim luar biasa, dari logistik hingga penerimaan donatur berjalan lancar tanpa kendala.',
+        createdAt: '28 Okt 2026, 13:20 WIB',
+      },
+      {
+        id: 'rate-3',
+        memberName: 'Budi Santoso',
+        role: 'Tokoh Pemuda',
+        rw: 'RW 05',
+        rating: 4,
+        aspects: { organization: 4, impact: 5, enthusiasm: 5 },
+        feedback: 'Program yang sangat mulia. Semoga bisa diadakan berkala tiap 3 bulan sekali.',
+        createdAt: '29 Okt 2026, 09:15 WIB',
+      },
+    ],
+    comments: [
+      {
+        id: 'comm-1',
+        activityId: 'act-1793672627421',
+        authorName: 'Rian Saputra',
+        authorRole: 'Ketua Unit KT RW 02',
+        authorRw: 'RW 02',
+        comment: 'Untuk adik-adik penerima santunan, apakah kuota pendaftaran masih ada slot untuk wilayah RW 02?',
+        type: 'pertanyaan',
+        createdAt: '28 Okt 2026, 09:15 WIB',
+        likesCount: 3,
+        replies: [
+          {
+            id: 'rep-1',
+            commentId: 'comm-1',
+            authorName: 'Sie Pengabdian Masyarakat',
+            authorRole: 'Panitia Pelaksana',
+            authorRw: 'RW 05',
+            replyText: 'Halo Kang Rian, kuota RW 02 masih tersedia 5 anak lagi. Bisa langsung dikoordinasikan data lengkapnya ke sekretariat ya.',
+            createdAt: '28 Okt 2026, 09:40 WIB',
+          },
+        ],
+      },
+      {
+        id: 'comm-2',
+        activityId: 'act-1793672627421',
+        authorName: 'Dewi Lestari',
+        authorRole: 'Anggota Karang Taruna',
+        authorRw: 'RW 04',
+        comment: 'Usul untuk baksos periode berikutnya: mungkin bisa ditambahkan paket alat tulis dan tas sekolah untuk persiapan tahun ajaran baru.',
+        type: 'masukan',
+        createdAt: '28 Okt 2026, 14:10 WIB',
+        likesCount: 5,
+        replies: [],
+      },
+      {
+        id: 'comm-3',
+        activityId: 'act-1793672627421',
+        authorName: 'Fajar Nugraha',
+        authorRole: 'Warga Manis Jaya',
+        authorRw: 'RW 01',
+        comment: 'Alhamdulillah acaranya sangat tertib dan menyentuh hati warga. Terima kasih banyak rekan-rekan pemuda atas inisiatif mulia ini!',
+        type: 'apresiasi',
+        createdAt: '28 Okt 2026, 16:30 WIB',
+        likesCount: 4,
+        replies: [],
+      },
+    ],
   },
   {
     id: 'act-1793677100580',
@@ -139,7 +272,7 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     subtitle: 'Sinergi Warga dan Pemuda Demi Kelestarian Lingkungan Hijau Berkelanjutan',
     date: '25 Okt 2026',
     time: '07:00',
-    location: 'Bantaran Kali & Fasum RW 01 - RW 08',
+    location: 'Bantaran Kali & Fasum RW 01 - RW 05',
     author: 'Sie Lingkungan Hidup',
     photoCount: 3,
     image: resolveAssetUrl('/activity_gotong_royong_1790587890085.jpg'),
@@ -150,12 +283,84 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     videoUrl: '/filebase_vault/video/video_kerjabakti_manisjaya.mp4',
     videoDuration: 15,
     description: 'Aksi kolaboratif seluruh pemuda dan warga se-Kelurahan Manis Jaya membersihkan saluran air, merapikan fasilitas umum, dan menanam pohon lindung.',
-    content: 'Kerja bakti massal serentak dilaksanakan di 8 RW Kelurahan Manis Jaya. Pemuda Karang Taruna bersama Babinsa dan Bhabinkamtibmas bahu-membahu menata lingkungan.',
+    content: 'Kerja bakti massal serentak dilaksanakan di 5 RW (RW 01 s/d RW 05) Kelurahan Manis Jaya. Pemuda Karang Taruna bersama Babinsa dan Bhabinkamtibmas bahu-membahu menata lingkungan.',
     category: 'Lingkungan',
     type: 'Kegiatan',
     priority: 'Rutin',
     status: 'Publikasikan Sekarang',
     isFeatured: false,
+    averageRating: 4.8,
+    totalRatings: 2,
+    ratings: [
+      {
+        id: 'rate-4',
+        memberName: 'Dedi Kurniawan',
+        role: 'Kader Lingkungan',
+        rw: 'RW 02',
+        rating: 5,
+        aspects: { organization: 5, impact: 5, enthusiasm: 5 },
+        feedback: 'Warga sangat antusias turun ke selokan bersama pemuda. Bibit pohon langsung ditanam di sepanjang jalan utama.',
+        createdAt: '25 Okt 2026, 11:30 WIB',
+      },
+      {
+        id: 'rate-5',
+        memberName: 'Siti Rahmawati',
+        role: 'Pengurus Karang Taruna',
+        rw: 'RW 04',
+        rating: 4,
+        aspects: { organization: 4, impact: 5, enthusiasm: 4 },
+        feedback: 'Saluran air lancar, sampah langsung diangkut oleh truk kebersihan. Sangat efisien.',
+        createdAt: '25 Okt 2026, 14:05 WIB',
+      },
+    ],
+    comments: [
+      {
+        id: 'comm-kb-1',
+        activityId: 'act-1793677100580',
+        authorName: 'Hendra Gunawan',
+        authorRole: 'Pengurus Karang Taruna',
+        authorRw: 'RW 03',
+        comment: 'Apakah alat seperti cangkul dan karung sampah sudah disiapkan panitia atau masing-masing perwakilan RW membawa perlengkapan sendiri?',
+        type: 'pertanyaan',
+        createdAt: '25 Okt 2026, 06:45 WIB',
+        likesCount: 2,
+        replies: [
+          {
+            id: 'rep-kb-1',
+            commentId: 'comm-kb-1',
+            authorName: 'Sie Lingkungan Hidup',
+            authorRole: 'Koordinator Lapangan',
+            authorRw: 'RW 01',
+            replyText: 'Panitia sudah menyiapkan 150 karung dan 20 cangkul bantuan dari DLH, namun warga disarankan tetap membawa alat cadangan ya.',
+            createdAt: '25 Okt 2026, 07:05 WIB',
+          },
+        ],
+      },
+      {
+        id: 'comm-kb-2',
+        activityId: 'act-1793677100580',
+        authorName: 'Aris Maulana',
+        authorRole: 'Pemuda Unit RW 01',
+        authorRw: 'RW 01',
+        comment: 'Titik drainase depan jalan raya utama RW 01 dan RW 02 sudah bersih tuntas. Mantap kekompakan warga pagi ini!',
+        type: 'diskusi',
+        createdAt: '25 Okt 2026, 10:15 WIB',
+        likesCount: 6,
+        replies: [],
+      },
+      {
+        id: 'comm-kb-3',
+        activityId: 'act-1793677100580',
+        authorName: 'Suryadi',
+        authorRole: 'Tokoh Masyarakat',
+        authorRw: 'RW 05',
+        comment: 'Usul agar kerja bakti seperti ini dijadikan agenda rutin 2 bulan sekali, terutama menjelang musim hujan.',
+        type: 'masukan',
+        createdAt: '25 Okt 2026, 12:30 WIB',
+        likesCount: 4,
+        replies: [],
+      },
+    ],
   },
   {
     id: 'act-4',
@@ -174,7 +379,7 @@ export const ACTIVITIES_DATA: ActivityItem[] = [
     ],
     videoUrl: '/filebase_vault/video/video_futsal_manisjaya.mp4',
     videoDuration: 15,
-    description: 'Kompetisi futsal persahabatan pemuda dalam rangka mempererat tali silaturahmi antar pemuda RW 01 hingga RW 08.',
+    description: 'Kompetisi futsal persahabatan pemuda dalam rangka mempererat tali silaturahmi antar pemuda RW 01 hingga RW 05.',
     content: 'Turnamen berlangsung meriah dengan antusiasme penonton warga. Sie Olahraga mengapresiasi seluruh tim yang bertanding dengan penuh sportivitas.',
     category: 'Olahraga',
     type: 'Kegiatan',

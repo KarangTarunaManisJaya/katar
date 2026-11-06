@@ -47,12 +47,104 @@ import {
   saveNewsToFirestore,
   deleteNewsFromFirestore,
   notifyLocalDataChanged,
+  subscribeNewsFromFirestore,
   CloudSyncStatus,
   db,
 } from './services/firestoreSyncService';
 import { collection, getDocs } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
 import { updatePageSeo, DEFAULT_SEO } from './utils/seoHelper';
+
+export function normalizeNewsItem(item: any): ActivityItem {
+  const defaultMatch = ACTIVITIES_DATA.find((d) => d.id === item.id);
+  const title = (item.title || defaultMatch?.title || '').toLowerCase();
+  const category = (item.category || defaultMatch?.category || item.badge || 'Sosial').toLowerCase();
+
+  // 1. Guaranteed Video Liputan (Maks 60 Detik)
+  const getDefaultVideo = (cat: string, tit: string) => {
+    if (cat.includes('lingkungan') || tit.includes('kerja bakti') || tit.includes('bersih') || tit.includes('gotong')) {
+      return { url: '/filebase_vault/video/video_kerjabakti_manisjaya.mp4', duration: 15 };
+    }
+    if (cat.includes('olahraga') || tit.includes('futsal') || tit.includes('pertandingan') || tit.includes('olahraga')) {
+      return { url: '/filebase_vault/video/video_futsal_manisjaya.mp4', duration: 15 };
+    }
+    return { url: '/filebase_vault/video/video_baksos_manisjaya.mp4', duration: 15 };
+  };
+
+  const defVid = getDefaultVideo(category, title);
+  let videoUrl = item.videoUrl;
+  let videoDuration = item.videoDuration;
+
+  if (videoUrl === undefined || videoUrl === null) {
+    if (defaultMatch?.videoUrl) {
+      videoUrl = defaultMatch.videoUrl;
+      videoDuration = defaultMatch.videoDuration || defVid.duration;
+    } else if (defaultMatch) {
+      videoUrl = defVid.url;
+      videoDuration = defVid.duration;
+    } else {
+      videoUrl = '';
+    }
+  }
+
+  // 2. Guaranteed Foto Cover & Galeri Dokumentasi
+  const getDefaultImage = (cat: string, tit: string) => {
+    if (cat.includes('sosial') || tit.includes('sosial') || tit.includes('santunan') || tit.includes('yatim')) {
+      return resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg');
+    }
+    if (cat.includes('lingkungan') || tit.includes('kerja bakti') || tit.includes('bersih') || tit.includes('pohon')) {
+      return resolveAssetUrl('/activity_gotong_royong_1790587890085.jpg');
+    }
+    if (cat.includes('olahraga') || tit.includes('futsal') || tit.includes('pertandingan') || tit.includes('olahraga')) {
+      return resolveAssetUrl('/activity_sports_youth_1790587904269.jpg');
+    }
+    if (cat.includes('umkm') || tit.includes('ekonomi') || tit.includes('kreatif')) {
+      return resolveAssetUrl('/umkm_creative_youth_1790587923367.jpg');
+    }
+    return resolveAssetUrl('/hero_karang_taruna_1790587873230.jpg');
+  };
+
+  let image = item.image;
+  if (!image || typeof image !== 'string' || image.trim().length < 5 || (image.startsWith('data:') && image.length < 500)) {
+    image = defaultMatch?.image || getDefaultImage(category, title);
+  } else {
+    image = resolveAssetUrl(image);
+  }
+
+  let photos = Array.isArray(item.photos) && item.photos.length > 0
+    ? item.photos.filter((p: any) => typeof p === 'string' && p.trim().length > 4).map(resolveAssetUrl)
+    : [];
+
+  if (photos.length === 0) {
+    photos = defaultMatch?.photos && defaultMatch.photos.length > 0
+      ? defaultMatch.photos.map(resolveAssetUrl)
+      : [
+          image,
+          resolveAssetUrl('/hero_karang_taruna_1790587873230.jpg'),
+          resolveAssetUrl('/manis_jaya_gate_1790588960710.jpg'),
+        ];
+  }
+
+  const ratings = item.ratings && item.ratings.length > 0 ? item.ratings : (defaultMatch?.ratings || []);
+  const totalRatings = item.totalRatings !== undefined ? item.totalRatings : ratings.length;
+  const averageRating = item.averageRating !== undefined
+    ? item.averageRating
+    : ratings.length > 0
+    ? Number((ratings.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) / ratings.length).toFixed(1))
+    : undefined;
+
+  return {
+    ...item,
+    image,
+    photos,
+    photoCount: Math.max(photos.length, item.photoCount || 1),
+    videoUrl,
+    videoDuration: videoDuration || 15,
+    ratings,
+    averageRating,
+    totalRatings,
+  };
+}
 
 function AppContent() {
   const { theme } = useTheme();
@@ -63,18 +155,11 @@ function AppContent() {
       if (savedNews) {
         const parsed = JSON.parse(savedNews);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((item: any) => {
-            const defaultMatch = ACTIVITIES_DATA.find((d) => d.id === item.id);
-            return {
-              ...item,
-              videoUrl: item.videoUrl || defaultMatch?.videoUrl || '',
-              videoDuration: item.videoDuration || defaultMatch?.videoDuration || (item.videoUrl ? 15 : undefined),
-            };
-          });
+          return parsed.map(normalizeNewsItem);
         }
       }
     } catch {}
-    return ACTIVITIES_DATA;
+    return ACTIVITIES_DATA.map(normalizeNewsItem);
   });
 
   // Direct cloud fetch on initial mount so any client (phone or PC) immediately pulls latest news from Firestore
@@ -89,7 +174,7 @@ function AppContent() {
           snap.forEach((d) => {
             const item = d.data() as ActivityItem;
             if (item && (item.id || d.id)) {
-              list.push({ ...item, id: item.id || d.id });
+              list.push(normalizeNewsItem({ ...item, id: item.id || d.id }));
             }
           });
           list.sort((a, b) => {
@@ -552,12 +637,25 @@ function AppContent() {
   useEffect(() => {
     const handleNewsUpdate = (e: any) => {
       if (e.detail?.news && Array.isArray(e.detail.news)) {
-        setActivities(e.detail.news);
+        setActivities(e.detail.news.map(normalizeNewsItem));
       }
     };
     window.addEventListener('kt_news_updated', handleNewsUpdate);
+
+    // Direct active Firestore collection subscription for instant cross-device sync
+    const unsubNews = subscribeNewsFromFirestore((cloudNews) => {
+      if (Array.isArray(cloudNews) && cloudNews.length > 0) {
+        setActivities(cloudNews.map(normalizeNewsItem));
+        try {
+          localStorage.setItem('kt_news_v1', JSON.stringify(cloudNews));
+          localStorage.setItem('kt_activities_v1', JSON.stringify(cloudNews));
+        } catch {}
+      }
+    });
+
     return () => {
       window.removeEventListener('kt_news_updated', handleNewsUpdate);
+      unsubNews();
     };
   }, []);
 
@@ -581,7 +679,12 @@ function AppContent() {
         if (updatedKeys.includes('kt_news_v1') || updatedKeys.includes('kt_activities_v1')) {
           try {
             const raw = localStorage.getItem('kt_news_v1') || localStorage.getItem('kt_activities_v1');
-            if (raw) setActivities(JSON.parse(raw));
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                setActivities(parsed.map(normalizeNewsItem));
+              }
+            }
           } catch {}
         }
       }
@@ -617,7 +720,7 @@ function AppContent() {
   // Dashboard & kegiatan aktif: kegiatan yang belum diarsipkan
   const activeActivities = filteredActivities.filter((act) => !act.isArchived);
 
-  const handleUpdateActivity = async (updatedAct: ActivityItem) => {
+  const handleUpdateActivity = async (updatedAct: ActivityItem, customToastMessage?: string) => {
     const updated = activities.map((a) => (a.id === updatedAct.id ? updatedAct : a));
     setActivities(updated);
     setSelectedActivity(updatedAct);
@@ -632,7 +735,9 @@ function AppContent() {
     }
     pushLocalDataToCloud(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
-    showToast('Video liputan & berkas warta berhasil diperbarui!');
+    if (customToastMessage) {
+      showToast(customToastMessage);
+    }
   };
 
   return (
@@ -1193,6 +1298,7 @@ function AppContent() {
           onDelete={handleDeleteActivity}
           onToggleArchive={handleToggleArchiveActivity}
           onUpdateActivity={handleUpdateActivity}
+          currentMember={currentUser}
         />
       )}
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon, Archive, Video, Play } from 'lucide-react';
+import { Sparkles, Calendar, ChevronRight, ArrowRight, Image as ImageIcon, Archive, Video, Play, Star } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { resolveAssetUrl } from '../../utils/assetUrl';
 
@@ -103,35 +103,27 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
           {activities.map((item) => (
           <div
             key={item.id}
-            className="group bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-sm hover:shadow-md hover:border-slate-300 transition-all flex flex-col justify-between"
+            onClick={() => onSelectActivity(item)}
+            className="group cursor-pointer bg-white rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs hover:shadow-lg hover:border-blue-300 transition-all flex flex-col justify-between"
           >
             <div>
               {/* Media Thumbnail */}
               <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
-                {item.image ? (
-                  <img
-                    src={item.image}
-                    alt={`${item.title} - Dokumentasi Kegiatan Karang Taruna Kelurahan Manis Jaya Tangerang`}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (!target.dataset.triedFallback && item.image) {
-                        target.dataset.triedFallback = '1';
-                        const filename = item.image.split('/').pop() || '';
-                        target.src = resolveAssetUrl(`/assets/images/${filename}`);
-                      } else if (target.dataset.triedFallback === '1' && item.image) {
-                        target.dataset.triedFallback = '2';
-                        const filename = item.image.split('/').pop() || '';
-                        target.src = resolveAssetUrl(`/${filename}`);
-                      }
-                    }}
-                  />
-                ) : (
-                  /* Placeholder with subtle purple tone */
-                  <div className="w-full h-full bg-[#f2eefd] flex items-center justify-center">
-                    <ImageIcon className="w-10 h-10 text-purple-300" />
-                  </div>
-                )}
+                <img
+                  src={item.image || resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg')}
+                  alt={`${item.title} - Dokumentasi Kegiatan Karang Taruna Kelurahan Manis Jaya Tangerang`}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.dataset.triedFallback) {
+                      target.dataset.triedFallback = '1';
+                      target.src = resolveAssetUrl('/baksos_karang_taruna_1790589027203.jpg');
+                    } else if (target.dataset.triedFallback === '1') {
+                      target.dataset.triedFallback = '2';
+                      target.src = resolveAssetUrl('/hero_karang_taruna_1790587873230.jpg');
+                    }
+                  }}
+                />
 
                 {/* Badge Overlay */}
                 <div className="absolute top-3 left-3">
@@ -174,13 +166,21 @@ export const RecentActivities: React.FC<RecentActivitiesProps> = ({
                     <span>{item.date}</span>
                   </span>
 
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${getPillCountStyle(
-                      item.badgeColor
-                    )}`}
-                  >
-                    {item.photoCount} Foto
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {item.averageRating && (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200 flex items-center gap-0.5">
+                        <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-400" />
+                        <span>{item.averageRating}</span>
+                      </span>
+                    )}
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${getPillCountStyle(
+                        item.badgeColor
+                      )}`}
+                    >
+                      {item.photoCount} Foto
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

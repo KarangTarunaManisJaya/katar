@@ -63,7 +63,7 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = ({
   const [penanggungJawab, setPenanggungJawab] = useState(initialData?.penanggungJawab || '');
   const [bidangSeksi, setBidangSeksi] = useState(initialData?.bidangSeksi || BIDANG_SEKSI_LIST[0]);
   const [jumlahPeserta, setJumlahPeserta] = useState<number>(initialData?.jumlahPeserta || 50);
-  const [targetPeserta, setTargetPeserta] = useState(initialData?.targetPeserta || 'Pemuda & Pengurus RW 01 - RW 08');
+  const [targetPeserta, setTargetPeserta] = useState(initialData?.targetPeserta || 'Pemuda & Pengurus RW 01 - RW 05');
   const [deskripsiKegiatan, setDeskripsiKegiatan] = useState(initialData?.deskripsiKegiatan || '');
   const [tujuanKegiatan, setTujuanKegiatan] = useState(initialData?.tujuanKegiatan || '');
   const [statusKegiatan, setStatusKegiatan] = useState<StatusKegiatan>(initialData?.statusKegiatan || 'Direncanakan');
@@ -438,7 +438,7 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Seluruh Pemuda & Warga RW 01 - RW 08"
+                    placeholder="Contoh: Seluruh Pemuda & Warga RW 01 - RW 05"
                     value={targetPeserta}
                     onChange={(e) => setTargetPeserta(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-hidden"

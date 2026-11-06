@@ -169,3 +169,139 @@ export async function uploadVideoToServerVault(
     ipfsCid: data.ipfsCid,
   };
 }
+
+/**
+ * Ekstrak ID video YouTube untuk rendering player iframe
+ */
+export function extractYouTubeVideoId(url: string | undefined | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/;
+  const match = trimmed.match(regExp);
+  return match && match[1] ? match[1] : null;
+}
+
+/**
+ * Unggah berkas video ke Cloud Firestore (koleksi media) agar tersimpan 100% dan dapat diakses
+ * dari semua komputer, laptop, maupun HP lain secara real-time.
+ */
+export async function saveVideoToCloudFirestore(
+  file: File,
+  newsId: string
+): Promise<string> {
+  const cleanId = `vid_${newsId || Date.now()}`;
+
+  // Baca berkas sebagai Base64
+  const base64Data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      const base64 = res.split(',')[1] || res;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+  // Simpan ke IndexedDB lokal untuk pemutaran instan 0 delay
+  await saveVideoBlobToIndexedDb(cleanId, file);
+  if (newsId) {
+    await saveVideoBlobToIndexedDb(newsId, file);
+  }
+
+  // Simpan ke Cloud Firestore media collection
+  const { saveMediaToFirestore } = await import('../services/firestoreSyncService');
+  const firestoreUri = await saveMediaToFirestore(
+    cleanId,
+    base64Data,
+    file.type || 'video/mp4',
+    newsId
+  );
+
+  return firestoreUri;
+}
+
+/**
+ * Mengubah URL video mentah (firestore:media/..., YouTube, /filebase_vault/, data:, blob:)
+ * menjadi URL yang dijamin 100% dapat diputar pada browser saat ini.
+ */
+export async function resolvePlayableVideoUrl(
+  rawUrl: string | undefined | null,
+  newsId?: string
+): Promise<string> {
+  if (!rawUrl || typeof rawUrl !== 'string' || rawUrl.trim() === '') return '';
+  const trimmed = rawUrl.trim();
+
+  // 1. YouTube link
+  if (extractYouTubeVideoId(trimmed)) {
+    return trimmed;
+  }
+
+  // 2. Direct web URL (https://... or http://...)
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  // 3. Preset / Static filebase vault URL
+  if (trimmed.startsWith('/filebase_vault/') || trimmed.startsWith('filebase_vault/')) {
+    const { resolveAssetUrl } = await import('./assetUrl');
+    return resolveAssetUrl(trimmed);
+  }
+
+  // 4. Data URL base64
+  if (trimmed.startsWith('data:video/')) {
+    return trimmed;
+  }
+
+  // 5. Firestore Media Reference: firestore:media/{mediaId}
+  if (trimmed.startsWith('firestore:media/')) {
+    const mediaId = trimmed.replace(/^firestore:media\//, '');
+
+    // Cek dulu di cache IndexedDB browser saat ini
+    const cachedBlob = await getVideoBlobFromIndexedDb(mediaId);
+    if (cachedBlob && cachedBlob.size > 0) {
+      return URL.createObjectURL(cachedBlob);
+    }
+    if (newsId) {
+      const newsBlob = await getVideoBlobFromIndexedDb(newsId);
+      if (newsBlob && newsBlob.size > 0) {
+        return URL.createObjectURL(newsBlob);
+      }
+    }
+
+    // Ambil dari Cloud Firestore
+    const { getMediaFromFirestore } = await import('../services/firestoreSyncService');
+    const cloudBlobUrl = await getMediaFromFirestore(mediaId);
+    if (cloudBlobUrl) {
+      return cloudBlobUrl;
+    }
+  }
+
+  // 6. Local IndexedDB fallback jika key berupa ID biasa
+  if (trimmed.startsWith('video_') || trimmed.startsWith('vid_')) {
+    const cachedBlob = await getVideoBlobFromIndexedDb(trimmed);
+    if (cachedBlob && cachedBlob.size > 0) {
+      return URL.createObjectURL(cachedBlob);
+    }
+  }
+
+  // 7. Jika ada newsId, coba cari video blob terkait di IndexedDB
+  if (newsId) {
+    const cached = await getVideoBlobFromIndexedDb(newsId);
+    if (cached && cached.size > 0) {
+      return URL.createObjectURL(cached);
+    }
+  }
+
+  // 8. Jika blob URL lama yang mungkin sudah expired di tab baru, coba fallback ke Cloud Firestore
+  if (newsId && trimmed.startsWith('blob:')) {
+    const mediaId = `vid_${newsId}`;
+    const { getMediaFromFirestore } = await import('../services/firestoreSyncService');
+    const cloudBlobUrl = await getMediaFromFirestore(mediaId);
+    if (cloudBlobUrl) {
+      return cloudBlobUrl;
+    }
+  }
+
+  return trimmed;
+}

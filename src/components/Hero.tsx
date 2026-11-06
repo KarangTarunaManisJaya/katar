@@ -100,7 +100,7 @@ export const Hero: React.FC<HeroProps> = ({ onRegisterClick, onExploreAgendaClic
                   Pemuda Manis Jaya Kompak & Berdaya
                 </h3>
                 <p className="text-xs text-slate-300 mt-1 line-clamp-2">
-                  Temu karya dan koordinasi program kerja Karang Taruna Manis Jaya bersama perwakilan pemuda RW 01 sampai RW 08.
+                  Temu karya dan koordinasi program kerja Karang Taruna Manis Jaya bersama perwakilan pemuda RW 01 sampai RW 05.
                 </p>
               </div>
             </div>

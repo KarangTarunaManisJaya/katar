@@ -26,6 +26,13 @@ export function resolveAssetUrl(url: string | undefined | null): string {
   // Remove leading './' or '/'
   let clean = url.replace(/^\.?\/+/, '');
 
+  // Strip src/assets/images/ or assets/images/ prefix to ensure it maps to public/ assets
+  if (clean.startsWith('src/assets/images/')) {
+    clean = clean.replace('src/assets/images/', '');
+  } else if (clean.startsWith('assets/images/')) {
+    clean = clean.replace('assets/images/', '');
+  }
+
   // If already prefixed with katar/, don't duplicate
   if (base !== '/' && clean.startsWith('katar/')) {
     clean = clean.slice(6);

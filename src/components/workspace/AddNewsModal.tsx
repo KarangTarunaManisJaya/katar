@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { X, Plus, Calendar, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Video, AlertCircle } from 'lucide-react';
+import { X, Plus, Calendar, MapPin, UploadCloud, CheckCircle, Image as ImageIcon, Video, AlertCircle, Sparkles, Upload } from 'lucide-react';
 import { ActivityItem } from '../../data/workspaceData';
 import { compressImage } from '../../utils/imageOptimizer';
 import { resolveAssetUrl } from '../../utils/assetUrl';
+import { OFFICIAL_PRESET_VIDEOS } from './ActivityDetailModal';
+import { extractVideoMetaAndThumbnail, uploadVideoToServerVault, saveVideoBlobToIndexedDb } from '../../utils/videoManager';
 
 interface AddNewsModalProps {
   onClose: () => void;
@@ -42,7 +44,7 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
     }
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -50,17 +52,11 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
     setIsVideoChecking(true);
     onToast('Memeriksa durasi video (maksimal 60 detik)...');
 
-    const videoElem = document.createElement('video');
-    videoElem.preload = 'metadata';
-    const objectUrl = URL.createObjectURL(file);
-    videoElem.src = objectUrl;
-
-    videoElem.onloadedmetadata = () => {
-      URL.revokeObjectURL(objectUrl);
-      setIsVideoChecking(false);
-      const duration = videoElem.duration;
+    try {
+      const { duration, thumbnail, objectUrl } = await extractVideoMetaAndThumbnail(file);
 
       if (isNaN(duration) || duration <= 0) {
+        setIsVideoChecking(false);
         setVideoError('Format video tidak didukung atau durasi tidak dapat dibaca.');
         onToast('Gagal memverifikasi durasi video.');
         return;
@@ -69,6 +65,7 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
       const durationSec = Math.round(duration);
 
       if (duration > 60.5) {
+        setIsVideoChecking(false);
         setVideoError(`Durasi video ${durationSec} detik melebihi batas maksimal 60 detik!`);
         onToast(`⚠️ Durasi video ${durationSec} detik melebihi batas maksimal 60 detik!`);
         if (videoInputRef.current) videoInputRef.current.value = '';
@@ -76,20 +73,38 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
       }
 
       setVideoDuration(durationSec);
-      const reader = new FileReader();
-      reader.onload = () => {
-        setVideoUrl(reader.result as string);
-        onToast(`Video (${durationSec} detik) berhasil ditambahkan!`);
-      };
-      reader.readAsDataURL(file);
-    };
+      if (!uploadedPhoto && thumbnail) {
+        setUploadedPhoto(thumbnail);
+      }
 
-    videoElem.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
+      onToast('Mengunggah video ke Server Vault...');
+      try {
+        const vaultRes = await uploadVideoToServerVault(file);
+        const finalUrl = vaultRes.fileUrl;
+        setVideoUrl(finalUrl);
+        await saveVideoBlobToIndexedDb(finalUrl, file);
+        setIsVideoChecking(false);
+        onToast(`Video liputan (${durationSec}s) berhasil diunggah & siap dipublikasikan!`);
+      } catch (vaultErr) {
+        console.warn('Vault upload fallback:', vaultErr);
+        const localKey = `video_${Date.now()}`;
+        await saveVideoBlobToIndexedDb(localKey, file);
+        setVideoUrl(objectUrl);
+        setIsVideoChecking(false);
+        onToast(`Video (${durationSec}s) tersimpan di memori perangkat.`);
+      }
+    } catch (err: any) {
       setIsVideoChecking(false);
-      setVideoError('Gagal membaca berkas video. Pastikan format video valid.');
+      setVideoError(err.message || 'Gagal membaca berkas video. Pastikan format video valid.');
       onToast('Gagal membaca berkas video.');
-    };
+    }
+  };
+
+  const handleSelectPresetVideo = (preset: typeof OFFICIAL_PRESET_VIDEOS[0]) => {
+    setVideoUrl(preset.url);
+    setVideoDuration(preset.duration);
+    setVideoError(null);
+    onToast(`Video preset "${preset.title}" (${preset.duration}s) dipilih!`);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -281,6 +296,53 @@ export const AddNewsModal: React.FC<AddNewsModalProps> = ({
             className="hidden"
             onChange={handleVideoUpload}
           />
+
+          {/* Quick Preset Video Selector */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-rose-600" />
+                <span>Pilih Contoh Video Liputan Resmi (Opsional):</span>
+              </span>
+              {videoUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVideoUrl('');
+                    setVideoDuration(null);
+                  }}
+                  className="text-[10px] text-rose-600 hover:underline font-bold cursor-pointer"
+                >
+                  Hapus Video
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {OFFICIAL_PRESET_VIDEOS.map((preset, idx) => {
+                const isSelected = videoUrl === preset.url;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectPresetVideo(preset)}
+                    className={`p-2 rounded-xl text-left border transition-all text-[11px] cursor-pointer ${
+                      isSelected
+                        ? 'bg-rose-50 border-rose-500 text-rose-900 font-bold ring-2 ring-rose-500/20 shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[9px] uppercase px-1 rounded bg-slate-200 text-slate-800 font-bold">
+                        {preset.tag}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-mono">15s</span>
+                    </div>
+                    <p className="line-clamp-1 font-semibold">{preset.title}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           {isVideoChecking && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2 text-xs text-blue-700">

@@ -156,7 +156,7 @@ function handleKarangTarunaLogic(q: string, query: string, context?: ReasoningCo
   if (q.includes('program') || q.includes('kerja') || q.includes('kegiatan')) {
     return (
       `Halo! Senang kamu tertarik dengan kegiatan pemuda di sini. 😊\n\n` +
-      `Karang Taruna Kelurahan Manis Jaya punya **5 pilar kegiatan utama** yang rutin bergerak di RW 01 sampai RW 08:\n\n` +
+      `Karang Taruna Kelurahan Manis Jaya punya **5 pilar kegiatan utama** yang rutin bergerak di RW 01 sampai RW 05:\n\n` +
       `1. **Olahraga & Pemuda:** Ada turnamen futsal, bulutangkis, dan senam sehat warga antar-RW.\n` +
       `2. **Sosial & Kepedulian:** Bakti sosial, donor darah, santunan adik-adik yatim/lansia, serta tanggap bencana.\n` +
       `3. **Lingkungan Hidup:** Gotong royong bersih drainase dan Bank Sampah Pemuda agar lingkungan Manis Jaya asri.\n` +
@@ -207,7 +207,7 @@ function handleKarangTarunaLogic(q: string, query: string, context?: ReasoningCo
     return (
       `Agenda rutin Karang Taruna Kelurahan Manis Jaya meliputi:\n\n` +
       `• Rapat koordinasi bulanan pengurus (Sekretariat Kelurahan).\n` +
-      `• Kerja bakti lingkungan akhir pekan bersama pengurus RW 01 - RW 08.\n` +
+      `• Kerja bakti lingkungan akhir pekan bersama pengurus RW 01 - RW 05.\n` +
       `• Latihan olahraga dan turnamen pemuda terjadwal.\n\n` +
       `Rincian kalender lengkap dapat diakses di menu **Jadwal Kegiatan**.`
     );
@@ -217,7 +217,7 @@ function handleKarangTarunaLogic(q: string, query: string, context?: ReasoningCo
     return (
       `Karang Taruna adalah organisasi kepemudaan resmi tingkat kelurahan/desa yang diakui pemerintah melalui Permensos No. 25 Tahun 2019.\n\n` +
       `Fungsi utamanya adalah mencegah permasalahan sosial generasi muda serta mewadahi potensi pemuda di bidang kesejahteraan sosial, olahraga, ekonomi, dan budaya.\n\n` +
-      `Di Kelurahan Manis Jaya (Kecamatan Jatiuwung, Kota Tangerang), Karang Taruna mengkoordinasikan kegiatan pemuda di 8 Rukun Warga (RW 01 s/d RW 08).`
+      `Di Kelurahan Manis Jaya (Kecamatan Jatiuwung, Kota Tangerang), Karang Taruna mengkoordinasikan kegiatan pemuda di 5 Rukun Warga (RW 01 s/d RW 05).`
     );
   }
 

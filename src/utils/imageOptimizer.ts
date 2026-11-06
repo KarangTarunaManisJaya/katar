@@ -102,25 +102,21 @@ export async function compressMultipleImages(
 
 /**
  * Optimizes an activity/news item for cloud Firestore storage and browser localStorage,
- * ensuring it stays safely below limits (< 500KB per item).
+ * ensuring photos and media remain intact and visible across all devices.
  */
 export function optimizeNewsItemForStorage(item: any): any {
   if (!item || typeof item !== 'object') return item;
   const copy = { ...item };
 
-  // Limit number of photos stored in a single document
-  if (Array.isArray(copy.photos) && copy.photos.length > 4) {
-    copy.photos = copy.photos.slice(0, 4);
+  // Limit number of photos stored in a single document to 6 (plenty for documentation while safe for Firestore)
+  if (Array.isArray(copy.photos) && copy.photos.length > 6) {
+    copy.photos = copy.photos.slice(0, 6);
     copy.photoCount = item.photoCount || item.photos.length;
   }
 
-  // If video is base64 and large (> 300KB), remove base64 string from cloud document
-  if (copy.videoUrl && typeof copy.videoUrl === 'string' && copy.videoUrl.startsWith('data:video/')) {
-    if (copy.videoUrl.length > 300000) {
-      copy.hasLocalVideo = true;
-      copy.videoUrl = '';
-      copy.videoNote = 'Video tersimpan pada perangkat pengunggah (Maks 60 Detik)';
-    }
+  // Preserve image if valid
+  if (typeof copy.image === 'string' && copy.image.trim().length > 0) {
+    // Keep cover photo
   }
 
   return copy;

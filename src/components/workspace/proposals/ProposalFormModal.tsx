@@ -106,7 +106,7 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
     initialData?.bentukKegiatan || 'Kegiatan diselenggarakan dalam bentuk perlombaan, workshop, dan silaturahmi warga.'
   );
   const [targetPeserta, setTargetPeserta] = useState(
-    initialData?.targetPeserta || '150 Orang Pemuda dan Warga RW 01 - RW 08.'
+    initialData?.targetPeserta || '150 Orang Pemuda dan Warga RW 01 - RW 05.'
   );
   const [penutup, setPenutup] = useState(
     initialData?.penutup ||
@@ -651,7 +651,7 @@ export const ProposalFormModal: React.FC<ProposalFormModalProps> = ({
                 />
                 <input
                   type="text"
-                  placeholder="Target Peserta (misal: 150 Pemuda RW 01 - RW 08)"
+                  placeholder="Target Peserta (misal: 150 Pemuda RW 01 - RW 05)"
                   value={targetPeserta}
                   onChange={(e) => setTargetPeserta(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"

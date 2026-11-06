@@ -121,12 +121,33 @@
         "location": { "type": "string" },
         "author": { "type": "string" },
         "photos": { "type": "array" },
+        "ratings": { "type": "array" },
+        "comments": { "type": "array" },
         "updatedAt": { "type": "string" }
       },
       "required": ["title", "description"]
+    },
+    "Media": {
+      "title": "Media",
+      "description": "Penyimpanan berkas media video dan dokumentasi Karang Taruna Manis Jaya",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "newsId": { "type": "string" },
+        "fileName": { "type": "string" },
+        "contentType": { "type": "string" },
+        "totalChunks": { "type": "number" },
+        "chunks": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["newsId", "contentType"]
     }
   },
   "firestore": {
+    "/organizations/manisjaya/media/{mediaId}": {
+      "schema": "Media",
+      "description": "Koleksi berkas media video dokumentasi kegiatan Karang Taruna Manis Jaya"
+    },
     "/organizations/manisjaya/live/{stateId}": {
       "schema": "SyncState",
       "description": "Dokumen sinkronisasi real-time lintas perangkat Karang Taruna Manis Jaya"

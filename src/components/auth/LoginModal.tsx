@@ -889,9 +889,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                       <option value="RW 03">RW 03 - Manis Jaya</option>
                       <option value="RW 04">RW 04 - Manis Jaya</option>
                       <option value="RW 05">RW 05 - Manis Jaya</option>
-                      <option value="RW 06">RW 06 - Manis Jaya</option>
-                      <option value="RW 07">RW 07 - Manis Jaya</option>
-                      <option value="RW 08">RW 08 - Manis Jaya</option>
                     </select>
                   </div>
                 </div>

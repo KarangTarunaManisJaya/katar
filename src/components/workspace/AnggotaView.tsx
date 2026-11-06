@@ -1280,9 +1280,6 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                           <option value="RW 03">RW 03</option>
                           <option value="RW 04">RW 04</option>
                           <option value="RW 05">RW 05</option>
-                          <option value="RW 06">RW 06</option>
-                          <option value="RW 07">RW 07</option>
-                          <option value="RW 08">RW 08</option>
                         </select>
                       </div>
                     </div>

@@ -72,23 +72,35 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const initialBotWelcome: ChatMessage = {
     id: 'welcome-1',
     sender: 'bot',
-    text: `Halo ${currentUser?.name ? currentUser.name : 'Kawan'}! 👋 Senang bisa ngobrol bareng kamu.\n\nSaya rekan ngobrol AI Karang Taruna Kelurahan Manis Jaya. Anggap aja kita lagi ngobrol santai ya, nggak perlu kaku sama sekali!\n\nKamu bebas tanya atau diskusiin apa saja:\n• **Karang Taruna Manis Jaya:** Kegiatan pemuda di 8 RW, cara bikin KTA digital, buat surat resmi ber-barcode, pinjam tenda/sound system, sampai jadwal agenda terdekat.\n• **Diskusi Bebas & Tanya Jawab:** Tips produktivitas & cara atasi malas, motivasi diri, teknologi, sains, atau curhat logika kehidupan sehari-hari.\n\nAda hal seru apa yang lagi mau kamu tanyakan atau obrolin hari ini? 😊`,
+    text: `Halo ${currentUser?.name ? currentUser.name : 'Kawan'}! 👋 Senang bisa ngobrol bareng kamu.\n\nSaya rekan ngobrol AI Karang Taruna Kelurahan Manis Jaya. Anggap aja kita lagi ngobrol santai ya, nggak perlu kaku sama sekali!\n\nKamu bebas tanya atau diskusiin apa saja:\n• **Karang Taruna Manis Jaya:** Kegiatan pemuda di 5 RW (RW 01 - RW 05), cara bikin KTA digital, buat surat resmi ber-barcode, pinjam tenda/sound system, sampai jadwal agenda terdekat.\n• **Diskusi Bebas & Tanya Jawab:** Tips produktivitas & cara atasi malas, motivasi diri, teknologi, sains, atau curhat logika kehidupan sehari-hari.\n\nAda hal seru apa yang lagi mau kamu tanyakan atau obrolin hari ini? 😊`,
     time: 'Baru saja',
     isTyping: false,
   };
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+  const [messages, setMessages] = useState<ChatMessage[]>([initialBotWelcome]);
+
+  // Hapus otomatis riwayat saat tab atau program ditutup/refresh
+  useEffect(() => {
     try {
-      const saved = localStorage.getItem('kt_ai_chat_history_v1');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((m) => ({ ...m, isTyping: false }));
-        }
-      }
+      localStorage.removeItem('kt_ai_chat_history_v1');
+      sessionStorage.removeItem('kt_ai_chat_history_v1');
     } catch {}
-    return [initialBotWelcome];
-  });
+
+    const handleBeforeUnload = () => {
+      try {
+        localStorage.removeItem('kt_ai_chat_history_v1');
+        sessionStorage.removeItem('kt_ai_chat_history_v1');
+      } catch {}
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, []);
 
   // Auto-scroll as text types out or new message arrives
   useEffect(() => {
@@ -97,13 +109,26 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     }
   }, [messages, isOpen, thinkingState]);
 
-  // Persist chat history without temporary typing states
-  useEffect(() => {
+  // Hapus riwayat dan reset chat setiap kali jendela AI chat ditutup (close)
+  const handleCloseChat = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(null);
+    setThinkingState('idle');
+    fullTextMapRef.current = {};
+    setInputText('');
+    setMessages([initialBotWelcome]);
     try {
-      const cleanMessages = messages.map((m) => ({ ...m, isTyping: false }));
-      localStorage.setItem('kt_ai_chat_history_v1', JSON.stringify(cleanMessages));
+      localStorage.removeItem('kt_ai_chat_history_v1');
+      sessionStorage.removeItem('kt_ai_chat_history_v1');
     } catch {}
-  }, [messages]);
+    setIsOpen(false);
+  };
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -442,7 +467,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
         )}
 
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            if (isOpen) {
+              handleCloseChat();
+            } else {
+              setIsOpen(true);
+            }
+          }}
           className={`w-13 h-13 rounded-2xl flex items-center justify-center shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105 active:scale-95 ${
             isOpen
               ? 'bg-slate-800 text-white shadow-slate-900/40 rotate-90'
@@ -544,9 +575,9 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={handleCloseChat}
                 className="p-1.5 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
-                title="Tutup Chat"
+                title="Tutup Chat & Bersihkan Pertanyaan"
               >
                 <X className="w-5 h-5" />
               </button>

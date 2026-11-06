@@ -53,6 +53,7 @@ import {
   extractVideoMetaAndThumbnail,
   uploadVideoToServerVault,
   saveVideoBlobToIndexedDb,
+  saveVideoToCloudFirestore,
 } from '../../utils/videoManager';
 import { BERITA_TEMPLATES, BeritaTemplate } from './berita/TambahBeritaTemplates';
 import { RundownSection, RundownItem, VipGuest } from './berita/RundownSection';
@@ -188,7 +189,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
   // --- CARD 5: Peserta, Narahubung & Kemitraan ---
   const [participantCount, setParticipantCount] = useState('120 Orang');
   const [participantsInvolved, setParticipantsInvolved] = useState(
-    'Pemuda Karang Taruna, Pengurus RT/RW, Warga RW 01 - RW 08'
+    'Pemuda Karang Taruna, Pengurus RT/RW, Warga RW 01 - RW 05'
   );
   const [partners, setPartners] = useState(
     'Kelurahan Manis Jaya, Babinsa, Bhabinkamtibmas, Forum RW, Puskesmas'
@@ -445,27 +446,32 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
         onToast('Frame video otomatis dijadikan foto sampul liputan!');
       }
 
-      // Unggah ke Server Vault agar tersimpan permanen tanpa melebihi kuota browser
+      // Unggah ke Cloud Firestore Database agar tersimpan di cloud & muncul di semua HP/komputer
       setIsVideoUploading(true);
-      onToast('Mengunggah video ke Server Vault & menyiapkan pratinjau...');
+      onToast('Menyimpan video ke Cloud Database & menyiapkan pratinjau...');
 
       try {
-        const vaultRes = await uploadVideoToServerVault(file);
-        const finalUrl = vaultRes.fileUrl;
-        setVideoUrl(finalUrl);
-
-        // Simpan juga ke IndexedDB untuk pemutaran instan offline
-        await saveVideoBlobToIndexedDb(finalUrl, file);
-
+        const tempVideoId = `vid_${Date.now()}`;
+        const cloudVideoUri = await saveVideoToCloudFirestore(file, tempVideoId);
+        setVideoUrl(cloudVideoUri);
         setIsVideoUploading(false);
-        onToast(`Video dokumentasi (${durationSec} detik) berhasil disimpan & siap dipublikasikan!`);
+        onToast(`Video dokumentasi (${durationSec} detik) berhasil tersimpan di Cloud Database & siap diterbitkan!`);
       } catch (uploadErr) {
-        console.warn('Gagal upload ke vault, menggunakan cache lokal:', uploadErr);
-        const localKey = `video_${Date.now()}`;
-        await saveVideoBlobToIndexedDb(localKey, file);
-        setVideoUrl(objectUrl);
-        setIsVideoUploading(false);
-        onToast(`Video (${durationSec}s) tersimpan di memori perangkat.`);
+        console.warn('Gagal upload ke cloud, mencoba fallback:', uploadErr);
+        try {
+          const vaultRes = await uploadVideoToServerVault(file);
+          const finalUrl = vaultRes.fileUrl;
+          setVideoUrl(finalUrl);
+          await saveVideoBlobToIndexedDb(finalUrl, file);
+          setIsVideoUploading(false);
+          onToast(`Video (${durationSec}s) berhasil tersimpan.`);
+        } catch {
+          const localKey = `video_${Date.now()}`;
+          await saveVideoBlobToIndexedDb(localKey, file);
+          setVideoUrl(objectUrl);
+          setIsVideoUploading(false);
+          onToast(`Video (${durationSec}s) tersimpan di memori perangkat.`);
+        }
       }
     } catch (err: any) {
       setIsVideoChecking(false);
@@ -823,7 +829,7 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
                     type="text"
                     value={targetScope}
                     onChange={(e) => setTargetScope(e.target.value)}
-                    placeholder="Contoh: RW 01 - RW 08 Kelurahan Manis Jaya"
+                    placeholder="Contoh: RW 01 - RW 05 Kelurahan Manis Jaya"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
