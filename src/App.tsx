@@ -51,6 +51,11 @@ import {
   CloudSyncStatus,
   db,
 } from './services/firestoreSyncService';
+import {
+  saveNewsToFilebase,
+  fetchNewsFromFilebase,
+  subscribeNewsFromFilebase,
+} from './services/filebaseService';
 import { collection, getDocs } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
 import { updatePageSeo, DEFAULT_SEO } from './utils/seoHelper';
@@ -121,10 +126,27 @@ function AppContent() {
     return ACTIVITIES_DATA.map(normalizeNewsItem);
   });
 
-  // Direct cloud fetch on initial mount so any client (phone or PC) immediately pulls latest news from Firestore
+  // Direct cloud & Filebase fetch on initial mount so any client (phone or PC) immediately pulls latest news
   useEffect(() => {
     let isMounted = true;
     const fetchInitialNews = async () => {
+      // 1. Coba ambil dari Filebase Storage Gateway (Seragam lintas HP dan PC)
+      try {
+        const filebaseNews = await fetchNewsFromFilebase();
+        if (Array.isArray(filebaseNews) && filebaseNews.length > 0 && isMounted) {
+          const list = filebaseNews.map(normalizeNewsItem);
+          setActivities(list);
+          try {
+            localStorage.setItem('kt_news_v1', JSON.stringify(list));
+            localStorage.setItem('kt_activities_v1', JSON.stringify(list));
+          } catch {}
+          return;
+        }
+      } catch (fbErr) {
+        console.debug('Filebase initial fetch fallback to Firestore:', fbErr);
+      }
+
+      // 2. Fallback ke Cloud Firestore jika Filebase belum terisi
       try {
         const colRef = collection(db, 'organizations', 'manisjaya', 'news');
         const snap = await getDocs(colRef);
@@ -147,6 +169,8 @@ function AppContent() {
               localStorage.setItem('kt_news_v1', JSON.stringify(list));
               localStorage.setItem('kt_activities_v1', JSON.stringify(list));
             } catch {}
+            // Sinkronkan ke Filebase agar perangkat lain langsung dapat
+            saveNewsToFilebase(list, 'replace_all').catch(() => {});
           }
         }
       } catch (err) {
@@ -469,6 +493,9 @@ function AppContent() {
       console.warn('Firestore news write notice:', err);
     }
 
+    // Direct write to Filebase Vault so all devices and computers sync immediately
+    saveNewsToFilebase(newAct, 'upsert').catch(() => {});
+
     pushLocalDataToCloud(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
 
@@ -490,6 +517,7 @@ function AppContent() {
     } catch {}
 
     deleteNewsFromFirestore(id).catch(() => {});
+    saveNewsToFilebase({ id }, 'delete').catch(() => {});
     pushLocalDataToCloud('Hapus berita kegiatan', currentUser.name).catch(() => {});
     notifyLocalDataChanged('Hapus Berita Kegiatan');
     setSelectedActivity(null);
@@ -612,9 +640,26 @@ function AppContent() {
       }
     });
 
+    // Dedicated Filebase Real-time polling subscriber:
+    // Ensures all computers, laptops, and mobile phones immediately receive identical news from Filebase Vault
+    const unsubFilebaseNews = subscribeNewsFromFilebase((fbNews) => {
+      if (Array.isArray(fbNews) && fbNews.length > 0) {
+        const currentLocal = localStorage.getItem('kt_news_v1');
+        const serializedFb = JSON.stringify(fbNews);
+        if (currentLocal !== serializedFb) {
+          setActivities(fbNews.map(normalizeNewsItem));
+          try {
+            localStorage.setItem('kt_news_v1', serializedFb);
+            localStorage.setItem('kt_activities_v1', serializedFb);
+          } catch {}
+        }
+      }
+    }, 5000);
+
     return () => {
       window.removeEventListener('kt_news_updated', handleNewsUpdate);
       unsubNews();
+      unsubFilebaseNews();
     };
   }, []);
 
@@ -692,6 +737,7 @@ function AppContent() {
     } catch (err) {
       console.warn('Firestore update news notice:', err);
     }
+    saveNewsToFilebase(updatedAct, 'upsert').catch(() => {});
     pushLocalDataToCloud(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
     if (customToastMessage) {

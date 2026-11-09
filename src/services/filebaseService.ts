@@ -539,17 +539,19 @@ export const syncAllToFilebase = async (
  * Memastikan setiap berita tersimpan di Filebase dan tersinkron ke semua perangkat.
  */
 export const saveNewsToFilebase = async (
-  item: any,
-  action: 'upsert' | 'delete' = 'upsert'
+  itemOrList: any,
+  action: 'upsert' | 'delete' | 'replace_all' = 'upsert'
 ): Promise<void> => {
   try {
+    const isArray = Array.isArray(itemOrList);
     await fetch('/api/filebase/sync-news', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action,
-        id: item?.id,
-        item,
+        id: !isArray ? itemOrList?.id : undefined,
+        item: !isArray ? itemOrList : undefined,
+        news: isArray ? itemOrList : undefined,
       }),
     });
   } catch (err) {
