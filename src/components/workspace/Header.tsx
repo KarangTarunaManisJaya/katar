@@ -22,7 +22,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
-import { UserAccount } from '../../types/auth';
+import { UserAccount, isOwnerAdminAccount } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
 import { CloudSyncStatus } from '../../services/firestoreSyncService';
 import {
@@ -159,8 +159,12 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Turso Primary Sync Badge */}
         {syncStatus && (
           <div
-            onClick={onOpenFirebaseConfig}
-            className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-all ${
+            onClick={isLoggedIn && isOwnerAdminAccount(currentUser) ? onOpenFirebaseConfig : undefined}
+            className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
+              isLoggedIn && isOwnerAdminAccount(currentUser) && onOpenFirebaseConfig
+                ? 'cursor-pointer '
+                : 'cursor-default '
+            }${
               syncStatus.state === 'connected'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                 : syncStatus.state === 'syncing'
@@ -169,7 +173,11 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                 : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
             }`}
-            title="Status Turso Database Utama & Kelola Database Backup (Klik untuk membuka)"
+            title={
+              isLoggedIn && isOwnerAdminAccount(currentUser)
+                ? 'Status Turso Database Utama & Kelola Database Backup (Klik untuk membuka)'
+                : 'Status Sinkronisasi Portal Publik Karang Taruna'
+            }
           >
             {syncStatus.state === 'offline' ? (
               <WifiOff className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -428,10 +436,10 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="flex flex-col text-left">
                 <span className="text-xs font-bold text-slate-900 leading-tight">
-                  {currentUser?.name || 'Administrator'}
+                  {currentUser?.name || 'Pengguna'}
                 </span>
                 <span className="text-[11px] text-slate-500 leading-tight flex items-center gap-1">
-                  <span>{currentUser?.role ? 'Admin' : 'Admin'}</span>
+                  <span>{isOwnerAdminAccount(currentUser) ? 'Administrator' : (currentUser?.role || 'Anggota')}</span>
                   <ChevronDown className="w-3 h-3 text-slate-400" />
                 </span>
               </div>
@@ -481,7 +489,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 )}
 
-                {onOpenFirebaseConfig && (
+                {isOwnerAdminAccount(currentUser) && onOpenFirebaseConfig && (
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);
@@ -494,7 +502,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 )}
 
-                {onNavigateToTab && (
+                {isOwnerAdminAccount(currentUser) && onNavigateToTab && (
                   <button
                     onClick={() => {
                       setShowProfileMenu(false);
@@ -516,7 +524,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                   >
                     <User className="w-4 h-4 text-blue-600" />
-                    <span>Ganti Akun Pengurus</span>
+                    <span>Ganti Akun</span>
                   </button>
                 )}
 

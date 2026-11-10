@@ -93,8 +93,10 @@ export function memberToUserAccount(m: DetailedMember): UserAccount {
           .slice(0, 2)
           .toUpperCase()
       : 'KT',
-    isSuperAdmin: m.isSuperAdmin ?? false,
-    allowedMenus: m.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita'],
+    isSuperAdmin: false,
+    allowedMenus: (m.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita']).filter(
+      (menu) => menu !== 'akses' && menu !== 'database' && menu !== 'pengaturan'
+    ),
     lastLogin: m.lastLogin || 'Belum pernah login',
     email: m.email,
     phone: m.phone,

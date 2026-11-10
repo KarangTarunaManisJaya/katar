@@ -134,6 +134,18 @@ export const ALL_MENU_DEFINITIONS: MenuItemDefinition[] = [
   },
 ];
 
+// Email pribadi resmi pemilik situs yang berhak mengakses peran Administrator
+export const OWNER_ADMIN_EMAIL = 'jalansuci19@gmail.com';
+
+export const isOwnerAdminAccount = (user?: Partial<UserAccount> | null): boolean => {
+  if (!user) return false;
+  return (
+    user.id === 'usr-administrator' &&
+    (user.email || '').toLowerCase() === OWNER_ADMIN_EMAIL &&
+    user.isSuperAdmin === true
+  );
+};
+
 // Akun Tamu / Pengunjung Default (Saat Pertama Kali Masuk Situs Belum Login)
 export const GUEST_USER: UserAccount = {
   id: 'guest',
@@ -148,19 +160,19 @@ export const GUEST_USER: UserAccount = {
   allowedMenus: ['beranda', 'berita', 'voting', 'jadwal'],
 };
 
-// Akun Khusus Administrator (Super Admin) - Tidak tercatat di daftar anggota karang taruna
+// Akun Khusus Administrator Pemilik Pribadi (Verifikasi via Server / Google Pemilik)
 export const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'usr-administrator',
     username: 'Administrator',
-    password: 'Bautai123',
+    password: '',
     name: 'Administrator',
     role: 'Super Administrator',
     nik: '1998081200000001',
     rw: 'Kelurahan Manis Jaya',
-    divisi: 'Pengurus Harian & Sistem',
+    divisi: 'Pemilik & Pengelola Utama Sistem',
     phone: '',
-    email: 'admin@karangtarunamanisjaya.id',
+    email: OWNER_ADMIN_EMAIL,
     avatarInitials: 'AD',
     isSuperAdmin: true,
     status: 'Aktif',
@@ -183,7 +195,7 @@ export const DEFAULT_USERS: UserAccount[] = [
       'akses',
       'voting',
     ],
-    lastLogin: 'Baru saja',
+    lastLogin: 'Terkunci Eksklusif Pemilik',
   },
 ];
 

@@ -72,12 +72,12 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
   const filteredActivities = useMemo(() => {
     let result = activities.filter((act) => {
       const matchSearch =
-        act.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        act.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        act.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        act.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (act.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (act.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (act.location || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (act.author || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (act.subtitle && act.subtitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (act.tags && act.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+        (act.tags && act.tags.some((t) => (t || '').toLowerCase().includes(searchQuery.toLowerCase())));
 
       if (selectedCategory === 'Arsip Kegiatan') {
         return matchSearch && act.isArchived === true;

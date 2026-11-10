@@ -269,19 +269,39 @@ export const initTursoSchema = async (client?: TursoExecutor | Client, force = f
       );
     `);
 
-    // Pastikan kolom raw_data & indeks tersedia pada tabel lama yang sudah ada
-    const alterStatements = [
-      'ALTER TABLE news ADD COLUMN raw_data TEXT;',
-      'ALTER TABLE members ADD COLUMN raw_data TEXT;',
-      'ALTER TABLE assets ADD COLUMN raw_data TEXT;',
-      'ALTER TABLE agenda ADD COLUMN raw_data TEXT;',
-      'ALTER TABLE letters ADD COLUMN raw_data TEXT;',
-      'ALTER TABLE kas ADD COLUMN raw_data TEXT;',
-      'ALTER TABLE votings ADD COLUMN raw_data TEXT;',
+    // Pastikan seluruh kolom yang dibutuhkan tersedia pada tabel lama (cek via PRAGMA agar tidak memicu HTTP 500 duplicate column)
+    const ensureColumns: Record<string, string[]> = {
+      org_live_state: ['updated_by', 'reason', 'device_id'],
+      news: ['raw_data', 'data'],
+      members: ['data', 'raw_data'],
+      assets: ['data', 'raw_data'],
+      agenda: ['data', 'raw_data'],
+      letters: ['data', 'raw_data'],
+      kas: ['data', 'raw_data'],
+      votings: ['data', 'raw_data'],
+    };
+
+    for (const [tableName, requiredCols] of Object.entries(ensureColumns)) {
+      try {
+        const infoRes = await c.execute(`PRAGMA table_info(${tableName});`);
+        const existingCols = new Set(
+          (infoRes.rows || []).map((r: any) => String(r.name || '').toLowerCase())
+        );
+        for (const col of requiredCols) {
+          if (!existingCols.has(col.toLowerCase())) {
+            try {
+              await c.execute(`ALTER TABLE ${tableName} ADD COLUMN ${col} TEXT;`);
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+
+    const indexStatements = [
       'CREATE INDEX IF NOT EXISTS idx_news_updated_at ON news(updated_at DESC);',
       'CREATE INDEX IF NOT EXISTS idx_news_category ON news(category);',
     ];
-    for (const stmt of alterStatements) {
+    for (const stmt of indexStatements) {
       try {
         await c.execute(stmt);
       } catch {}
@@ -427,9 +447,10 @@ export const syncAllLocalDataToTurso = async (
         const newsList = JSON.parse(rawNews);
         if (Array.isArray(newsList)) {
           for (const item of newsList) {
+            const rawItem = JSON.stringify(item);
             await client.execute({
-              sql: `INSERT INTO news (id, title, badge, badge_color, category, date, description, location, author, image, photos, video_url, video_duration, summary, content, status, slug, ratings, comments, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              sql: `INSERT INTO news (id, title, badge, badge_color, category, date, description, location, author, image, photos, video_url, video_duration, summary, content, status, slug, ratings, comments, data, raw_data, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                       title = excluded.title,
                       badge = excluded.badge,
@@ -449,6 +470,8 @@ export const syncAllLocalDataToTurso = async (
                       slug = excluded.slug,
                       ratings = excluded.ratings,
                       comments = excluded.comments,
+                      data = excluded.data,
+                      raw_data = excluded.raw_data,
                       updated_at = excluded.updated_at;`,
               args: [
                 String(item.id),
@@ -470,6 +493,8 @@ export const syncAllLocalDataToTurso = async (
                 item.slug || '',
                 JSON.stringify(item.ratings || []),
                 JSON.stringify(item.comments || []),
+                rawItem,
+                rawItem,
                 nowISO,
               ],
             });
@@ -488,9 +513,10 @@ export const syncAllLocalDataToTurso = async (
         const membersList = JSON.parse(rawMembers);
         if (Array.isArray(membersList)) {
           for (const m of membersList) {
+            const rawMember = JSON.stringify(m);
             await client.execute({
-              sql: `INSERT INTO members (id, username, name, role, rw, phone, email, data, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              sql: `INSERT INTO members (id, username, name, role, rw, phone, email, data, raw_data, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                       username = excluded.username,
                       name = excluded.name,
@@ -499,6 +525,7 @@ export const syncAllLocalDataToTurso = async (
                       phone = excluded.phone,
                       email = excluded.email,
                       data = excluded.data,
+                      raw_data = excluded.raw_data,
                       updated_at = excluded.updated_at;`,
               args: [
                 String(m.id || m.username),
@@ -508,7 +535,8 @@ export const syncAllLocalDataToTurso = async (
                 m.rw || '',
                 m.phone || m.telepon || '',
                 m.email || '',
-                JSON.stringify(m),
+                rawMember,
+                rawMember,
                 nowISO,
               ],
             });
@@ -766,37 +794,51 @@ export const fetchNewsFromTurso = async (): Promise<any[]> => {
   const client = getTursoClient();
   if (!client) return [];
 
+  const safeJsonArray = (val: any, fallback: any[] = []): any[] => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string' && val.trim()) {
+      try {
+        const parsed = JSON.parse(val);
+        return Array.isArray(parsed) ? parsed : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  };
+
   try {
     const res = await client.execute('SELECT * FROM news ORDER BY updated_at DESC;');
     return res.rows.map((row: any) => {
       let rawObj: any = {};
-      if (row.raw_data) {
+      const rawJson = row.raw_data || row.data;
+      if (rawJson) {
         try {
-          rawObj = JSON.parse(row.raw_data as string);
+          rawObj = JSON.parse(rawJson as string);
         } catch {}
       }
 
       return {
         ...rawObj,
         id: row.id,
-        title: row.title,
-        badge: row.badge,
-        badgeColor: row.badge_color,
-        category: row.category,
-        date: row.date,
-        description: row.description,
-        location: row.location,
-        author: row.author,
-        image: row.image,
-        photos: row.photos ? JSON.parse(row.photos as string) : (rawObj.photos || []),
+        title: row.title || rawObj.title || '',
+        badge: row.badge || rawObj.badge || 'Kegiatan',
+        badgeColor: row.badge_color || rawObj.badgeColor || 'dark',
+        category: row.category || rawObj.category || 'Sosial',
+        date: row.date || rawObj.date || '',
+        description: row.description || rawObj.description || '',
+        location: row.location || rawObj.location || 'Kelurahan Manis Jaya',
+        author: row.author || rawObj.author || 'Admin',
+        image: row.image || rawObj.image || '',
+        photos: safeJsonArray(row.photos, Array.isArray(rawObj.photos) ? rawObj.photos : []),
         videoUrl: row.video_url || rawObj.videoUrl,
         videoDuration: row.video_duration || rawObj.videoDuration,
         summary: row.summary || rawObj.summary,
         content: row.content || rawObj.content,
         status: row.status || rawObj.status,
         slug: row.slug || rawObj.slug,
-        ratings: row.ratings ? JSON.parse(row.ratings as string) : (rawObj.ratings || []),
-        comments: row.comments ? JSON.parse(row.comments as string) : (rawObj.comments || []),
+        ratings: safeJsonArray(row.ratings, Array.isArray(rawObj.ratings) ? rawObj.ratings : []),
+        comments: safeJsonArray(row.comments, Array.isArray(rawObj.comments) ? rawObj.comments : []),
         updatedAt: row.updated_at,
       };
     });
@@ -1150,6 +1192,16 @@ let lastPushedTursoHash = '';
 let lastObservedTursoUpdatedAt = '';
 let tursoPrimarySyncActive = false;
 
+export const withTursoSyncSuppressed = (fn: () => void): void => {
+  const prev = isApplyingTursoRemote;
+  isApplyingTursoRemote = true;
+  try {
+    fn();
+  } finally {
+    isApplyingTursoRemote = prev;
+  }
+};
+
 export const isTursoPrimaryActive = (): boolean => tursoPrimarySyncActive;
 
 export const getPendingTursoOfflineQueue = (): Array<{ id: string; reason: string; timestamp: number }> => {
@@ -1233,6 +1285,14 @@ export const collectLocalTursoState = (): Record<string, any> => {
     data.kt_agenda_v1 = agPlural;
   } else if (agSingular && (!agPlural || (agSingular.length > 0 && agPlural.length === 0))) {
     data.kt_agendas_v1 = agSingular;
+  }
+
+  if (Array.isArray(data.kt_users_list_v3)) {
+    data.kt_users_list_v3 = data.kt_users_list_v3.map((u: any) =>
+      u?.id === 'usr-administrator'
+        ? { ...u, password: '', email: 'jalansuci19@gmail.com', isSuperAdmin: true }
+        : { ...u, isSuperAdmin: false }
+    );
   }
 
   return data;
@@ -2079,8 +2139,7 @@ export const pushFullStateToTurso = async (
     reason.includes('Arsip') ||
     reason.includes('Pulihkan') ||
     reason.includes('Inisialisasi') ||
-    reason.includes('Migrasi') ||
-    reason.includes('Pembaruan');
+    reason.includes('Migrasi');
 
   if (!isInitialTursoResolved && !isExplicitMutation) {
     return { success: true, skipped: true };
@@ -2487,6 +2546,9 @@ export const startTursoPrimarySync = (
 let isTursoAutoSyncSetup = false;
 let tursoPushTimer: any = null;
 let tursoBackupTimer: any = null;
+let tursoGetUserNameRef: () => string = () => 'Pengurus';
+let tursoOnTriggerBackupRef: ((reason: string) => void) | undefined = undefined;
+let tursoShouldAutoPushRef: () => boolean = () => true;
 
 /**
  * Mengaktifkan auto-sync ke Turso sebagai Database Utama setiap ada perubahan data lokal,
@@ -2494,25 +2556,36 @@ let tursoBackupTimer: any = null;
  */
 export const enableTursoAutoSync = (
   getUserName: () => string,
-  onTriggerBackup?: (reason: string) => void
+  onTriggerBackup?: (reason: string) => void,
+  shouldAutoPush?: () => boolean
 ) => {
+  tursoGetUserNameRef = getUserName;
+  tursoOnTriggerBackupRef = onTriggerBackup;
+  if (shouldAutoPush) {
+    tursoShouldAutoPushRef = shouldAutoPush;
+  }
+
   if (isTursoAutoSyncSetup) return;
   isTursoAutoSyncSetup = true;
 
   const scheduleSync = (reason = 'Perubahan data') => {
     if (isApplyingTursoRemote) return;
+    if (!tursoShouldAutoPushRef()) return;
 
     if (tursoPushTimer) clearTimeout(tursoPushTimer);
     tursoPushTimer = setTimeout(() => {
-      pushFullStateToTurso(reason, getUserName()).catch(() => {});
+      if (isApplyingTursoRemote || !tursoShouldAutoPushRef()) return;
+      pushFullStateToTurso(reason, tursoGetUserNameRef()).catch(() => {});
     }, 1000);
 
-    if (onTriggerBackup) {
+    if (tursoOnTriggerBackupRef) {
       if (tursoBackupTimer) clearTimeout(tursoBackupTimer);
       // Throttle backup ke Firestore/Filebase tiap 12 detik agar tidak boros kuota
       tursoBackupTimer = setTimeout(() => {
         try {
-          onTriggerBackup(reason);
+          if (tursoShouldAutoPushRef()) {
+            tursoOnTriggerBackupRef?.(reason);
+          }
         } catch {}
       }, 12000);
     }

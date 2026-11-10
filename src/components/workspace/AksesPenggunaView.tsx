@@ -26,7 +26,7 @@ import {
   Key,
   HelpCircle,
 } from 'lucide-react';
-import { UserAccount, ALL_MENU_DEFINITIONS, DEFAULT_USERS } from '../../types/auth';
+import { UserAccount, ALL_MENU_DEFINITIONS, DEFAULT_USERS, OWNER_ADMIN_EMAIL, isOwnerAdminAccount } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
 
 interface AksesPenggunaViewProps {
@@ -98,6 +98,10 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
 
   // Open Edit Password Modal
   const handleOpenEditPassword = (user: UserAccount) => {
+    if (user.id === 'usr-administrator' || user.isSuperAdmin) {
+      onToast('Kredensial Administrator pemilik dilindungi server dan tidak dapat diubah dari daftar ini.');
+      return;
+    }
     setEditingUser(user);
     setNewEditPassword(user.password);
     setConfirmEditPassword(user.password);
@@ -108,7 +112,7 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
   // Submit Password Change
   const handleSavePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingUser) return;
+    if (!editingUser || editingUser.id === 'usr-administrator') return;
 
     if (!newEditPassword.trim()) {
       setEditPassError('Kata sandi tidak boleh kosong.');
@@ -136,6 +140,10 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
 
   // Quick Reset Password to default 'karangtaruna'
   const handleQuickResetPassword = (user: UserAccount) => {
+    if (user.id === 'usr-administrator' || user.isSuperAdmin) {
+      onToast('Kredensial Administrator pemilik tidak dapat di-reset dari tabel pengguna.');
+      return;
+    }
     const defaultPass = 'karangtaruna';
     const updated = usersList.map((u) =>
       u.id === user.id ? { ...u, password: defaultPass } : u
@@ -169,16 +177,21 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
     setDeletingUser(null);
   };
 
+  const ADMIN_ONLY_MENUS: WorkspaceTab[] = ['akses', 'database', 'pengaturan'];
+
   // Toggle single menu checkbox
   const handleToggleMenu = (menuId: WorkspaceTab) => {
     if (!selectedUser) return;
-    const currentMenus = Array.isArray(selectedUser.allowedMenus) ? selectedUser.allowedMenus : [];
-
-    if (selectedUser.id === currentUser.id && menuId === 'akses' && currentMenus.includes('akses')) {
-      onToast('Peringatan: Menu Akses Pengguna tidak dapat dimatikan pada akun Anda sendiri demi keamanan.');
+    if (selectedUser.id === 'usr-administrator') {
+      onToast('Hak akses Administrator pemilik selalu aktif penuh dan tidak dapat diubah.');
+      return;
+    }
+    if (ADMIN_ONLY_MENUS.includes(menuId)) {
+      onToast('Menu Sistem & Otorisasi hanya dapat diakses secara eksklusif oleh Pemilik / Administrator.');
       return;
     }
 
+    const currentMenus = Array.isArray(selectedUser.allowedMenus) ? selectedUser.allowedMenus : [];
     let nextMenus: WorkspaceTab[];
 
     if (currentMenus.includes(menuId)) {
@@ -197,17 +210,21 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
 
   const handleSelectAllMenus = () => {
     if (!selectedUser) return;
-    const allIds = ALL_MENU_DEFINITIONS.map((m) => m.id);
+    if (selectedUser.id === 'usr-administrator') return;
+    const memberAllowedIds = ALL_MENU_DEFINITIONS.map((m) => m.id).filter(
+      (id) => !ADMIN_ONLY_MENUS.includes(id)
+    );
     const updated = usersList.map((u) =>
-      u.id === selectedUser.id ? { ...u, allowedMenus: allIds } : u
+      u.id === selectedUser.id ? { ...u, allowedMenus: memberAllowedIds } : u
     );
     onUpdateUsers(updated);
-    onToast(`Semua menu dan aplikasi diaktifkan untuk ${selectedUser.name}`);
+    onToast(`Seluruh menu anggota diaktifkan untuk ${selectedUser.name}`);
   };
 
   const handleDeselectAllMenus = () => {
     if (!selectedUser) return;
-    const minimal: WorkspaceTab[] = selectedUser.isSuperAdmin ? ['beranda', 'akses'] : ['beranda'];
+    if (selectedUser.id === 'usr-administrator') return;
+    const minimal: WorkspaceTab[] = ['beranda'];
     const updated = usersList.map((u) =>
       u.id === selectedUser.id ? { ...u, allowedMenus: minimal } : u
     );
@@ -238,9 +255,22 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
     if (!newName.trim() || !newUsername.trim()) return;
 
     const trimmedUser = newUsername.trim().toLowerCase();
+    const reservedUsernames = new Set([
+      'administrator',
+      'admin',
+      'superadmin',
+      'root',
+      'owner',
+      'pemilik',
+    ]);
+    if (reservedUsernames.has(trimmedUser)) {
+      onToast(`Username "${trimmedUser}" dikhususkan untuk Administrator pemilik situs.`);
+      return;
+    }
+
     const alreadyExists = usersList.some((u) => u.username.toLowerCase() === trimmedUser);
     if (alreadyExists) {
-      alert('Username tersebut sudah digunakan oleh anggota lain. Silakan pilih username lain.');
+      onToast('Username tersebut sudah digunakan oleh anggota lain. Silakan pilih username lain.');
       return;
     }
 
@@ -259,7 +289,7 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
       password: newPassword.trim(),
       avatarInitials: initials || 'KT',
       isSuperAdmin: false,
-      allowedMenus: newAllowedMenus,
+      allowedMenus: newAllowedMenus.filter((m) => !ADMIN_ONLY_MENUS.includes(m)),
       lastLogin: 'Baru Dibuat',
       email: `${trimmedUser}@karangtarunamanisjaya.id`,
     };
@@ -281,6 +311,22 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
       u.role.toLowerCase().includes(searchMember.toLowerCase()) ||
       u.username.toLowerCase().includes(searchMember.toLowerCase())
   );
+
+  if (!isOwnerAdminAccount(currentUser)) {
+    return (
+      <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-rose-200 shadow-sm space-y-4 max-w-xl mx-auto mt-8 animate-fadeIn">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200">
+          <Lock className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900">
+          Akses Eksklusif Pemilik Pribadi Situs
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          Halaman Manajemen Administrator &amp; Hak Akses hanya dapat dibuka oleh akun resmi pemilik pribadi (<strong>{OWNER_ADMIN_EMAIL}</strong>).
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
@@ -429,8 +475,8 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
                         </span>
                       </div>
 
-                      {/* Switch User Button */}
-                      {!isCurrentLogged && (
+                      {/* Switch User Button (only for non-admin member preview by Owner) */}
+                      {!isCurrentLogged && !member.isSuperAdmin && member.id !== 'usr-administrator' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -537,23 +583,28 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {ALL_MENU_DEFINITIONS.map((menu) => {
                   const isAllowed = (selectedUser.allowedMenus || []).includes(menu.id);
+                  const isOwnerMenu = ADMIN_ONLY_MENUS.includes(menu.id);
+                  const isOwnerRow = selectedUser.id === 'usr-administrator';
 
                   return (
                     <div
                       key={menu.id}
                       onClick={() => handleToggleMenu(menu.id)}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none flex items-start gap-3 ${
-                        isAllowed
-                          ? 'border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50/70 shadow-2xs'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 opacity-75'
+                      className={`p-3.5 rounded-xl border transition-all select-none flex items-start gap-3 ${
+                        isOwnerRow || isOwnerMenu
+                          ? 'border-slate-200 bg-slate-50/70 opacity-75 cursor-not-allowed'
+                          : isAllowed
+                          ? 'border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50/70 shadow-2xs cursor-pointer'
+                          : 'border-slate-200 bg-white hover:bg-slate-50 opacity-75 cursor-pointer'
                       }`}
                     >
                       {/* Checkbox input element */}
                       <input
                         type="checkbox"
                         checked={isAllowed}
+                        disabled={isOwnerRow || isOwnerMenu}
                         onChange={() => {}} // Handled by container onClick
-                        className="w-4 h-4 mt-0.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                        className="w-4 h-4 mt-0.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed"
                       />
 
                       <div className="flex-1 min-w-0">
@@ -563,12 +614,18 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
                           </span>
                           <span
                             className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                              isAllowed
+                              isOwnerMenu && !isOwnerRow
+                                ? 'bg-amber-100 text-amber-800'
+                                : isAllowed
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : 'bg-slate-100 text-slate-500'
                             }`}
                           >
-                            {isAllowed ? 'Terbuka' : 'Terkunci'}
+                            {isOwnerMenu && !isOwnerRow
+                              ? 'Khusus Pemilik'
+                              : isAllowed
+                              ? 'Terbuka'
+                              : 'Terkunci'}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 leading-snug">
@@ -587,46 +644,57 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
                 <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
                   <KeyRound className="w-5 h-5" />
                 </div>
-                <div>
-                  <span className="font-bold text-slate-800 block">Kata Sandi Akun {selectedUser.name}:</span>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="font-mono bg-white px-2.5 py-1 rounded border border-slate-200 text-slate-800 font-bold">
-                      {showPasswordMap[selectedUser.id] ? selectedUser.password : '••••••••'}
+                {selectedUser.id === 'usr-administrator' ? (
+                  <div>
+                    <span className="font-bold text-slate-800 block">Akun Eksklusif Pemilik Pribadi ({OWNER_ADMIN_EMAIL}):</span>
+                    <span className="text-[11px] text-emerald-700 font-semibold block mt-0.5">
+                      Dilindungi Otentikasi Server SHA-256 &amp; Google Sign-In Pemilik (tidak ditampilkan di browser).
                     </span>
-                    <button
-                      onClick={() =>
-                        setShowPasswordMap((prev) => ({
-                          ...prev,
-                          [selectedUser.id]: !prev[selectedUser.id],
-                        }))
-                      }
-                      className="text-blue-600 hover:underline text-[11px] font-semibold"
-                    >
-                      {showPasswordMap[selectedUser.id] ? 'Sembunyikan' : 'Lihat'}
-                    </button>
-                    <button
-                      onClick={() => handleCopyPassword(selectedUser.id, selectedUser.password)}
-                      className="text-slate-500 hover:text-slate-700 p-1"
-                      title="Salin password"
-                    >
-                      {copiedId === selectedUser.id ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </button>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <span className="font-bold text-slate-800 block">Kata Sandi Akun {selectedUser.name}:</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono bg-white px-2.5 py-1 rounded border border-slate-200 text-slate-800 font-bold">
+                        {showPasswordMap[selectedUser.id] ? selectedUser.password : '••••••••'}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setShowPasswordMap((prev) => ({
+                            ...prev,
+                            [selectedUser.id]: !prev[selectedUser.id],
+                          }))
+                        }
+                        className="text-blue-600 hover:underline text-[11px] font-semibold"
+                      >
+                        {showPasswordMap[selectedUser.id] ? 'Sembunyikan' : 'Lihat'}
+                      </button>
+                      <button
+                        onClick={() => handleCopyPassword(selectedUser.id, selectedUser.password)}
+                        className="text-slate-500 hover:text-slate-700 p-1"
+                        title="Salin password"
+                      >
+                        {copiedId === selectedUser.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleOpenEditPassword(selectedUser)}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Ubah Password</span>
-                </button>
+                {selectedUser.id !== 'usr-administrator' && (
+                  <button
+                    onClick={() => handleOpenEditPassword(selectedUser)}
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Ubah Password</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setActiveSubTab('password')}
                   className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all shadow-2xs"
@@ -772,36 +840,43 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
                           </span>
                         </td>
 
-                        {/* Password with View, Copy, and Masking */}
+                        {/* Password with View, Copy, and Masking (Protected for Owner Admin) */}
                         <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono bg-amber-50 text-amber-950 px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-200 min-w-[90px] text-center">
-                              {isShown ? member.password : '••••••••'}
+                          {member.id === 'usr-administrator' || member.isSuperAdmin ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
+                              <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                              Dilindungi Server &amp; Google Pemilik
                             </span>
-                            <button
-                              onClick={() =>
-                                setShowPasswordMap((prev) => ({
-                                  ...prev,
-                                  [member.id]: !prev[member.id],
-                                }))
-                              }
-                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                              title={isShown ? 'Sembunyikan password' : 'Lihat password'}
-                            >
-                              {isShown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                            <button
-                              onClick={() => handleCopyPassword(member.id, member.password)}
-                              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                              title="Salin kata sandi"
-                            >
-                              {copiedId === member.id ? (
-                                <Check className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <Copy className="w-4 h-4" />
-                              )}
-                            </button>
-                          </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono bg-amber-50 text-amber-950 px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-200 min-w-[90px] text-center">
+                                {isShown ? member.password : '••••••••'}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  setShowPasswordMap((prev) => ({
+                                    ...prev,
+                                    [member.id]: !prev[member.id],
+                                  }))
+                                }
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                title={isShown ? 'Sembunyikan password' : 'Lihat password'}
+                              >
+                                {isShown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                              <button
+                                onClick={() => handleCopyPassword(member.id, member.password)}
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                title="Salin kata sandi"
+                              >
+                                {copiedId === member.id ? (
+                                  <Check className="w-4 h-4 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </td>
 
                         {/* Allowed Menus Badge */}
@@ -820,39 +895,45 @@ export const AksesPenggunaView: React.FC<AksesPenggunaViewProps> = ({
 
                         {/* Actions: Edit, Reset, Delete */}
                         <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleOpenEditPassword(member)}
-                              className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                              title="Ubah kata sandi"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Edit Password</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                if (confirm(`Reset kata sandi ${member.name} ke default ("karangtaruna")?`)) {
-                                  handleQuickResetPassword(member);
-                                }
-                              }}
-                              className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
-                              title="Reset kata sandi ke bawaan: karangtaruna"
-                            >
-                              <RefreshCw className="w-3 h-3" />
-                              <span>Reset</span>
-                            </button>
-
-                            {!member.isSuperAdmin && !isSelf && (
+                          {member.id === 'usr-administrator' || member.isSuperAdmin ? (
+                            <span className="text-[11px] font-semibold text-slate-400 italic">
+                              Terkunci Pemilik
+                            </span>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => setDeletingUser(member)}
-                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
-                                title="Hapus akun dan password"
+                                onClick={() => handleOpenEditPassword(member)}
+                                className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                                title="Ubah kata sandi"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Edit Password</span>
                               </button>
-                            )}
-                          </div>
+
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Reset kata sandi ${member.name} ke default ("karangtaruna")?`)) {
+                                    handleQuickResetPassword(member);
+                                  }
+                                }}
+                                className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
+                                title="Reset kata sandi ke bawaan: karangtaruna"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                <span>Reset</span>
+                              </button>
+
+                              {!isSelf && (
+                                <button
+                                  onClick={() => setDeletingUser(member)}
+                                  className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                                  title="Hapus akun dan password"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

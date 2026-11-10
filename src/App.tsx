@@ -34,7 +34,7 @@ import { FirebaseConfigModal } from './components/workspace/FirebaseConfigModal'
 import { LoginModal } from './components/auth/LoginModal';
 import { VotingAnggotaSection } from './components/workspace/VotingAnggotaSection';
 import { resolveAssetUrl } from './utils/assetUrl';
-import { DEFAULT_USERS, UserAccount, GUEST_USER } from './types/auth';
+import { DEFAULT_USERS, UserAccount, GUEST_USER, OWNER_ADMIN_EMAIL, isOwnerAdminAccount } from './types/auth';
 import { Lock, ArrowLeft, Image as ImageIcon } from 'lucide-react';
 import {
   ACTIVITIES_DATA,
@@ -59,6 +59,7 @@ import {
   startTursoPrimarySync,
   enableTursoAutoSync,
   pushFullStateToTurso,
+  withTursoSyncSuppressed,
 } from './services/tursoService';
 import { collection, getDocs } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
@@ -140,10 +141,17 @@ function AppContent() {
         if (Array.isArray(tursoNews) && tursoNews.length > 0 && isMounted) {
           const list = tursoNews.map(normalizeNewsItem);
           setActivities(list);
-          try {
-            localStorage.setItem('kt_news_v1', JSON.stringify(list));
-            localStorage.setItem('kt_activities_v1', JSON.stringify(list));
-          } catch {}
+          withTursoSyncSuppressed(() => {
+            try {
+              const serialized = JSON.stringify(list);
+              if (localStorage.getItem('kt_news_v1') !== serialized) {
+                localStorage.setItem('kt_news_v1', serialized);
+              }
+              if (localStorage.getItem('kt_activities_v1') !== serialized) {
+                localStorage.setItem('kt_activities_v1', serialized);
+              }
+            } catch {}
+          });
           return;
         }
       } catch (tursoErr) {
@@ -156,10 +164,13 @@ function AppContent() {
         if (Array.isArray(filebaseNews) && filebaseNews.length > 0 && isMounted) {
           const list = filebaseNews.map(normalizeNewsItem);
           setActivities(list);
-          try {
-            localStorage.setItem('kt_news_v1', JSON.stringify(list));
-            localStorage.setItem('kt_activities_v1', JSON.stringify(list));
-          } catch {}
+          withTursoSyncSuppressed(() => {
+            try {
+              const serialized = JSON.stringify(list);
+              localStorage.setItem('kt_news_v1', serialized);
+              localStorage.setItem('kt_activities_v1', serialized);
+            } catch {}
+          });
           // Pulihkan ke Turso Utama
           for (const item of list) {
             saveNewsToTurso(item).catch(() => {});
@@ -189,10 +200,13 @@ function AppContent() {
           });
           if (list.length > 0) {
             setActivities(list);
-            try {
-              localStorage.setItem('kt_news_v1', JSON.stringify(list));
-              localStorage.setItem('kt_activities_v1', JSON.stringify(list));
-            } catch {}
+            withTursoSyncSuppressed(() => {
+              try {
+                const serialized = JSON.stringify(list);
+                localStorage.setItem('kt_news_v1', serialized);
+                localStorage.setItem('kt_activities_v1', serialized);
+              } catch {}
+            });
             // Pulihkan ke Turso Utama & Filebase Backup
             for (const item of list) {
               saveNewsToTurso(item).catch(() => {});
@@ -323,19 +337,66 @@ function AppContent() {
 
   const sanitizeUser = (user: any): UserAccount => {
     if (!user) return GUEST_USER;
-    if (user.id === 'guest' || user.username === 'pengunjung') return GUEST_USER;
-    const defaultUser = DEFAULT_USERS.find((u) => u.id === user.id || u.username === user.username) || DEFAULT_USERS[0];
-    const rawMenus = Array.isArray(user.allowedMenus) ? user.allowedMenus : (defaultUser.allowedMenus || []);
-    // Ensure core tab 'beranda' is accessible to authenticated users
-    const allowedMenus = Array.from(new Set([...rawMenus, 'beranda']));
+    if (user.id === 'guest' || user.username === 'pengunjung' || user.username === 'tamu') return GUEST_USER;
+
+    const lowerUsername = String(user.username || '').trim().toLowerCase();
+    const lowerEmail = String(user.email || '').trim().toLowerCase();
+    const isGenuineOwnerAdmin =
+      user.id === 'usr-administrator' ||
+      (lowerUsername === 'administrator' && lowerEmail === OWNER_ADMIN_EMAIL);
+
+    if (isGenuineOwnerAdmin) {
+      const baseAdmin = DEFAULT_USERS[0];
+      return {
+        ...baseAdmin,
+        ...user,
+        id: 'usr-administrator',
+        username: 'Administrator',
+        password: '',
+        email: OWNER_ADMIN_EMAIL,
+        isSuperAdmin: true,
+        avatar: resolveAssetUrl(user?.avatar || baseAdmin.avatar),
+        allowedMenus: baseAdmin.allowedMenus,
+      };
+    }
+
+    const rawMenus: WorkspaceTab[] = Array.isArray(user.allowedMenus)
+      ? user.allowedMenus.filter(
+          (m: WorkspaceTab) => m !== 'akses' && m !== 'database' && m !== 'pengaturan'
+        )
+      : ['beranda', 'ringkasan', 'arsip_kegiatan', 'jadwal', 'berita', 'voting'];
+    const allowedMenus = Array.from(new Set<WorkspaceTab>(['beranda', ...rawMenus]));
     if (allowedMenus.includes('ringkasan') && !allowedMenus.includes('arsip_kegiatan')) {
       allowedMenus.push('arsip_kegiatan');
     }
+
     return {
-      ...defaultUser,
-      ...user,
-      avatar: resolveAssetUrl(user?.avatar || defaultUser.avatar),
+      id: user.id || `usr-${Date.now()}`,
+      username: user.username || 'anggota',
+      password: user.password || '',
+      name: user.name || 'Anggota Karang Taruna',
+      role: user.role === 'Super Administrator' ? 'Anggota Karang Taruna' : (user.role || 'Anggota Karang Taruna'),
+      nik: user.nik,
+      rw: user.rw || 'Kelurahan Manis Jaya',
+      avatarInitials:
+        user.avatarInitials ||
+        (user.name
+          ? String(user.name)
+              .split(/\s+/)
+              .slice(0, 2)
+              .map((w) => w[0]?.toUpperCase() || '')
+              .join('')
+          : 'KT'),
+      isSuperAdmin: false,
       allowedMenus,
+      lastLogin: user.lastLogin,
+      email: user.email,
+      phone: user.phone,
+      status: user.status || 'Aktif',
+      noAnggota: user.noAnggota,
+      avatar: resolveAssetUrl(user?.avatar),
+      divisi: user.divisi,
+      job: user.job,
     };
   };
 
@@ -347,12 +408,17 @@ function AppContent() {
       (typeof localStorage !== 'undefined' ? Boolean(localStorage.getItem('kt_auth_user_v3')) : false)
     );
 
-    // Pertama kali masuk situs (tamu belum login) hanya bisa melihat berita, voling, jadwal kegiatan, serta beranda
+    // Pertama kali masuk situs (pengunjung / tamu belum login) hanya bisa melihat berita, voling, jadwal kegiatan, serta beranda
     if (!isUserLoggedIn) {
       return tab === 'berita' || tab === 'voting' || tab === 'beranda' || tab === 'jadwal';
     }
 
-    if (activeUser?.isSuperAdmin) return true;
+    // Menu Sistem & Administrator hanya bisa diakses oleh pemilik pribadi situs
+    if (tab === 'akses' || tab === 'database' || tab === 'pengaturan') {
+      return isOwnerAdminAccount(activeUser);
+    }
+
+    if (isOwnerAdminAccount(activeUser)) return true;
     if (tab === 'beranda') return true;
     const allowed = Array.isArray(activeUser?.allowedMenus) ? activeUser.allowedMenus : [];
     if (tab === 'arsip_kegiatan') {
@@ -414,29 +480,26 @@ function AppContent() {
   };
 
   const handleUpdateUsers = (updated: UserAccount[]) => {
-    // Selalu pastikan akun Administrator Super Admin khusus tetap ada dan tidak terhapus
-    const adminUser =
-      usersList.find(
-        (u) => u.isSuperAdmin || u.id === 'usr-administrator' || (u.username && u.username.toLowerCase() === 'administrator')
-      ) || DEFAULT_USERS[0];
-    const hasAdmin = updated.some(
-      (u) => u.isSuperAdmin || u.id === 'usr-administrator' || (u.username && u.username.toLowerCase() === 'administrator')
-    );
-    const fullList = hasAdmin ? updated : [adminUser, ...updated];
-    const sanitizedList = fullList.map((u) => sanitizeUser(u));
+    // Selalu pastikan akun Administrator eksklusif pemilik tetap ada dengan metadata terkunci & tanpa sandi plaintext
+    const sanitizedNonAdmin = updated
+      .filter((u) => u.id !== 'usr-administrator' && (u.username || '').toLowerCase() !== 'administrator')
+      .map((u) => sanitizeUser({ ...u, isSuperAdmin: false }));
+    const sanitizedList = [DEFAULT_USERS[0], ...sanitizedNonAdmin];
 
     setUsersList(sanitizedList);
     try {
       localStorage.setItem('kt_users_list_v3', JSON.stringify(sanitizedList));
     } catch (e) {}
 
-    // Synchronize members list in localStorage as well
+    // Synchronize members list in localStorage as well (never elevate members to Super Admin)
     try {
       const savedMembers = localStorage.getItem('kt_members_v3');
       if (savedMembers) {
         const membersList = JSON.parse(savedMembers);
         const syncedMembers = membersList.map((m: any) => {
-          const matchedUser = sanitizedList.find((u) => u.id === m.id || u.username === m.username);
+          const matchedUser = sanitizedList.find(
+            (u) => u.id !== 'usr-administrator' && (u.id === m.id || u.username === m.username)
+          );
           if (matchedUser) {
             return {
               ...m,
@@ -445,10 +508,10 @@ function AppContent() {
               name: matchedUser.name,
               jabatan: matchedUser.role.replace(' Karang Taruna', ''),
               allowedMenus: matchedUser.allowedMenus,
-              isSuperAdmin: matchedUser.isSuperAdmin,
+              isSuperAdmin: false,
             };
           }
-          return m;
+          return { ...m, isSuperAdmin: false };
         });
         localStorage.setItem('kt_members_v3', JSON.stringify(syncedMembers));
       }
@@ -678,14 +741,26 @@ function AppContent() {
     };
   }, []);
 
+  const currentUserRef = React.useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   // Sinkronisasi Utama Real-Time dengan Turso Database (libSQL Cloud)
   // Firestore & Filebase berjalan otomatis sebagai Backup non-blocking
   useEffect(() => {
     enableTursoAutoSync(
-      () => currentUser.name,
+      () => currentUserRef.current.name,
       (reason) => {
-        pushBackupToFirestore(reason, currentUser.name).catch(() => {});
-      }
+        pushBackupToFirestore(reason, currentUserRef.current.name).catch(() => {});
+      },
+      () =>
+        Boolean(
+          currentUserRef.current &&
+          currentUserRef.current.id !== 'guest' &&
+          typeof localStorage !== 'undefined' &&
+          Boolean(localStorage.getItem('kt_auth_user_v3'))
+        )
     );
 
     const unsubscribeTurso = startTursoPrimarySync(
@@ -697,7 +772,16 @@ function AppContent() {
         if (updatedKeys.includes('kt_users_list_v3')) {
           try {
             const raw = localStorage.getItem('kt_users_list_v3');
-            if (raw) setUsersList(JSON.parse(raw));
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                const sanitized = parsed.map((u) => sanitizeUser(u));
+                setUsersList(sanitized);
+                withTursoSyncSuppressed(() => {
+                  localStorage.setItem('kt_users_list_v3', JSON.stringify(sanitized));
+                });
+              }
+            }
           } catch {}
         }
         if (updatedKeys.includes('kt_news_v1') || updatedKeys.includes('kt_activities_v1')) {
@@ -717,7 +801,7 @@ function AppContent() {
     return () => {
       unsubscribeTurso();
     };
-  }, [currentUser.name]);
+  }, []);
 
   const handleManualCloudSync = async () => {
     try {
@@ -741,10 +825,10 @@ function AppContent() {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      act.title.toLowerCase().includes(q) ||
-      act.description.toLowerCase().includes(q) ||
-      act.badge.toLowerCase().includes(q) ||
-      act.location.toLowerCase().includes(q)
+      (act.title || '').toLowerCase().includes(q) ||
+      (act.description || '').toLowerCase().includes(q) ||
+      (act.badge || '').toLowerCase().includes(q) ||
+      (act.location || '').toLowerCase().includes(q)
     );
   });
 
@@ -789,7 +873,7 @@ function AppContent() {
         onLogout={handleLogout}
         syncStatus={cloudSyncStatus}
         onManualSync={handleManualCloudSync}
-        onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
+        onOpenFirebaseConfig={isOwnerAdminAccount(currentUser) ? () => setShowFirebaseModal(true) : undefined}
         onDownloadApk={() => setShowApkModal(true)}
         onNavigateToTab={(tab) => {
           if (isTabAllowedForUser(tab, currentUser)) {
@@ -822,8 +906,8 @@ function AppContent() {
             currentTab={currentTab}
             currentUser={currentUser}
             archivedCount={archivedActivitiesCount}
-            allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
-            onOpenFirebaseConfig={() => setShowFirebaseModal(true)}
+            allowedMenus={isOwnerAdminAccount(currentUser) ? undefined : (currentUser.allowedMenus || [])}
+            onOpenFirebaseConfig={isOwnerAdminAccount(currentUser) ? () => setShowFirebaseModal(true) : undefined}
             onOpenLoginModal={() => setShowLoginModal(true)}
             onLogout={handleLogout}
             onDownloadApk={() => setShowApkModal(true)}
@@ -855,12 +939,16 @@ function AppContent() {
                 currentTab={currentTab}
                 currentUser={currentUser}
                 archivedCount={archivedActivitiesCount}
-                allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
+                allowedMenus={isOwnerAdminAccount(currentUser) ? undefined : (currentUser.allowedMenus || [])}
                 onClose={() => setMobileMenuOpen(false)}
-                onOpenFirebaseConfig={() => {
-                  setMobileMenuOpen(false);
-                  setShowFirebaseModal(true);
-                }}
+                onOpenFirebaseConfig={
+                  isOwnerAdminAccount(currentUser)
+                    ? () => {
+                        setMobileMenuOpen(false);
+                        setShowFirebaseModal(true);
+                      }
+                    : undefined
+                }
                 onOpenLoginModal={() => {
                   setMobileMenuOpen(false);
                   setShowLoginModal(true);
@@ -1028,7 +1116,7 @@ function AppContent() {
                       }
                     }
                   }}
-                  allowedMenus={currentUser.isSuperAdmin ? undefined : (currentUser.allowedMenus || [])}
+                  allowedMenus={isOwnerAdminAccount(currentUser) ? undefined : (currentUser.allowedMenus || [])}
                   onAddNews={() => {
                     if (!isLoggedIn) {
                       showToast(`Wajib masuk / login pengurus untuk menambah berita.`);
@@ -1446,12 +1534,13 @@ function AppContent() {
           showToast(`Akun ${newUser.name} berhasil didaftarkan dan diverifikasi! Selamat datang di Karang Taruna.`);
         }}
         usersList={usersList}
-        canDismiss={false}
+        canDismiss={true}
+        onClose={() => setShowLoginModal(false)}
       />
 
-      {/* Modal: Kelola Akun & Ganti Database Firebase (firebase.google.com) */}
+      {/* Modal: Kelola Akun & Ganti Database Firebase (khusus pemilik pribadi situs) */}
       <FirebaseConfigModal
-        isOpen={showFirebaseModal}
+        isOpen={showFirebaseModal && isOwnerAdminAccount(currentUser)}
         onClose={() => setShowFirebaseModal(false)}
         onToast={showToast}
       />

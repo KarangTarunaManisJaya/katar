@@ -28,10 +28,13 @@ import {
   Zap,
   FileText,
   Check,
+  X,
 } from 'lucide-react';
-import { UserAccount } from '../../types/auth';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { UserAccount, DEFAULT_USERS, OWNER_ADMIN_EMAIL } from '../../types/auth';
 import { BrandLogo } from '../workspace/BrandLogo';
 import { addNotification } from '../../services/notificationService';
+import { auth, logoutGoogle } from '../../services/firestoreSyncService';
 import {
   sendOfficialVerificationEmail,
   getEmailProviderWebUrl,
@@ -65,8 +68,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onLogin,
   onRegisterUser,
   usersList,
+  onClose,
+  canDismiss = true,
 }) => {
   const [mode, setMode] = useState<AuthMode>('login');
+  const [isVerifyingAdmin, setIsVerifyingAdmin] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   // Login States
   const [username, setUsername] = useState('');
@@ -242,8 +249,47 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   if (!isOpen) return null;
 
+  // Handle Owner Google Sign-In for exclusive Administrator access
+  const handleOwnerGoogleLogin = async () => {
+    setErrorMsg(null);
+    setIsGoogleLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account',
+        login_hint: OWNER_ADMIN_EMAIL,
+      });
+      const result = await signInWithPopup(auth, provider);
+      const email = (result.user.email || '').trim().toLowerCase();
+
+      if (email !== OWNER_ADMIN_EMAIL || !result.user.emailVerified) {
+        await logoutGoogle().catch(() => {});
+        setErrorMsg(
+          `Ditolak: Akun Google (${result.user.email || 'tidak diketahui'}) bukan pemilik resmi situs. Akses Administrator hanya dimiliki oleh ${OWNER_ADMIN_EMAIL}.`
+        );
+        return;
+      }
+
+      onLogin({
+        ...DEFAULT_USERS[0],
+        password: '',
+        email: OWNER_ADMIN_EMAIL,
+        avatar: result.user.photoURL || DEFAULT_USERS[0].avatar,
+        lastLogin: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user') {
+        setErrorMsg('Login Google dibatalkan sebelum selesai.');
+      } else {
+        setErrorMsg(err?.message || 'Gagal memverifikasi akun Google pemilik.');
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   // Handle Login Submission
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -259,14 +305,50 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     const lowerInput = trimmedInput.toLowerCase();
+    const isAdminAttempt =
+      lowerInput === 'administrator' ||
+      lowerInput === 'admin' ||
+      lowerInput === 'usr-administrator' ||
+      lowerInput === OWNER_ADMIN_EMAIL;
+
+    // Eksklusif Pemilik: Verifikasi kredensial Administrator dilakukan secara aman di server
+    if (isAdminAttempt) {
+      setIsVerifyingAdmin(true);
+      try {
+        const resp = await fetch('/api/auth/verify-admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identifier: trimmedInput,
+            password: password.trim(),
+          }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data?.verified) {
+          setErrorMsg(
+            data?.message ||
+              'Akses Administrator ditolak! Kredensial ini hanya berlaku untuk pemilik pribadi situs.'
+          );
+          return;
+        }
+        onLogin({
+          ...DEFAULT_USERS[0],
+          password: '',
+          email: OWNER_ADMIN_EMAIL,
+          lastLogin: new Date().toISOString(),
+        });
+      } catch {
+        setErrorMsg('Gagal menghubungi layanan verifikasi keamanan server.');
+      } finally {
+        setIsVerifyingAdmin(false);
+      }
+      return;
+    }
+
     const cleanDigits = trimmedInput.replace(/\D/g, '');
 
     const foundUser = usersList.find((u) => {
-      if (lowerInput === 'administrator' || lowerInput === 'admin') {
-        if (u.isSuperAdmin || (u.username && (u.username.toLowerCase() === 'administrator' || u.username.toLowerCase() === 'admin'))) {
-          return true;
-        }
-      }
+      if (u.id === 'usr-administrator' || u.isSuperAdmin) return false;
       if (u.username && u.username.toLowerCase() === lowerInput) return true;
       if (u.nik) {
         const uNikDigits = u.nik.replace(/\D/g, '');
@@ -284,16 +366,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     }
 
     const isValidPassword =
-      foundUser.password === password ||
-      foundUser.password === password.trim() ||
-      (foundUser.isSuperAdmin && (password === 'Bautai123' || password.trim() === 'Bautai123'));
+      Boolean(foundUser.password) &&
+      (foundUser.password === password || foundUser.password === password.trim());
 
     if (!isValidPassword) {
       setErrorMsg('Kata sandi yang Anda masukkan salah. Silakan periksa kembali.');
       return;
     }
 
-    onLogin(foundUser);
+    onLogin({
+      ...foundUser,
+      isSuperAdmin: false,
+      lastLogin: new Date().toISOString(),
+    });
   };
 
   // Kirim email verifikasi resmi ke email yang dimasukkan pengguna dengan bantuan AI
@@ -396,6 +481,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
+    const reservedUsernames = new Set([
+      'administrator',
+      'admin',
+      'superadmin',
+      'root',
+      'owner',
+      'pemilik',
+    ]);
+    if (reservedUsernames.has(cleanUsername)) {
+      setErrorMsg(`Username "${cleanUsername}" dikhususkan untuk Administrator pemilik situs. Silakan pilih username lain.`);
+      return;
+    }
+
     // Check if username is already taken
     const exists = usersList.some(
       (u) => (u.username || '').toLowerCase() === cleanUsername
@@ -430,8 +528,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    // Cek apakah email sudah pernah terdaftar
+    // Cek apakah email termasuk email pemilik atau sudah pernah terdaftar
     const lowerEmail = trimmedEmail.toLowerCase();
+    if (lowerEmail === OWNER_ADMIN_EMAIL || lowerEmail === 'admin@karangtarunamanisjaya.id') {
+      setErrorMsg('Alamat email tersebut dikhususkan untuk pemilik Administrator situs dan tidak dapat dipakai mendaftar akun anggota.');
+      return;
+    }
     const emailExists = usersList.some(
       (u) => (u.email || '').toLowerCase() === lowerEmail
     );
@@ -519,12 +621,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         'beranda',
         'ringkasan',
         'arsip_kegiatan',
-        'anggota',
         'jadwal',
         'berita',
-        'tambah_berita',
-        'aset',
-        'surat',
+        'voting',
       ],
       lastLogin: new Date().toISOString(),
     };
@@ -607,6 +706,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 </p>
               </div>
             </div>
+            {canDismiss && onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white transition-colors shrink-0 cursor-pointer"
+                title="Tutup & Lanjutkan sebagai Pengunjung (Tamu)"
+                aria-label="Tutup dialog login"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* Mode Switcher Tabs */}
@@ -721,11 +831,32 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-600/30 transition-all flex items-center justify-center gap-2 transform active:scale-95 cursor-pointer"
+                disabled={isVerifyingAdmin || isGoogleLoading}
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-600/30 transition-all flex items-center justify-center gap-2 transform active:scale-95 cursor-pointer"
               >
                 <KeyRound className="w-4 h-4" />
-                <span>Masuk ke Workspace Karang Taruna</span>
+                <span>{isVerifyingAdmin ? 'Memverifikasi Akses...' : 'Masuk ke Workspace Karang Taruna'}</span>
               </button>
+
+              {/* Akses Eksklusif Pemilik / Administrator via Google */}
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <p className="text-[11px] text-slate-500 font-semibold text-center">
+                  Khusus Pemilik Situs (Administrator Eksklusif)
+                </p>
+                <button
+                  type="button"
+                  disabled={isGoogleLoading || isVerifyingAdmin}
+                  onClick={handleOwnerGoogleLogin}
+                  className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 text-amber-400" />
+                  <span>
+                    {isGoogleLoading
+                      ? 'Memverifikasi Akun Google Pemilik...'
+                      : 'Masuk Administrator dengan Akun Google Pemilik'}
+                  </span>
+                </button>
+              </div>
 
               {/* Callout ke Pendaftaran User Baru */}
               <div className="pt-2 border-t border-slate-100 text-center space-y-2">
@@ -743,6 +874,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <UserPlus className="w-4 h-4 text-emerald-600" />
                   <span>Daftar User Baru (Setiap Pengurus/Pemuda Baru Wajib Daftar)</span>
                 </button>
+
+                {canDismiss && onClose && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-full py-2 px-4 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    Lanjutkan sebagai Pengunjung / Tamu
+                  </button>
+                )}
               </div>
             </form>
           )}

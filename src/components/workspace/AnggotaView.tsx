@@ -49,7 +49,7 @@ import {
 } from 'lucide-react';
 import { useBranding } from '../../context/BrandingContext';
 import { BrandLogo } from './BrandLogo';
-import { UserAccount, ALL_MENU_DEFINITIONS, DEFAULT_USERS } from '../../types/auth';
+import { UserAccount, ALL_MENU_DEFINITIONS, DEFAULT_USERS, isOwnerAdminAccount } from '../../types/auth';
 import { WorkspaceTab } from './Sidebar';
 import {
   DetailedMember,
@@ -112,6 +112,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
   onSwitchUser,
 }) => {
   const { logoUrl } = useBranding();
+  const isOwnerAdmin = isOwnerAdminAccount(currentUser);
 
   // Load persistent members or default (100% matched with user accounts)
   const [members, setMembers] = useState<DetailedMember[]>(() => {
@@ -404,8 +405,12 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
     // Access fields
     setFormUsername(m.username || m.nickname.toLowerCase() || 'user');
     setFormPassword(m.password || 'karangtaruna');
-    setFormIsSuperAdmin(m.isSuperAdmin || m.id === 'm-1' || m.username === 'admin');
-    setFormAllowedMenus(m.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita']);
+    setFormIsSuperAdmin(false);
+    setFormAllowedMenus(
+      (m.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita']).filter(
+        (menu) => menu !== 'akses' && menu !== 'database' && menu !== 'pengaturan'
+      )
+    );
   };
 
   // Random Password Generator
@@ -454,11 +459,13 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       rw: formRw,
       signatureUrl: formSignatureUrl,
       digitalSignatureUrl: formSignatureUrl,
-      // Access & Password
+      // Access & Password (Anggota tidak dapat dinaikkan menjadi Super Admin)
       username: formUsername.trim().toLowerCase(),
       password: formPassword,
-      isSuperAdmin: formIsSuperAdmin,
-      allowedMenus: formIsSuperAdmin ? ALL_MENU_DEFINITIONS.map((m) => m.id) : formAllowedMenus,
+      isSuperAdmin: false,
+      allowedMenus: formAllowedMenus.filter(
+        (menu) => menu !== 'akses' && menu !== 'database' && menu !== 'pengaturan'
+      ),
     };
 
     const exists = members.some((m) => m.id === selectedMember.id);
@@ -477,25 +484,32 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
 
   // Open Quick Modal for Password & Access
   const handleOpenAksesModal = (m: DetailedMember) => {
+    if (!isOwnerAdmin) return;
     setAksesModalMember(m);
     setAksesModalUsername(m.username || m.nickname.toLowerCase() || 'user');
     setAksesModalPassword(m.password || 'karangtaruna');
-    setAksesModalSuperAdmin(m.isSuperAdmin || m.id === 'm-1' || m.username === 'admin');
-    setAksesModalMenus(m.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita']);
+    setAksesModalSuperAdmin(false);
+    setAksesModalMenus(
+      (m.allowedMenus || ['beranda', 'ringkasan', 'jadwal', 'berita']).filter(
+        (menu) => menu !== 'akses' && menu !== 'database' && menu !== 'pengaturan'
+      )
+    );
     setShowAksesModalPass(false);
   };
 
   // Save from Quick Modal
   const handleSaveAksesModal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!aksesModalMember) return;
+    if (!aksesModalMember || !isOwnerAdmin) return;
 
     const updated: DetailedMember = {
       ...aksesModalMember,
       username: aksesModalUsername.trim().toLowerCase(),
       password: aksesModalPassword,
-      isSuperAdmin: aksesModalSuperAdmin,
-      allowedMenus: aksesModalSuperAdmin ? ALL_MENU_DEFINITIONS.map((m) => m.id) : aksesModalMenus,
+      isSuperAdmin: false,
+      allowedMenus: aksesModalMenus.filter(
+        (menu) => menu !== 'akses' && menu !== 'database' && menu !== 'pengaturan'
+      ),
     };
 
     const newList = members.map((m) => (m.id === updated.id ? updated : m));
@@ -505,7 +519,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       setSelectedMember(updated);
       setFormUsername(updated.username);
       setFormPassword(updated.password);
-      setFormIsSuperAdmin(updated.isSuperAdmin || false);
+      setFormIsSuperAdmin(false);
       setFormAllowedMenus(updated.allowedMenus);
     }
     setAksesModalMember(null);
@@ -812,24 +826,26 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
             </span>
           </button>
 
-          <button
-            onClick={() => setMainViewMode('akses_sandi')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              mainViewMode === 'akses_sandi'
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30 ring-1 ring-blue-400'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
-            }`}
-          >
-            <KeyRound className="w-4 h-4" />
-            <span>Akses Pengguna & Kata Sandi Anggota</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                mainViewMode === 'akses_sandi' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700'
+          {isOwnerAdmin && (
+            <button
+              onClick={() => setMainViewMode('akses_sandi')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                mainViewMode === 'akses_sandi'
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30 ring-1 ring-blue-400'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
               }`}
             >
-              Sinkron 100%
-            </span>
-          </button>
+              <KeyRound className="w-4 h-4" />
+              <span>Akses Pengguna & Kata Sandi Anggota</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                  mainViewMode === 'akses_sandi' ? 'bg-blue-500 text-white' : 'bg-slate-200 text-slate-700'
+                }`}
+              >
+                Sinkron 100%
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1163,18 +1179,20 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                 >
                   Dokumen
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setFormTab('akses')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-colors whitespace-nowrap flex items-center gap-1 ${
-                    formTab === 'akses'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-indigo-600 hover:bg-indigo-50 font-semibold'
-                  }`}
-                >
-                  <KeyRound className="w-3 h-3" />
-                  <span>Akses & Sandi</span>
-                </button>
+                {isOwnerAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setFormTab('akses')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-colors whitespace-nowrap flex items-center gap-1 ${
+                      formTab === 'akses'
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-indigo-600 hover:bg-indigo-50 font-semibold'
+                    }`}
+                  >
+                    <KeyRound className="w-3 h-3" />
+                    <span>Akses & Sandi</span>
+                  </button>
+                )}
               </div>
 
               <form onSubmit={handleSaveForm} className="space-y-3.5 text-xs">
@@ -1445,15 +1463,15 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                   </div>
                 )}
 
-                {/* SUBTAB 4: FORM AKSES PENGGUNA & KATA SANDI ANGGOTA (Exact requirement!) */}
-                {formTab === 'akses' && (
+                {/* SUBTAB 4: FORM AKSES PENGGUNA & KATA SANDI ANGGOTA (Eksklusif Administrator Pemilik) */}
+                {isOwnerAdmin && formTab === 'akses' && (
                   <div className="space-y-3.5 animate-fadeIn">
                     <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-900 text-xs flex items-start gap-2">
                       <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold block">Akun & Otorisasi Sistem</span>
+                        <span className="font-bold block">Akun & Otorisasi Sistem Anggota</span>
                         <span className="text-[11px] text-indigo-700 leading-snug">
-                          Data akun login, kata sandi, dan wewenang menu ini 100% tersinkronkan dengan data akun aplikasi.
+                          Atur akun login &amp; menu anggota. Hak Administrator utama tetap terkunci eksklusif milik pemilik pribadi situs.
                         </span>
                       </div>
                     </div>
@@ -1470,7 +1488,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                           required
                           value={formUsername}
                           onChange={(e) => setFormUsername(e.target.value)}
-                          placeholder="contoh: iik / admin"
+                          placeholder="contoh: budi_kt"
                           className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-slate-200 font-mono text-xs focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
@@ -1530,30 +1548,6 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Super Admin Checkbox */}
-                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                      <label className="flex items-start gap-2.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formIsSuperAdmin}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setFormIsSuperAdmin(checked);
-                            if (checked) {
-                              setFormAllowedMenus(ALL_MENU_DEFINITIONS.map((m) => m.id));
-                            }
-                          }}
-                          className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        <div>
-                          <span className="font-bold text-slate-800 block text-xs">Jadikan Super Administrator</span>
-                          <span className="text-[11px] text-slate-500 leading-snug block">
-                            Membuka seluruh akses menu dan wewenang sistem tanpa batas.
-                          </span>
-                        </div>
-                      </label>
-                    </div>
-
                     {/* Menu Permissions Checkboxes */}
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
@@ -1563,36 +1557,43 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            if (formAllowedMenus.length === ALL_MENU_DEFINITIONS.length) {
+                            const memberMenuIds = ALL_MENU_DEFINITIONS.map((m) => m.id).filter(
+                              (id) => id !== 'akses' && id !== 'database' && id !== 'pengaturan'
+                            );
+                            if (formAllowedMenus.length >= memberMenuIds.length) {
                               setFormAllowedMenus(['beranda']);
                             } else {
-                              setFormAllowedMenus(ALL_MENU_DEFINITIONS.map((m) => m.id));
+                              setFormAllowedMenus(memberMenuIds);
                             }
                           }}
                           className="text-[11px] text-blue-600 font-semibold hover:underline"
                         >
-                          {formAllowedMenus.length === ALL_MENU_DEFINITIONS.length ? 'Pilih Minimal' : 'Pilih Semua'}
+                          {formAllowedMenus.length >= ALL_MENU_DEFINITIONS.length - 3 ? 'Pilih Minimal' : 'Pilih Semua Anggota'}
                         </button>
                       </div>
 
                       <div className="max-h-48 overflow-y-auto space-y-1 p-2 bg-slate-50 border border-slate-200 rounded-xl">
                         {ALL_MENU_DEFINITIONS.map((menu) => {
-                          const isChecked = formAllowedMenus.includes(menu.id);
+                          const isAdminOnlyMenu =
+                            menu.id === 'akses' || menu.id === 'database' || menu.id === 'pengaturan';
+                          const isChecked = !isAdminOnlyMenu && formAllowedMenus.includes(menu.id);
                           const isBeranda = menu.id === 'beranda';
 
                           return (
                             <label
                               key={menu.id}
-                              className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                                isChecked
-                                  ? 'bg-white border border-blue-200 shadow-2xs font-semibold text-slate-800'
-                                  : 'text-slate-600 hover:bg-white/60'
+                              className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                                isAdminOnlyMenu
+                                  ? 'text-slate-400 opacity-60 cursor-not-allowed'
+                                  : isChecked
+                                  ? 'bg-white border border-blue-200 shadow-2xs font-semibold text-slate-800 cursor-pointer'
+                                  : 'text-slate-600 hover:bg-white/60 cursor-pointer'
                               }`}
                             >
                               <div className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
-                                  disabled={isBeranda || formIsSuperAdmin}
+                                  disabled={isBeranda || isAdminOnlyMenu}
                                   checked={isChecked}
                                   onChange={(e) => {
                                     if (e.target.checked) {
@@ -1605,7 +1606,9 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                                 />
                                 <span>{menu.label}</span>
                               </div>
-                              <span className="text-[10px] text-slate-400 font-normal">{menu.category}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">
+                                {isAdminOnlyMenu ? 'Khusus Pemilik' : menu.category}
+                              </span>
                             </label>
                           );
                         })}
@@ -1688,31 +1691,33 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Quick Credentials Info */}
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400 text-[11px]">Username:</span>
-                      <span className="font-mono font-bold text-slate-800">@{selectedMember.username}</span>
+                  {/* Quick Credentials Info (Khusus Pemilik Administrator) */}
+                  {isOwnerAdmin && (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 text-[11px]">Username:</span>
+                        <span className="font-mono font-bold text-slate-800">@{selectedMember.username}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 text-[11px]">Kata Sandi:</span>
+                        <span className="font-mono text-slate-700 flex items-center gap-1">
+                          <span>{selectedMember.password}</span>
+                          <button
+                            onClick={() => handleCopyPass(selectedMember.id, selectedMember.password)}
+                            className="text-slate-400 hover:text-slate-600"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 text-[11px]">Hak Akses:</span>
+                        <span className="font-bold text-blue-600 text-[11px]">
+                          {(selectedMember.allowedMenus || []).length} Menu
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400 text-[11px]">Kata Sandi:</span>
-                      <span className="font-mono text-slate-700 flex items-center gap-1">
-                        <span>{selectedMember.password}</span>
-                        <button
-                          onClick={() => handleCopyPass(selectedMember.id, selectedMember.password)}
-                          className="text-slate-400 hover:text-slate-600"
-                        >
-                          <Copy className="w-3 h-3" />
-                        </button>
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400 text-[11px]">Hak Akses:</span>
-                      <span className="font-bold text-blue-600 text-[11px]">
-                        {selectedMember.isSuperAdmin ? 'Akses Penuh (14)' : `${(selectedMember.allowedMenus || []).length} Menu`}
-                      </span>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="space-y-2">
                     <div className="grid grid-cols-2 gap-2">
@@ -1742,14 +1747,16 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenAksesModal(selectedMember)}
-                      className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Kelola Sandi & Hak Akses</span>
-                    </button>
+                    {isOwnerAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAksesModal(selectedMember)}
+                        className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Kelola Sandi & Hak Akses</span>
+                      </button>
+                    )}
                   </div>
                 </>
               )}
@@ -1759,9 +1766,9 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       )}
 
       {/* --------------------------------------------------------------------- */}
-      {/* 4. VIEW MODE B: AKSES PENGGUNA & KATA SANDI ANGGOTA (Exact requirement!) */}
+      {/* 4. VIEW MODE B: AKSES PENGGUNA & KATA SANDI ANGGOTA (Eksklusif Pemilik) */}
       {/* --------------------------------------------------------------------- */}
-      {mainViewMode === 'akses_sandi' && (
+      {isOwnerAdmin && mainViewMode === 'akses_sandi' && (
         <div className="space-y-4 animate-fadeIn">
           {/* Banner Otorisasi */}
           <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
@@ -1922,7 +1929,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                               <span>Atur Sandi</span>
                             </button>
 
-                            {onSwitchUser && (
+                            {isOwnerAdmin && onSwitchUser && !m.isSuperAdmin && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1951,7 +1958,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       {/* --------------------------------------------------------------------- */}
       {/* 5. MODAL ATUR KATA SANDI & HAK AKSES CEPAT (AksesSandiModal) */}
       {/* --------------------------------------------------------------------- */}
-      {aksesModalMember && (
+      {isOwnerAdmin && aksesModalMember && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fadeIn">
           <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -2024,30 +2031,6 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                 </div>
               </div>
 
-              {/* Super Admin toggle */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={aksesModalSuperAdmin}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setAksesModalSuperAdmin(checked);
-                      if (checked) {
-                        setAksesModalMenus(ALL_MENU_DEFINITIONS.map((m) => m.id));
-                      }
-                    }}
-                    className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-800 block text-xs">Jadikan Super Administrator</span>
-                    <span className="text-[11px] text-slate-500 leading-snug block">
-                      Memiliki akses penuh ke seluruh menu dan pengaturan sistem.
-                    </span>
-                  </div>
-                </label>
-              </div>
-
               {/* Menu permissions list */}
               <div>
                 <label className="block font-bold text-slate-800 text-xs mb-1.5">
@@ -2055,22 +2038,26 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                 </label>
                 <div className="max-h-44 overflow-y-auto space-y-1 p-2 bg-slate-50 border border-slate-200 rounded-xl">
                   {ALL_MENU_DEFINITIONS.map((menu) => {
-                    const isChecked = aksesModalMenus.includes(menu.id);
+                    const isAdminOnlyMenu =
+                      menu.id === 'akses' || menu.id === 'database' || menu.id === 'pengaturan';
+                    const isChecked = !isAdminOnlyMenu && aksesModalMenus.includes(menu.id);
                     const isBeranda = menu.id === 'beranda';
 
                     return (
                       <label
                         key={menu.id}
-                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
-                          isChecked
-                            ? 'bg-white border border-blue-200 shadow-2xs font-semibold text-slate-800'
-                            : 'text-slate-600 hover:bg-white/60'
+                        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                          isAdminOnlyMenu
+                            ? 'text-slate-400 opacity-60 cursor-not-allowed'
+                            : isChecked
+                            ? 'bg-white border border-blue-200 shadow-2xs font-semibold text-slate-800 cursor-pointer'
+                            : 'text-slate-600 hover:bg-white/60 cursor-pointer'
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            disabled={isBeranda || aksesModalSuperAdmin}
+                            disabled={isBeranda || isAdminOnlyMenu}
                             checked={isChecked}
                             onChange={(e) => {
                               if (e.target.checked) {
@@ -2083,7 +2070,9 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
                           />
                           <span>{menu.label}</span>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-normal">{menu.category}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {isAdminOnlyMenu ? 'Khusus Pemilik' : menu.category}
+                        </span>
                       </label>
                     );
                   })}

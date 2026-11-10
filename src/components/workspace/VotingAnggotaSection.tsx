@@ -28,7 +28,7 @@ import {
 import { VotingItem, VotingCategory, VotingOption } from '../../types/voting';
 import { INITIAL_VOTINGS } from '../../data/votingInitialData';
 import { resolveAssetUrl } from '../../utils/assetUrl';
-import { UserAccount, DEFAULT_USERS } from '../../types/auth';
+import { UserAccount, GUEST_USER, isOwnerAdminAccount } from '../../types/auth';
 import { CreateVotingModal } from './voting/CreateVotingModal';
 import { VotingBeritaAcaraModal } from './voting/VotingBeritaAcaraModal';
 import {
@@ -41,7 +41,22 @@ import {
   saveVotingToTurso,
   deleteVotingFromTurso,
   pushFullStateToTurso,
+  withTursoSyncSuppressed,
 } from '../../services/tursoService';
+
+function getGuestVoterId(): string {
+  try {
+    const key = 'kt_guest_voter_id_v1';
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = `guest_${Math.random().toString(36).slice(2, 10)}_${Date.now().toString(36)}`;
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch {
+    return 'guest_browser';
+  }
+}
 
 interface VotingAnggotaSectionProps {
   currentUser: UserAccount;
@@ -66,7 +81,9 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
       }
     } catch (e) {}
     try {
-      localStorage.setItem('kt_votings_v1', JSON.stringify(INITIAL_VOTINGS));
+      withTursoSyncSuppressed(() => {
+        localStorage.setItem('kt_votings_v1', JSON.stringify(INITIAL_VOTINGS));
+      });
     } catch (e) {}
     return INITIAL_VOTINGS;
   });
@@ -87,9 +104,11 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
         if (!mounted) return;
         if (Array.isArray(tursoVotings) && tursoVotings.length > 0) {
           setVotings(tursoVotings);
-          try {
-            localStorage.setItem('kt_votings_v1', JSON.stringify(tursoVotings));
-          } catch {}
+          withTursoSyncSuppressed(() => {
+            try {
+              localStorage.setItem('kt_votings_v1', JSON.stringify(tursoVotings));
+            } catch {}
+          });
         }
       })
       .catch(() => {});
@@ -148,10 +167,11 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
 
     setCastingVoteId(optionId);
 
-    const safeUser = currentUser || DEFAULT_USERS[0];
-    const voterId = safeUser?.id || safeUser?.username || 'user-1';
-    const voterName = safeUser?.name || 'Anggota';
-    const voterRole = safeUser?.role || 'Anggota Karang Taruna';
+    const safeUser = currentUser || GUEST_USER;
+    const isGuestUser = !safeUser || safeUser.id === 'guest';
+    const voterId = isGuestUser ? getGuestVoterId() : (safeUser.id || safeUser.username);
+    const voterName = safeUser?.name || 'Tamu / Pengunjung';
+    const voterRole = safeUser?.role || 'Pengunjung Publik';
     const voterAvatar = safeUser?.avatar;
 
     // Check if voter already voted for this exact option
@@ -354,12 +374,10 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
   const closedCount = votings.filter((v) => v?.status === 'closed').length;
   const totalVotesAcrossAll = votings.reduce((sum, v) => sum + (v?.totalVotes || 0), 0);
 
-  const safeUser = currentUser || DEFAULT_USERS[0];
-  const voterId = safeUser?.id || safeUser?.username || 'user-1';
-  const isSuperAdminOrAdmin =
-    Boolean(safeUser?.isSuperAdmin) ||
-    Boolean(safeUser?.role?.toLowerCase().includes('ketua')) ||
-    Boolean(safeUser?.role?.toLowerCase().includes('admin'));
+  const safeUser = currentUser || GUEST_USER;
+  const isGuestUser = !safeUser || safeUser.id === 'guest';
+  const voterId = isGuestUser ? getGuestVoterId() : (safeUser.id || safeUser.username);
+  const isSuperAdminOrAdmin = isOwnerAdminAccount(safeUser);
 
   return (
     <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-xs space-y-6">
@@ -387,15 +405,17 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Buat Voting Baru</span>
-          </button>
-        </div>
+        {!isGuestUser && (
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Buat Voting Baru</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 2. Top Snapshot Metric Cards */}

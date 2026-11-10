@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { useTheme } from '../../context/ThemeContext';
-import { UserAccount } from '../../types/auth';
+import { UserAccount, isOwnerAdminAccount } from '../../types/auth';
 
 export type WorkspaceTab =
   | 'beranda'
@@ -129,12 +129,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ? 'bg-[#1e1b4b] text-white border-indigo-950'
       : 'bg-[#0d1b2a] text-white border-slate-800/80';
 
+  const isOwnerAdmin = isLoggedIn && isOwnerAdminAccount(currentUser);
+
   const isMenuAllowed = (id: WorkspaceTab) => {
     if (!isLoggedIn) {
       // Saat pertama kali masuk belum login, tamu bisa melihat berita, voling, beranda, dan jadwal kegiatan
       return id === 'berita' || id === 'voting' || id === 'beranda' || id === 'jadwal';
     }
-    if (currentUser?.isSuperAdmin) return true;
+    if (id === 'akses' || id === 'database' || id === 'pengaturan') {
+      return isOwnerAdmin;
+    }
+    if (isOwnerAdmin) return true;
     if (id === 'beranda' || id === 'berita' || id === 'voting' || id === 'jadwal') return true;
     if (!allowedMenus || !Array.isArray(allowedMenus)) return false;
     if (id === 'tambah_berita' || id === 'kategori' || id === 'galeri') {
@@ -588,39 +593,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 <div className="space-y-0.5">
-                  <button
-                    onClick={() => {
-                      setShowCollapsedMenu(false);
-                      if (onOpenFirebaseConfig) onOpenFirebaseConfig();
-                      else onSelectTab('database');
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Akun & Database Firebase</span>
-                  </button>
+                  {isOwnerAdmin && (
+                    <button
+                      onClick={() => {
+                        setShowCollapsedMenu(false);
+                        if (onOpenFirebaseConfig) onOpenFirebaseConfig();
+                        else onSelectTab('database');
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Akun & Database Firebase</span>
+                    </button>
+                  )}
 
-                  <button
-                    onClick={() => {
-                      setShowCollapsedMenu(false);
-                      onSelectTab('akses');
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
-                    <span>Pengaturan Hak Akses Menu</span>
-                  </button>
+                  {isOwnerAdmin && (
+                    <button
+                      onClick={() => {
+                        setShowCollapsedMenu(false);
+                        onSelectTab('akses');
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span>Pengaturan Hak Akses Menu</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {
                       setShowCollapsedMenu(false);
                       if (onOpenLoginModal) onOpenLoginModal();
-                      else onSelectTab('akses');
                     }}
                     className="w-full text-left px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
                   >
                     <User className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                    <span>Ganti Akun Pengurus</span>
+                    <span>Ganti Akun</span>
                   </button>
 
                   {onDownloadApk && (
@@ -684,7 +692,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-300 leading-snug">
-                      Akses publik: <strong>Berita</strong> &amp; <strong>Voling</strong>. Wajib masuk untuk membuka menu lainnya.
+                      Akses publik: <strong>Berita</strong>, <strong>Jadwal</strong> &amp; <strong>Voling</strong>. Masuk untuk akses tambahan.
                     </p>
                     <button
                       type="button"
@@ -784,53 +792,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Detail List: Sembunyikan, ada ketika di klik saja */}
                 {showProfileDetail && (
                   <div className="space-y-1 animate-fadeIn pt-0.5">
-                    <button
-                      onClick={() => {
-                        if (onOpenFirebaseConfig) onOpenFirebaseConfig();
-                        else onSelectTab('database');
-                      }}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
-                        isLight
-                          ? 'text-emerald-800 hover:bg-emerald-50'
-                          : 'text-emerald-400 hover:bg-emerald-950/40'
-                      }`}
-                      title="Akun & Database Firebase"
-                    >
-                      <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="truncate">Akun & Database Firebase</span>
-                    </button>
+                    {isOwnerAdmin && (
+                      <button
+                        onClick={() => {
+                          if (onOpenFirebaseConfig) onOpenFirebaseConfig();
+                          else onSelectTab('database');
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                          isLight
+                            ? 'text-emerald-800 hover:bg-emerald-50'
+                            : 'text-emerald-400 hover:bg-emerald-950/40'
+                        }`}
+                        title="Akun & Database Firebase"
+                      >
+                        <Cloud className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span className="truncate">Akun & Database Firebase</span>
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => onSelectTab('akses')}
-                      className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
-                        currentTab === 'akses'
-                          ? isLight
-                            ? 'bg-amber-100 text-amber-900 font-bold'
-                            : 'bg-amber-950/60 text-amber-300 font-bold'
-                          : isLight
-                          ? 'text-slate-700 hover:bg-slate-100'
-                          : 'text-slate-300 hover:bg-white/5'
-                      }`}
-                      title="Pengaturan Hak Akses Menu"
-                    >
-                      <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
-                      <span className="truncate">Pengaturan Hak Akses Menu</span>
-                    </button>
+                    {isOwnerAdmin && (
+                      <button
+                        onClick={() => onSelectTab('akses')}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
+                          currentTab === 'akses'
+                            ? isLight
+                              ? 'bg-amber-100 text-amber-900 font-bold'
+                              : 'bg-amber-950/60 text-amber-300 font-bold'
+                            : isLight
+                            ? 'text-slate-700 hover:bg-slate-100'
+                            : 'text-slate-300 hover:bg-white/5'
+                        }`}
+                        title="Pengaturan Hak Akses Menu"
+                      >
+                        <KeyRound className="w-4 h-4 text-amber-500 shrink-0" />
+                        <span className="truncate">Pengaturan Hak Akses Menu</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => {
                         if (onOpenLoginModal) onOpenLoginModal();
-                        else onSelectTab('akses');
                       }}
                       className={`w-full text-left px-2.5 py-1.5 text-xs font-medium rounded-xl flex items-center gap-2.5 transition-colors cursor-pointer ${
                         isLight
                           ? 'text-slate-700 hover:bg-slate-100'
                           : 'text-slate-300 hover:bg-white/5'
                       }`}
-                      title="Ganti Akun Pengurus"
+                      title="Ganti Akun"
                     >
                       <User className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                      <span className="truncate">Ganti Akun Pengurus</span>
+                      <span className="truncate">Ganti Akun</span>
                     </button>
 
                     <button

@@ -784,7 +784,7 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
           const authToken = (data.authToken || process.env.TURSO_AUTH_TOKEN || '').trim();
 
           if (!dbUrl) {
-            res.statusCode = 400;
+            res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({
               success: false,
@@ -895,6 +895,74 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ success: false, message: err.message || 'Eksekusi Turso gagal' }));
+        }
+      });
+      return;
+    }
+
+    // Server-side Admin Owner Credential Verification (password hash never exposed to browser bundle)
+    if (req.url && req.url.startsWith('/api/auth/verify-admin') && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk: any) => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const crypto = await import('crypto');
+          const data = JSON.parse(body || '{}');
+          const identifier = String(data.identifier || '').trim().toLowerCase();
+          const password = String(data.password || '').trim();
+
+          const allowedIdentifiers = new Set([
+            'administrator',
+            'admin',
+            'usr-administrator',
+            'jalansuci19@gmail.com',
+          ]);
+
+          if (!allowedIdentifiers.has(identifier) || !password) {
+            res.statusCode = 401;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: false,
+              verified: false,
+              message: 'Akses Administrator ditolak! Kredensial hanya berlaku untuk pemilik pribadi situs.',
+            }));
+            return;
+          }
+
+          const envAdminPassword = (process.env.ADMIN_PASSWORD || '').trim();
+          const expectedHex = envAdminPassword
+            ? crypto.createHash('sha256').update(envAdminPassword).digest('hex')
+            : '727839ae22cd1b53eb9aa0f67a1c0b2310362bec7a3be5b75958d0ad42f07865';
+
+          const actualBuf = Buffer.from(crypto.createHash('sha256').update(password).digest('hex'), 'hex');
+          const expectedBuf = Buffer.from(expectedHex, 'hex');
+          const isMatch = actualBuf.length === expectedBuf.length && crypto.timingSafeEqual(actualBuf, expectedBuf);
+
+          if (isMatch) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: true,
+              verified: true,
+              ownerEmail: 'jalansuci19@gmail.com',
+            }));
+          } else {
+            res.statusCode = 401;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: false,
+              verified: false,
+              message: 'Akses Administrator ditolak! Kata sandi pemilik tidak valid.',
+            }));
+          }
+        } catch (err: any) {
+          res.statusCode = 400;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: false,
+            verified: false,
+            message: err?.message || 'Gagal memverifikasi akses Administrator.',
+          }));
         }
       });
       return;

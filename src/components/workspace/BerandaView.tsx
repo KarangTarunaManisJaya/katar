@@ -33,7 +33,7 @@ import { ActivityItem } from '../../data/workspaceData';
 import { Banner } from './Banner';
 import { RecentActivities } from './RecentActivities';
 import { VotingAnggotaSection } from './VotingAnggotaSection';
-import { UserAccount, DEFAULT_USERS } from '../../types/auth';
+import { UserAccount, GUEST_USER, isOwnerAdminAccount } from '../../types/auth';
 
 interface BerandaViewProps {
   onNavigate: (tab: WorkspaceTab) => void;
@@ -58,7 +58,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   allowedMenus,
   onDownloadApk,
   archivedCount = 0,
-  currentUser = DEFAULT_USERS[0],
+  currentUser = GUEST_USER,
   isLoggedIn: propIsLoggedIn,
   onOpenLoginModal,
 }) => {
@@ -247,11 +247,16 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
     },
   ];
 
+  const isOwnerAdmin = userLoggedIn && isOwnerAdminAccount(currentUser);
+
   const isMenuAllowedOnBeranda = (id: WorkspaceTab) => {
     if (!userLoggedIn) {
       return id === 'berita' || id === 'voting' || id === 'jadwal';
     }
-    if (currentUser?.isSuperAdmin) return true;
+    if (id === 'akses' || id === 'database' || id === 'pengaturan') {
+      return isOwnerAdmin;
+    }
+    if (isOwnerAdmin) return true;
     if (id === 'beranda' || id === 'berita' || id === 'voting' || id === 'jadwal') return true;
     if (!allowedMenus || !Array.isArray(allowedMenus)) return false;
     return allowedMenus.includes(id);
