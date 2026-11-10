@@ -7,6 +7,8 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "build:apk": "python3 src/scripts/build_apk.py",
+    "migrate:turso-news": "tsx src/scripts/migrate_news_firestore_to_turso.ts",
+    "migrate:turso-all": "tsx src/scripts/migrate_all_to_turso.ts",
     "start": "vite preview --port=3000 --host=0.0.0.0",
     "preview": "vite preview --port=3000 --host=0.0.0.0",
     "clean": "rm -rf dist server.js",
@@ -16,6 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",
     "@google/genai": "^2.4.0",
+    "@libsql/client": "^0.18.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.6",

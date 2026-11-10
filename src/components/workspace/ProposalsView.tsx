@@ -16,6 +16,11 @@ import { ProposalListTable } from './proposals/ProposalListTable';
 import { ProposalDetailModal } from './proposals/ProposalDetailModal';
 import { ProposalFormModal } from './proposals/ProposalFormModal';
 import { ProposalPrintView } from './proposals/ProposalPrintView';
+import {
+  saveKasToTurso,
+  saveAgendaToTurso,
+  saveLetterToTurso,
+} from '../../services/tursoService';
 
 interface ProposalsViewProps {
   onToast: (msg: string) => void;
@@ -54,8 +59,10 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({ onToast, onBackToH
       } catch {}
     };
     window.addEventListener('kt_database_restored', handleRemoteRefresh);
+    window.addEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     return () => {
       window.removeEventListener('kt_database_restored', handleRemoteRefresh);
+      window.removeEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     };
   }, []);
 
@@ -102,7 +109,8 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({ onToast, onBackToH
         status: 'Terealisasi',
       };
       localStorage.setItem('kt_kas_entries_v2', JSON.stringify([newKasEntry, ...existingKas]));
-      onToast(`Anggaran proposal Rp ${p.totalAnggaran.toLocaleString('id-ID')} berhasil dicatat ke Kas Organisasi!`);
+      saveKasToTurso(newKasEntry).catch(() => {});
+      onToast(`Anggaran proposal Rp ${p.totalAnggaran.toLocaleString('id-ID')} berhasil dicatat ke Kas Organisasi & Turso!`);
     } catch {
       onToast('Gagal menghubungkan ke modul Kas.');
     }
@@ -111,20 +119,34 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({ onToast, onBackToH
   // Cross-module: Link to Agenda
   const handleLinkToAgenda = (p: ProposalItem) => {
     try {
-      const existingAgenda = JSON.parse(localStorage.getItem('kt_agenda_v1') || '[]');
+      const existingAgenda = JSON.parse(
+        localStorage.getItem('kt_agendas_v1') || localStorage.getItem('kt_agenda_v1') || '[]'
+      );
       const newAgenda = {
         id: `agenda-${Date.now()}`,
+        namaKegiatan: p.judul,
         title: p.judul,
+        tanggalMulai: p.tanggalKegiatan,
         date: p.tanggalKegiatan,
+        jamMulai: '08:00',
+        jamSelesai: '12:00',
         time: '08:00 - Selesai',
+        lokasi: p.lokasiKegiatan,
         location: p.lokasiKegiatan,
+        kategori: p.kategori,
         category: p.kategori,
+        deskripsi: `Pelaksanaan kegiatan berdasarkan ${p.nomorProposal}`,
         description: `Pelaksanaan kegiatan berdasarkan ${p.nomorProposal}`,
+        statusKegiatan: 'Dijadwalkan',
         status: 'Akan Datang',
+        penanggungJawab: p.penanggungJawab,
         author: p.penanggungJawab,
       };
-      localStorage.setItem('kt_agenda_v1', JSON.stringify([newAgenda, ...existingAgenda]));
-      onToast(`Kegiatan "${p.judul}" berhasil ditambahkan ke Agenda Organisasi!`);
+      const updatedAgendaStr = JSON.stringify([newAgenda, ...existingAgenda]);
+      localStorage.setItem('kt_agenda_v1', updatedAgendaStr);
+      localStorage.setItem('kt_agendas_v1', updatedAgendaStr);
+      saveAgendaToTurso(newAgenda).catch(() => {});
+      onToast(`Kegiatan "${p.judul}" berhasil ditambahkan ke Agenda Organisasi & Turso!`);
     } catch {
       onToast('Gagal menghubungkan ke modul Agenda.');
     }
@@ -148,7 +170,8 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({ onToast, onBackToH
         content: `Bersama surat ini kami lampirkan dokumen proposal ${p.judul} (${p.nomorProposal}) dengan total rencana anggaran Rp ${p.totalAnggaran.toLocaleString('id-ID')}.`,
       };
       localStorage.setItem('kt_surat_items_v2', JSON.stringify([newSurat, ...existingSurat]));
-      onToast(`Surat pengantar resmi untuk proposal "${p.judul}" berhasil dibuat di Surat Menyurat!`);
+      saveLetterToTurso(newSurat).catch(() => {});
+      onToast(`Surat pengantar resmi untuk proposal "${p.judul}" berhasil dibuat di Surat Menyurat & Turso!`);
     } catch {
       onToast('Gagal menghubungkan ke modul Surat Menyurat.');
     }

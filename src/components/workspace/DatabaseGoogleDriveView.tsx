@@ -57,6 +57,18 @@ import {
   FilebaseItem,
 } from '../../services/filebaseService';
 import {
+  getStoredTursoConfig,
+  saveTursoConfig,
+  testTursoConnection,
+  syncAllLocalDataToTurso,
+  migrateFirestoreNewsToTurso,
+  pullFullStateFromTurso,
+  pushFullStateToTurso,
+  getTursoTableStats,
+  TursoConfig,
+  TursoTableStats,
+} from '../../services/tursoService';
+import {
   signInWithGoogleDrive,
   signOutGoogleDrive,
   initDriveAuth,
@@ -82,7 +94,6 @@ import {
   downloadJsonFile,
 } from '../../services/googleDriveService';
 import {
-  pushLocalDataToCloud,
   forceSyncAllToCloud,
   db,
   getActiveFirebaseConfig,
@@ -205,6 +216,171 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
     }
   };
 
+  // Turso Database State
+  const [tursoConfig, setTursoConfig] = useState<TursoConfig>(() => getStoredTursoConfig());
+  const [isTestingTurso, setIsTestingTurso] = useState(false);
+  const [testTursoResult, setTestTursoResult] = useState<{ success: boolean; message: string; tableCount?: number; url?: string } | null>(null);
+  const [isSyncingTurso, setIsSyncingTurso] = useState(false);
+  const [tursoProgress, setTursoProgress] = useState({ message: '', percent: 0 });
+  const [tursoStats, setTursoStats] = useState<TursoTableStats | null>(null);
+  const [isLoadingTursoStats, setIsLoadingTursoStats] = useState(false);
+  const [isBackingUpAll, setIsBackingUpAll] = useState(false);
+
+  const refreshTursoStats = useCallback(async () => {
+    setIsLoadingTursoStats(true);
+    try {
+      const stats = await getTursoTableStats(tursoConfig);
+      setTursoStats(stats);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingTursoStats(false);
+    }
+  }, [tursoConfig]);
+
+  // Cek otomatis status koneksi Turso & jumlah baris seluruh tabel saat halaman dibuka
+  useEffect(() => {
+    let mounted = true;
+    testTursoConnection(tursoConfig)
+      .then((res) => {
+        if (mounted && res.success) {
+          setTestTursoResult(res);
+        }
+      })
+      .catch(() => {});
+    getTursoTableStats(tursoConfig)
+      .then((stats) => {
+        if (mounted) setTursoStats(stats);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSaveTursoConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      saveTursoConfig(tursoConfig);
+      onToast('Konfigurasi Turso Database berhasil disimpan!');
+      refreshTursoStats();
+    } catch {
+      onToast('Gagal menyimpan konfigurasi Turso.');
+    }
+  };
+
+  const handleTestTursoConnection = async () => {
+    try {
+      setIsTestingTurso(true);
+      setTestTursoResult(null);
+      const res = await testTursoConnection(tursoConfig);
+      setTestTursoResult(res);
+      await refreshTursoStats();
+      onToast(res.message);
+    } catch (err: any) {
+      setTestTursoResult({ success: false, message: err.message || 'Koneksi ke Turso gagal' });
+      onToast(`Error Turso: ${err.message}`);
+    } finally {
+      setIsTestingTurso(false);
+    }
+  };
+
+  const handleMigrateAllToTurso = async () => {
+    try {
+      setIsSyncingTurso(true);
+      setTursoProgress({ message: 'Menghubungkan ke Turso Database Utama & menyiapkan tabel...', percent: 10 });
+      const res = await syncAllLocalDataToTurso((msg, pct) => {
+        setTursoProgress({ message: msg, percent: pct });
+      });
+      await pushFullStateToTurso('Sinkronisasi manual ke Turso Database Utama');
+      await refreshTursoStats();
+      if (res.success) {
+        onToast(`Sukses: ${res.message}`);
+      } else {
+        onToast(`Perhatian: ${res.message}`);
+      }
+    } catch (err: any) {
+      onToast(`Gagal sinkronisasi ke Turso: ${err.message}`);
+    } finally {
+      setIsSyncingTurso(false);
+      setTimeout(() => setTursoProgress({ message: '', percent: 0 }), 3000);
+    }
+  };
+
+  const [isPullingTurso, setIsPullingTurso] = useState(false);
+
+  const handlePullFromTurso = async () => {
+    try {
+      setIsPullingTurso(true);
+      const res = await pullFullStateFromTurso();
+      refreshLocalSummary();
+      refreshBackupArchives();
+      await refreshTursoStats();
+      if (res.exists) {
+        onToast('Data terbaru berhasil ditarik dari Turso Database Utama ke perangkat ini!');
+      } else {
+        onToast('Turso Database terhubung, belum ada snapshot state tersimpan.');
+      }
+    } catch (err: any) {
+      onToast(`Gagal menarik data dari Turso: ${err.message}`);
+    } finally {
+      setIsPullingTurso(false);
+    }
+  };
+
+  const [isMigratingNews, setIsMigratingNews] = useState(false);
+
+  const handleMigrateNewsToTurso = async () => {
+    try {
+      setIsMigratingNews(true);
+      setTursoProgress({ message: 'Menyiapkan tabel & indeks Turso...', percent: 10 });
+      const res = await migrateFirestoreNewsToTurso((msg, pct) => {
+        setTursoProgress({ message: msg, percent: pct });
+      });
+      await refreshTursoStats();
+      if (res.success) {
+        onToast(`✓ ${res.message}`);
+        if (res.items && res.items.length > 0) {
+          localStorage.setItem('kt_news_v1', JSON.stringify(res.items));
+          window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: res.items } }));
+        }
+      } else {
+        onToast(`Perhatian: ${res.message}`);
+      }
+    } catch (err: any) {
+      onToast(`Gagal migrasi berita: ${err.message}`);
+    } finally {
+      setIsMigratingNews(false);
+      setTimeout(() => setTursoProgress({ message: '', percent: 0 }), 3500);
+    }
+  };
+
+  // Cadangkan data dari Turso Utama ke seluruh lapisan backup (Firestore & Filebase)
+  const handleBackupToAllSecondary = async () => {
+    setIsBackingUpAll(true);
+    try {
+      await pushFullStateToTurso('Sinkronisasi sebelum pencadangan ke semua backup');
+      const [fireRes, filebaseRes] = await Promise.all([
+        forceSyncAllToCloud().catch((err: any) => ({ success: false, message: err?.message })),
+        syncAllToFilebase().catch((err: any) => ({ success: false, message: err?.message })),
+      ]);
+      refreshFilebaseCatalog();
+      await refreshTursoStats();
+      const okCount = (fireRes.success ? 1 : 0) + (filebaseRes.success ? 1 : 0);
+      if (okCount === 2) {
+        onToast('Cadangan penuh berhasil dikirim ke Cloud Firestore dan Filebase.com!');
+      } else if (okCount === 1) {
+        onToast('Sebagian backup berhasil diperbarui (cek Firestore/Filebase). Data utama Turso tetap aman.');
+      } else {
+        onToast('Backup sekunder gagal sebagian (kemungkinan kuota Firestore), namun data utama Turso 100% aman.');
+      }
+    } catch (err: any) {
+      onToast(`Gagal mencadangkan ke lapisan backup: ${err?.message || err}`);
+    } finally {
+      setIsBackingUpAll(false);
+    }
+  };
+
   // 1-Klik Simpan Semua File (Data, Berita, PDF, dll) ke Filebase
   const handleSyncAllToFilebase = async () => {
     try {
@@ -315,7 +491,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
     try {
       const a = JSON.parse(localStorage.getItem('kt_assets_v1') || '[]');
       const m = JSON.parse(localStorage.getItem('kt_members_v3') || '[]');
-      const ag = JSON.parse(localStorage.getItem('kt_agenda_v1') || '[]');
+      const ag = JSON.parse(localStorage.getItem('kt_agendas_v1') || localStorage.getItem('kt_agenda_v1') || '[]');
       const s = JSON.parse(localStorage.getItem('kt_surat_items_v2') || '[]');
       const k = JSON.parse(localStorage.getItem('kt_kas_entries_v2') || '[]');
       setLocalDataSummary({
@@ -338,14 +514,16 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
     refreshLocalSummary();
     refreshBackupArchives();
 
-    // Listen to database restored event from anywhere
+    // Listen to database restored & Turso cloud sync updates
     const handleRestoreEvent = () => {
       refreshLocalSummary();
       refreshBackupArchives();
     };
     window.addEventListener('kt_database_restored', handleRestoreEvent);
+    window.addEventListener('kt_cloud_sync_update', handleRestoreEvent);
     return () => {
       window.removeEventListener('kt_database_restored', handleRestoreEvent);
+      window.removeEventListener('kt_cloud_sync_update', handleRestoreEvent);
     };
   }, [refreshLocalSummary, refreshBackupArchives]);
 
@@ -818,28 +996,27 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 bg-blue-500/30 border border-blue-400/40 rounded-full text-xs font-bold text-blue-200 tracking-wide uppercase flex items-center gap-1.5">
-                <Cloud className="w-3.5 h-3.5" />
-                Pusat Cadangan & Sinkronisasi Google Drive
+              <span className="px-3 py-1 bg-teal-500/30 border border-teal-400/50 rounded-full text-xs font-extrabold text-teal-200 tracking-wide uppercase flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5" />
+                Database Utama: Turso (libSQL) · Backup: Firestore, Filebase &amp; Drive
               </span>
               {googleUser ? (
                 <span className="px-3 py-1 bg-emerald-500/30 border border-emerald-400/40 rounded-full text-xs font-bold text-emerald-200 flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Google OAuth Terhubung
+                  Google OAuth Terhubung (Backup)
                 </span>
               ) : (
                 <span className="px-3 py-1 bg-teal-500/30 border border-teal-400/40 rounded-full text-xs font-bold text-teal-200 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Mode Sinkronisasi Langsung Aktif
+                  Arsitektur Utama + Multi-Backup Aktif
                 </span>
               )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              Database & Google Drive Cloud
+              Pusat Database Utama &amp; Cadangan
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Kelola pencadangan (*backup*) dan pemulihan (*restore*) seluruh data Karang Taruna Kelurahan Manis Jaya
-              ke folder Google Drive Anda secara instan, aman, dan tanpa kendala.
+              <strong>Turso Database (libSQL Cloud)</strong> beroperasi sebagai <strong>Database Utama</strong> aplikasi Karang Taruna Kelurahan Manis Jaya. Cloud Firestore, Filebase.com, Google Drive, dan penyimpanan browser berfungsi otomatis sebagai <strong>lapisan cadangan (backup)</strong>.
             </p>
           </div>
 
@@ -941,8 +1118,255 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
         </div>
       )}
 
-      {/* REAL-TIME CLOUD FIRESTORE STATUS & CONTROLS */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-lg border border-emerald-700/40 relative overflow-hidden space-y-4">
+      {/* 1. TURSO DATABASE UTAMA (PRIMARY DATABASE) - DI POSISI TERATAS */}
+      <div className="bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-xl border-2 border-teal-400/60 relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-teal-500/30">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-teal-500/25 border border-teal-400/60 flex items-center justify-center text-teal-300 shrink-0 shadow-inner">
+              <Database className="w-6 h-6 text-teal-300" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  Turso Database (libSQL Cloud)
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-400 text-slate-950 shadow-sm">
+                  DATABASE UTAMA
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-400/20 text-teal-300 border border-teal-400/30">
+                  turso.tech
+                </span>
+                {testTursoResult?.success && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/30 text-emerald-200 border border-emerald-400/50 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Terkoneksi Aktif ({testTursoResult.tableCount ?? 8} Tabel)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-teal-100/90 mt-1">
+                Sumber data utama seluruh aplikasi (Berita, Anggota, Aset, Kas, Agenda, Surat, Voting). Setiap perubahan otomatis disimpan ke Turso terlebih dahulu, lalu dicadangkan ke Firestore &amp; Filebase.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handlePullFromTurso}
+              disabled={isPullingTurso || isSyncingTurso}
+              className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-teal-400/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+              title="Tarik data terbaru dari Turso Database Utama ke perangkat ini"
+            >
+              <CloudDownload className={`w-4 h-4 text-teal-300 ${isPullingTurso ? 'animate-spin' : ''}`} />
+              <span>{isPullingTurso ? 'Menarik...' : 'Tarik dari Turso'}</span>
+            </button>
+
+            <button
+              onClick={handleMigrateNewsToTurso}
+              disabled={isMigratingNews || isSyncingTurso}
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+              title="Pindahkan atau gabungkan berita dari Firestore Backup ke Turso Database Utama"
+            >
+              {isMigratingNews ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                  <span>Migrasi Berita ({tursoProgress.percent}%)...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                  <span>Tarik Berita dari Backup</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={handleMigrateAllToTurso}
+              disabled={isSyncingTurso || isMigratingNews}
+              className="px-4 py-2 bg-gradient-to-r from-teal-400 to-emerald-400 hover:from-teal-500 hover:to-emerald-500 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-teal-500/20 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+            >
+              {isSyncingTurso ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Menyinkronkan ({tursoProgress.percent}%)...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>Sinkronkan Semua ke Turso</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Live Progress Bar Turso */}
+        {(isSyncingTurso || isMigratingNews) && (
+          <div className="mt-4 bg-slate-950/80 rounded-2xl p-4 border border-teal-500/40 space-y-2 animate-fadeIn">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-teal-300 flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                {tursoProgress.message || 'Sedang memproses database Turso...'}
+              </span>
+              <span className="font-mono text-teal-400 font-bold">{tursoProgress.percent}%</span>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-teal-500 to-emerald-400 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${tursoProgress.percent}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Test Result Banner */}
+        {testTursoResult && (
+          <div
+            className={`mt-4 p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 animate-fadeIn ${
+              testTursoResult.success
+                ? 'bg-teal-950/80 border-teal-400/50 text-teal-200'
+                : 'bg-rose-950/80 border-rose-400/50 text-rose-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {testTursoResult.success ? (
+                <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              )}
+              <span className="font-medium">{testTursoResult.message}</span>
+            </div>
+            <button
+              onClick={() => setTestTursoResult(null)}
+              className="text-white/60 hover:text-white p-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Live Turso SQL Table Row Inspector */}
+        <div className="mt-4 bg-slate-950/70 border border-teal-500/30 rounded-2xl p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 className="text-xs font-extrabold text-teal-200 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-teal-400" />
+                Inspektor Tabel Turso Langsung (Live SQL Row Counts)
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                {tursoStats?.lastUpdatedAt
+                  ? `Pembaruan terakhir: ${new Date(tursoStats.lastUpdatedAt).toLocaleString('id-ID')} (${tursoStats.lastUpdatedBy || 'Sistem'})`
+                  : 'Menampilkan jumlah baris aktual di seluruh 9 tabel SQL Turso'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={refreshTursoStats}
+                disabled={isLoadingTursoStats}
+                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30 rounded-xl text-[11px] font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${isLoadingTursoStats ? 'animate-spin' : ''}`} />
+                <span>Refresh Tabel</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleBackupToAllSecondary}
+                disabled={isBackingUpAll}
+                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-[11px] font-black flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50"
+                title="Kirim cadangan terbaru dari Turso Utama ke Firestore & Filebase sekaligus"
+              >
+                <Shield className={`w-3 h-3 ${isBackingUpAll ? 'animate-spin' : ''}`} />
+                <span>{isBackingUpAll ? 'Mencadangkan...' : 'Cadangkan ke Semua Backup'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-2">
+            {[
+              { key: 'news', label: 'Berita' },
+              { key: 'members', label: 'Anggota' },
+              { key: 'assets', label: 'Aset' },
+              { key: 'agenda', label: 'Agenda' },
+              { key: 'letters', label: 'Surat' },
+              { key: 'kas', label: 'Kas' },
+              { key: 'votings', label: 'Voting' },
+              { key: 'verification_codes', label: 'Verif Email' },
+              { key: 'org_live_state', label: 'Master State' },
+            ].map((tbl) => {
+              const val = tursoStats ? (tursoStats.counts as any)[tbl.key] ?? 0 : '—';
+              return (
+                <div
+                  key={tbl.key}
+                  className="bg-slate-900/90 border border-teal-500/20 rounded-xl px-2.5 py-2 text-center"
+                >
+                  <div className="text-[10px] font-semibold text-slate-400 truncate">{tbl.label}</div>
+                  <div className="text-sm font-black text-teal-300 font-mono mt-0.5">{val}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Configuration Form */}
+        <form onSubmit={handleSaveTursoConfig} className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-teal-200 mb-1">
+                Turso Database URL (TURSO_DATABASE_URL)
+              </label>
+              <input
+                type="text"
+                value={tursoConfig.url}
+                onChange={(e) => setTursoConfig({ ...tursoConfig, url: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-900 border border-teal-500/40 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 font-mono"
+                placeholder="Terhubung otomatis via Server Secrets (libsql://...)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-teal-200 mb-1">
+                Turso Auth Token (TURSO_AUTH_TOKEN)
+              </label>
+              <input
+                type="password"
+                value={tursoConfig.authToken}
+                onChange={(e) => setTursoConfig({ ...tursoConfig, authToken: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-900 border border-teal-500/40 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-400 font-mono"
+                placeholder="Terhubung otomatis via Server Secrets"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <p className="text-[11px] text-teal-200/80">
+              * Kredensial server (<code>TURSO_DATABASE_URL</code> &amp; <code>TURSO_AUTH_TOKEN</code>) aktif otomatis di server proxy. Isi form di atas hanya jika ingin mengganti ke database Turso lain.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleTestTursoConnection}
+                disabled={isTestingTurso}
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isTestingTurso ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
+                <span>Uji Koneksi Turso</span>
+              </button>
+
+              <button
+                type="submit"
+                className="px-4 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan Konfigurasi</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* BACKUP 1: CLOUD FIRESTORE (CADANGAN) */}
+      <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-lg border border-emerald-700/40 relative overflow-hidden space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shrink-0 shadow-inner">
@@ -951,11 +1375,14 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-sm sm:text-base font-black text-white">
-                  Database Resmi Firebase Google Cloud (firebase.google.com)
+                  Google Firebase Firestore (firebase.google.com)
                 </h3>
+                <span className="px-2.5 py-0.5 bg-amber-400/20 border border-amber-400/50 rounded-full text-[10px] font-extrabold text-amber-200 tracking-wide uppercase">
+                  DATABASE CADANGAN (BACKUP)
+                </span>
                 <span className="px-2.5 py-0.5 bg-emerald-500/30 border border-emerald-400/40 rounded-full text-[10px] font-extrabold text-emerald-200 tracking-wide uppercase flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Koneksi Real-Time Aktif
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Siap Cadangkan
                 </span>
                 {isCustomDb && (
                   <span className="px-2 py-0.5 bg-blue-500/40 border border-blue-400/50 rounded-full text-[10px] font-extrabold text-blue-200 tracking-wide uppercase">
@@ -964,7 +1391,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                 )}
               </div>
               <p className="text-xs text-emerald-100/90 leading-relaxed max-w-2xl">
-                Aplikasi terhubung langsung ke <strong>Google Firebase Firestore</strong> (<code className="bg-black/30 px-1 py-0.5 rounded text-emerald-200">firebase.google.com</code>). Anda dapat masuk ke akun Google Anda terlebih dahulu dan mengganti/merubah database ke proyek Firebase milik Anda sendiri.
+                Berfungsi sebagai <strong>database cadangan (backup sekunder)</strong> dari Turso Utama. Mencadangkan data secara berkala dan aman di latar belakang tanpa mengganggu operasi utama bila kuota gratis harian penuh.
               </p>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-emerald-200/80">
                 <span>• Project ID: <strong className="text-white font-mono">{activeFirebaseConfig.projectId}</strong></span>
@@ -999,19 +1426,19 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
               onClick={handleSyncToCloud}
               disabled={isSyncingCloud}
               className="px-3 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-              title="Kirim seluruh data lokal saat ini ke Cloud Firestore"
+              title="Cadangkan seluruh data dari Turso Utama saat ini ke Cloud Firestore (Backup)"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCloud ? 'animate-spin' : ''}`} />
-              <span>Kirim Data</span>
+              <span>Cadangkan Data</span>
             </button>
             <button
               onClick={handlePullFromCloud}
               disabled={isSyncingCloud}
               className="px-3 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-              title="Tarik data terbaru yang ada di Cloud Firestore ke laptop/perangkat ini"
+              title="Pulihkan data dari cadangan Cloud Firestore ke perangkat ini"
             >
               <CloudDownload className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Tarik Data</span>
+              <span>Pulihkan Backup</span>
             </button>
           </div>
         </div>
@@ -1027,10 +1454,13 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  Integrasi Basis Data Filebase.com (IPFS & Cloud Storage)
+                  Filebase.com (IPFS &amp; Cloud Object Backup)
                 </h3>
+                <span className="px-2.5 py-0.5 bg-amber-400/20 border border-amber-400/50 rounded-full text-[10px] font-extrabold text-amber-200 tracking-wide uppercase">
+                  PENYIMPANAN BACKUP
+                </span>
                 <span className="px-2.5 py-0.5 bg-emerald-500/30 border border-emerald-400/50 rounded-full text-[10px] font-extrabold text-emerald-200 tracking-wide uppercase flex items-center gap-1.5 shadow-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   Terkoneksi ke Filebase.com
                 </span>
                 <span className="px-2.5 py-0.5 bg-blue-500/30 border border-blue-400/40 rounded-full text-[11px] font-mono text-blue-200 font-bold">
@@ -1038,7 +1468,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-indigo-100/90 leading-relaxed max-w-2xl">
-                Seluruh <strong>basis data organisasi, berita kegiatan, arsip PDF surat dinas, dan inventaris aset</strong> Karang Taruna Kelurahan Manis Jaya terhubung dan disimpan secara otomatis ke infrastruktur <strong>Filebase.com</strong> via protokol S3 & IPFS terdesentralisasi.
+                Berfungsi sebagai <strong>penyimpanan cadangan arsip (backup file &amp; media)</strong> untuk basis data organisasi, berita, dan surat PDF Karang Taruna melalui protokol S3 &amp; IPFS Filebase.
               </p>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-indigo-200/80">
                 <span>• Akun Terdaftar: <strong className="text-white font-mono">{filebaseConfig.email}</strong></span>
@@ -1466,6 +1896,8 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
           )}
         </div>
       </div>
+
+      {/* (Kartu Turso Database Utama telah dipindahkan ke posisi teratas sebagai Database Utama) */}
 
       {/* 2. Operational Database KPI Status */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

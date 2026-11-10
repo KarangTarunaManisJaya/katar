@@ -32,11 +32,16 @@ import { UserAccount, DEFAULT_USERS } from '../../types/auth';
 import { CreateVotingModal } from './voting/CreateVotingModal';
 import { VotingBeritaAcaraModal } from './voting/VotingBeritaAcaraModal';
 import {
-  pushLocalDataToCloud,
+  pushBackupToFirestore,
   saveVotingToFirestore,
   deleteVotingFromFirestore,
-  subscribeVotingsFromFirestore,
 } from '../../services/firestoreSyncService';
+import {
+  fetchVotingsFromTurso,
+  saveVotingToTurso,
+  deleteVotingFromTurso,
+  pushFullStateToTurso,
+} from '../../services/tursoService';
 
 interface VotingAnggotaSectionProps {
   currentUser: UserAccount;
@@ -74,16 +79,20 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
   const [expandedVotersVotingId, setExpandedVotersVotingId] = useState<string | null>(null);
   const [castingVoteId, setCastingVoteId] = useState<string | null>(null);
 
-  // Subscribe to real-time Firestore updates and local broadcast events
+  // Fetch from Turso Primary Database & listen to cross-device sync events
   useEffect(() => {
-    const unsub = subscribeVotingsFromFirestore((remoteList) => {
-      if (Array.isArray(remoteList) && remoteList.length > 0) {
-        setVotings(remoteList);
-        try {
-          localStorage.setItem('kt_votings_v1', JSON.stringify(remoteList));
-        } catch (e) {}
-      }
-    });
+    let mounted = true;
+    fetchVotingsFromTurso()
+      .then((tursoVotings) => {
+        if (!mounted) return;
+        if (Array.isArray(tursoVotings) && tursoVotings.length > 0) {
+          setVotings(tursoVotings);
+          try {
+            localStorage.setItem('kt_votings_v1', JSON.stringify(tursoVotings));
+          } catch {}
+        }
+      })
+      .catch(() => {});
 
     const handleSyncEvent = () => {
       try {
@@ -94,32 +103,37 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
             setVotings(parsed);
           }
         }
-      } catch (e) {}
+      } catch {}
     };
 
     window.addEventListener('kt_cloud_sync_update', handleSyncEvent);
     window.addEventListener('kt_database_restored', handleSyncEvent);
 
     return () => {
-      unsub();
+      mounted = false;
       window.removeEventListener('kt_cloud_sync_update', handleSyncEvent);
       window.removeEventListener('kt_database_restored', handleSyncEvent);
     };
   }, []);
 
-  // Save changes locally and push to Cloud Firestore
+  // Save changes to Turso Primary first, then backup to Cloud Firestore non-blocking
   const persistVotings = (newList: VotingItem[], reason: string, updatedItem?: VotingItem) => {
     setVotings(newList);
     try {
       localStorage.setItem('kt_votings_v1', JSON.stringify(newList));
-    } catch (e) {}
+    } catch {}
 
-    // Direct Firestore update if specific item is provided
+    // 1. DATABASE UTAMA: Turso
+    if (updatedItem) {
+      saveVotingToTurso(updatedItem).catch(() => {});
+    }
+    pushFullStateToTurso(reason, currentUser?.name || 'Pengurus').catch(() => {});
+
+    // 2. DATABASE CADANGAN (BACKUP): Firestore non-blocking
     if (updatedItem) {
       saveVotingToFirestore(updatedItem).catch(() => {});
     }
-
-    pushLocalDataToCloud(reason, currentUser?.name || 'Pengurus').catch(() => {});
+    pushBackupToFirestore(reason, currentUser?.name || 'Pengurus').catch(() => {});
   };
 
   // Cast vote for a specific option
@@ -266,6 +280,7 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
 
     const nextVotings = votings.filter((v) => v.id !== votingId);
     persistVotings(nextVotings, `Menghapus voting: ${targetVoting.title}`);
+    deleteVotingFromTurso(votingId).catch(() => {});
     deleteVotingFromFirestore(votingId).catch(() => {});
     onToast('Sesi voting berhasil dihapus.');
   };

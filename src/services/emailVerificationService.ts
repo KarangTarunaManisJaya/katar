@@ -6,6 +6,7 @@
 
 import { doc, setDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from './firestoreSyncService';
+import { saveVerificationCodeToTurso, fetchVerificationCodeFromTurso } from './tursoService';
 
 export interface SendVerificationEmailParams {
   to: string;
@@ -241,11 +242,23 @@ export async function sendOfficialVerificationEmail(
   const subject = params.subjectOverride || `[Karang Taruna Manis Jaya] Kode Verifikasi Pendaftaran: ${code}`;
   const htmlContent = params.htmlOverride || generateOfficialVerificationEmailHtml(params);
 
-  // 1. Simpan pencatatan token verifikasi di Firestore database agar terverifikasi dan aman
+  // 1. Simpan pencatatan token verifikasi ke Turso Database Utama
+  await saveVerificationCodeToTurso({
+    email: to,
+    name,
+    username,
+    code,
+    status: 'pending',
+    verified: false,
+    opened: false,
+    channel: 'turso',
+  });
+
+  // 1b. Cadangan pasif non-blocking ke Firestore
   try {
     const cleanEmailKey = to.toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
     const docRef = doc(db, 'verification_codes', cleanEmailKey);
-    await setDoc(
+    setDoc(
       docRef,
       {
         email: to,
@@ -258,10 +271,8 @@ export async function sendOfficialVerificationEmail(
         createdAt: serverTimestamp(),
       },
       { merge: true }
-    );
-  } catch (firestoreErr) {
-    console.warn('Firestore verification record notice:', firestoreErr);
-  }
+    ).catch(() => {});
+  } catch {}
 
   // 2. Kirim melalui Server API Backend (/api/send-verification-email) via SMTP / Nodemailer
   try {
@@ -290,14 +301,22 @@ export async function sendOfficialVerificationEmail(
     if (response.ok) {
       const data = await response.json();
       if (data.delivered) {
-        // Tandai di Firestore status 'sent'
+        // Tandai status 'sent' di Turso Utama & Firestore backup
+        saveVerificationCodeToTurso({
+          email: to,
+          name,
+          username,
+          code,
+          status: 'sent',
+          channel: 'smtp',
+        }).catch(() => {});
         try {
           const cleanEmailKey = to.toLowerCase().replace(/[^a-z0-9_.-]/g, '_');
-          await setDoc(
+          setDoc(
             doc(db, 'verification_codes', cleanEmailKey),
             { status: 'sent', sentAt: serverTimestamp(), deliveryChannel: 'smtp' },
             { merge: true }
-          );
+          ).catch(() => {});
         } catch {}
 
         return {
@@ -435,11 +454,19 @@ export async function markEmailVerificationOpened(email: string, code: string): 
     localStorage.setItem('kt_email_auto_verified', JSON.stringify({ email, code, timestamp }));
   } catch {}
 
-  // Update status ke Firestore
+  // Update status ke Turso Database Utama & Firestore Backup
   if (email) {
+    await saveVerificationCodeToTurso({
+      email,
+      code,
+      verified: true,
+      opened: true,
+      status: 'verified',
+    });
+
     try {
       const docRef = doc(db, 'verification_codes', cleanEmailKey(email));
-      await setDoc(
+      setDoc(
         docRef,
         {
           verified: true,
@@ -449,10 +476,8 @@ export async function markEmailVerificationOpened(email: string, code: string): 
           status: 'verified',
         },
         { merge: true }
-      );
-    } catch (e) {
-      console.warn('Firestore update opened notice:', e);
-    }
+      ).catch(() => {});
+    } catch {}
   }
 }
 
@@ -495,7 +520,18 @@ export function listenToEmailVerification(
   };
   window.addEventListener('storage', handleStorage);
 
-  // 3. Listen via Firestore Realtime
+  // 3. Poll ringan ke Turso Database Utama (bebas kuota Firestore)
+  let tursoPollStopped = false;
+  const checkTursoVerification = async () => {
+    if (tursoPollStopped) return;
+    const record = await fetchVerificationCodeFromTurso(targetEmail);
+    if (!tursoPollStopped && record && (record.verified || record.opened || record.status === 'verified') && record.code) {
+      onVerified(record.code);
+    }
+  };
+  const tursoInterval = setInterval(checkTursoVerification, 3500);
+
+  // 4. Listen via Firestore Backup Realtime
   try {
     const docRef = doc(db, 'verification_codes', cleanEmailKey(targetEmail));
     unsubFirestore = onSnapshot(
@@ -515,6 +551,8 @@ export function listenToEmailVerification(
   } catch {}
 
   return () => {
+    tursoPollStopped = true;
+    clearInterval(tursoInterval);
     window.removeEventListener('storage', handleStorage);
     if (broadcastChannel) {
       try {

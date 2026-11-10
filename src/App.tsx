@@ -41,21 +41,25 @@ import {
   ActivityItem,
 } from './data/workspaceData';
 import {
-  startRealtimeSync,
-  enableAutoBroadcast,
-  pushLocalDataToCloud,
+  pushBackupToFirestore,
   saveNewsToFirestore,
   deleteNewsFromFirestore,
   notifyLocalDataChanged,
-  subscribeNewsFromFirestore,
   CloudSyncStatus,
   db,
 } from './services/firestoreSyncService';
 import {
   saveNewsToFilebase,
   fetchNewsFromFilebase,
-  subscribeNewsFromFilebase,
 } from './services/filebaseService';
+import {
+  saveNewsToTurso,
+  deleteNewsFromTurso,
+  fetchNewsFromTurso,
+  startTursoPrimarySync,
+  enableTursoAutoSync,
+  pushFullStateToTurso,
+} from './services/tursoService';
 import { collection, getDocs } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
 import { updatePageSeo, DEFAULT_SEO } from './utils/seoHelper';
@@ -126,11 +130,27 @@ function AppContent() {
     return ACTIVITIES_DATA.map(normalizeNewsItem);
   });
 
-  // Direct cloud & Filebase fetch on initial mount so any client (phone or PC) immediately pulls latest news
+  // Direct Turso Database Utama fetch on initial mount (Backup: Filebase & Firestore hanya jika Turso kosong)
   useEffect(() => {
     let isMounted = true;
     const fetchInitialNews = async () => {
-      // 1. Coba ambil dari Filebase Storage Gateway (Seragam lintas HP dan PC)
+      // 1. DATABASE UTAMA: Ambil langsung dari Turso Database (libSQL Cloud)
+      try {
+        const tursoNews = await fetchNewsFromTurso();
+        if (Array.isArray(tursoNews) && tursoNews.length > 0 && isMounted) {
+          const list = tursoNews.map(normalizeNewsItem);
+          setActivities(list);
+          try {
+            localStorage.setItem('kt_news_v1', JSON.stringify(list));
+            localStorage.setItem('kt_activities_v1', JSON.stringify(list));
+          } catch {}
+          return;
+        }
+      } catch (tursoErr) {
+        console.debug('Turso initial fetch notice:', tursoErr);
+      }
+
+      // 2. BACKUP FALLBACK 1: Ambil dari Filebase Storage jika Turso masih kosong
       try {
         const filebaseNews = await fetchNewsFromFilebase();
         if (Array.isArray(filebaseNews) && filebaseNews.length > 0 && isMounted) {
@@ -140,13 +160,17 @@ function AppContent() {
             localStorage.setItem('kt_news_v1', JSON.stringify(list));
             localStorage.setItem('kt_activities_v1', JSON.stringify(list));
           } catch {}
+          // Pulihkan ke Turso Utama
+          for (const item of list) {
+            saveNewsToTurso(item).catch(() => {});
+          }
           return;
         }
       } catch (fbErr) {
-        console.debug('Filebase initial fetch fallback to Firestore:', fbErr);
+        console.debug('Filebase backup fetch notice:', fbErr);
       }
 
-      // 2. Fallback ke Cloud Firestore jika Filebase belum terisi
+      // 3. BACKUP FALLBACK 2: Ambil dari Cloud Firestore Backup jika Turso & Filebase kosong
       try {
         const colRef = collection(db, 'organizations', 'manisjaya', 'news');
         const snap = await getDocs(colRef);
@@ -169,12 +193,15 @@ function AppContent() {
               localStorage.setItem('kt_news_v1', JSON.stringify(list));
               localStorage.setItem('kt_activities_v1', JSON.stringify(list));
             } catch {}
-            // Sinkronkan ke Filebase agar perangkat lain langsung dapat
+            // Pulihkan ke Turso Utama & Filebase Backup
+            for (const item of list) {
+              saveNewsToTurso(item).catch(() => {});
+            }
             saveNewsToFilebase(list, 'replace_all').catch(() => {});
           }
         }
       } catch (err) {
-        console.warn('Initial direct news fetch notice:', err);
+        console.warn('Backup news fetch notice:', err);
       }
     };
     fetchInitialNews();
@@ -192,7 +219,7 @@ function AppContent() {
   const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>({
     state: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'syncing',
     lastSyncedAt: null,
-    message: 'Menghubungkan ke Cloud Firestore...',
+    message: 'Menghubungkan ke Turso Database Utama (libSQL)...',
     isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
     pendingOfflineCount: 0,
   });
@@ -486,17 +513,16 @@ function AppContent() {
       } catch {}
     }
 
-    // Direct real-time write to Firestore News collection + aggregate state
-    try {
-      await saveNewsToFirestore(newAct);
-    } catch (err) {
-      console.warn('Firestore news write notice:', err);
-    }
+    // 1. DATABASE UTAMA: Simpan langsung ke Turso Database (libSQL Cloud)
+    await saveNewsToTurso(newAct).catch((err) => {
+      console.warn('Turso primary news write notice:', err);
+    });
+    pushFullStateToTurso(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
 
-    // Direct write to Filebase Vault so all devices and computers sync immediately
+    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase berjalan non-blocking di latar belakang
+    saveNewsToFirestore(newAct).catch(() => {});
     saveNewsToFilebase(newAct, 'upsert').catch(() => {});
-
-    pushLocalDataToCloud(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
+    pushBackupToFirestore(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
 
     addNotification({
@@ -516,9 +542,14 @@ function AppContent() {
       localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
     } catch {}
 
+    // 1. DATABASE UTAMA: Hapus dari Turso
+    await deleteNewsFromTurso(id).catch(() => {});
+    pushFullStateToTurso('Hapus berita kegiatan', currentUser.name).catch(() => {});
+
+    // 2. DATABASE CADANGAN (BACKUP): Hapus di Firestore & Filebase di latar belakang
     deleteNewsFromFirestore(id).catch(() => {});
     saveNewsToFilebase({ id }, 'delete').catch(() => {});
-    pushLocalDataToCloud('Hapus berita kegiatan', currentUser.name).catch(() => {});
+    pushBackupToFirestore('Hapus berita kegiatan', currentUser.name).catch(() => {});
     notifyLocalDataChanged('Hapus Berita Kegiatan');
     setSelectedActivity(null);
     showToast('Berita kegiatan berhasil dihapus.');
@@ -555,11 +586,16 @@ function AppContent() {
       console.warn('Storage save error:', e);
     }
 
-    saveNewsToFirestore(updatedAct).catch((err) => console.warn('Firestore news write:', err));
-    pushLocalDataToCloud(
-      isNowArchived ? `Arsipkan kegiatan: ${act.title}` : `Pulihkan kegiatan: ${act.title}`,
-      currentUser.name
-    ).catch(() => {});
+    const actionReason = isNowArchived ? `Arsipkan kegiatan: ${act.title}` : `Pulihkan kegiatan: ${act.title}`;
+
+    // 1. DATABASE UTAMA: Turso
+    await saveNewsToTurso(updatedAct).catch(() => {});
+    pushFullStateToTurso(actionReason, currentUser.name).catch(() => {});
+
+    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase
+    saveNewsToFirestore(updatedAct).catch(() => {});
+    saveNewsToFilebase(updatedAct, 'upsert').catch(() => {});
+    pushBackupToFirestore(actionReason, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Arsip Kegiatan');
 
     if (isNowArchived) {
@@ -615,12 +651,20 @@ function AppContent() {
       localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
     } catch {}
 
-    pushLocalDataToCloud(`Arsipkan ${count} kegiatan lampau`, currentUser.name).catch(() => {});
+    // 1. DATABASE UTAMA: Turso
+    for (const item of updated) {
+      saveNewsToTurso(item).catch(() => {});
+    }
+    pushFullStateToTurso(`Arsipkan ${count} kegiatan lampau`, currentUser.name).catch(() => {});
+
+    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase
+    saveNewsToFilebase(updated, 'replace_all').catch(() => {});
+    pushBackupToFirestore(`Arsipkan ${count} kegiatan lampau`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Arsip Kegiatan');
     showToast(`${count} kegiatan lampau berhasil dipindahkan ke Arsip Kegiatan!`);
   };
 
-  // Listen for real-time news update events from Firestore listener
+  // Listen for news updates pushed from Turso Primary Sync (tidak ditimpa oleh Backup Firestore/Filebase)
   useEffect(() => {
     const handleNewsUpdate = (e: any) => {
       if (e.detail?.news && Array.isArray(e.detail.news)) {
@@ -629,51 +673,27 @@ function AppContent() {
     };
     window.addEventListener('kt_news_updated', handleNewsUpdate);
 
-    // Direct active Firestore collection subscription for instant cross-device sync
-    const unsubNews = subscribeNewsFromFirestore((cloudNews) => {
-      if (Array.isArray(cloudNews) && cloudNews.length > 0) {
-        setActivities(cloudNews.map(normalizeNewsItem));
-        try {
-          localStorage.setItem('kt_news_v1', JSON.stringify(cloudNews));
-          localStorage.setItem('kt_activities_v1', JSON.stringify(cloudNews));
-        } catch {}
-      }
-    });
-
-    // Dedicated Filebase Real-time polling subscriber:
-    // Ensures all computers, laptops, and mobile phones immediately receive identical news from Filebase Vault
-    const unsubFilebaseNews = subscribeNewsFromFilebase((fbNews) => {
-      if (Array.isArray(fbNews) && fbNews.length > 0) {
-        const currentLocal = localStorage.getItem('kt_news_v1');
-        const serializedFb = JSON.stringify(fbNews);
-        if (currentLocal !== serializedFb) {
-          setActivities(fbNews.map(normalizeNewsItem));
-          try {
-            localStorage.setItem('kt_news_v1', serializedFb);
-            localStorage.setItem('kt_activities_v1', serializedFb);
-          } catch {}
-        }
-      }
-    }, 5000);
-
     return () => {
       window.removeEventListener('kt_news_updated', handleNewsUpdate);
-      unsubNews();
-      unsubFilebaseNews();
     };
   }, []);
 
-  // Filter activities based on search query in header
-  // Real-time Cloud Firestore synchronization across all devices
+  // Sinkronisasi Utama Real-Time dengan Turso Database (libSQL Cloud)
+  // Firestore & Filebase berjalan otomatis sebagai Backup non-blocking
   useEffect(() => {
-    enableAutoBroadcast(() => currentUser.name);
+    enableTursoAutoSync(
+      () => currentUser.name,
+      (reason) => {
+        pushBackupToFirestore(reason, currentUser.name).catch(() => {});
+      }
+    );
 
-    const unsubscribe = startRealtimeSync(
+    const unsubscribeTurso = startTursoPrimarySync(
       (status) => {
         setCloudSyncStatus(status);
       },
       (updatedKeys) => {
-        showToast('Data diperbarui secara real-time dari komputer/perangkat lain!');
+        showToast('Data diperbarui dari Turso Database Utama (sinkron lintas perangkat)!');
         if (updatedKeys.includes('kt_users_list_v3')) {
           try {
             const raw = localStorage.getItem('kt_users_list_v3');
@@ -695,17 +715,25 @@ function AppContent() {
     );
 
     return () => {
-      unsubscribe();
+      unsubscribeTurso();
     };
   }, [currentUser.name]);
 
   const handleManualCloudSync = async () => {
     try {
-      showToast('Menyinkronkan data ke Cloud Firestore...');
-      await pushLocalDataToCloud('Sinkronisasi manual pengguna', currentUser.name);
-      showToast('Data berhasil disinkronkan ke Cloud Firestore! Semua komputer langsung terupdate.');
+      showToast('Menyinkronkan data ke Turso Database Utama...');
+      const res = await pushFullStateToTurso('Sinkronisasi manual pengguna ke Turso Utama', currentUser.name);
+      // Cadangkan secara non-blocking ke Firestore & Filebase Backup
+      pushBackupToFirestore('Cadangan sinkronisasi manual', currentUser.name).catch(() => {});
+      saveNewsToFilebase(activities, 'replace_all').catch(() => {});
+
+      if (res.success) {
+        showToast('Data berhasil disinkronkan ke Turso Database Utama! (Cadangan diperbarui)');
+      } else {
+        showToast(res.message || 'Sinkronisasi Turso tertunda, data aman di lokal.');
+      }
     } catch (err: any) {
-      showToast(`Gagal sinkronisasi cloud: ${err.message}`);
+      showToast(`Gagal sinkronisasi Turso: ${err.message}`);
     }
   };
 
@@ -732,13 +760,15 @@ function AppContent() {
       localStorage.setItem('kt_news_v1', JSON.stringify(updated));
       localStorage.setItem('kt_activities_v1', JSON.stringify(updated));
     } catch {}
-    try {
-      await saveNewsToFirestore(updatedAct);
-    } catch (err) {
-      console.warn('Firestore update news notice:', err);
-    }
+
+    // 1. DATABASE UTAMA: Turso
+    await saveNewsToTurso(updatedAct).catch(() => {});
+    pushFullStateToTurso(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
+
+    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase
+    saveNewsToFirestore(updatedAct).catch(() => {});
     saveNewsToFilebase(updatedAct, 'upsert').catch(() => {});
-    pushLocalDataToCloud(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
+    pushBackupToFirestore(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
     if (customToastMessage) {
       showToast(customToastMessage);

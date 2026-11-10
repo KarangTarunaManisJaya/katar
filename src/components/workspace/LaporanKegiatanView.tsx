@@ -115,8 +115,10 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
       } catch {}
     };
     window.addEventListener('kt_database_restored', handleRemoteRefresh);
+    window.addEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     return () => {
       window.removeEventListener('kt_database_restored', handleRemoteRefresh);
+      window.removeEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     };
   }, []);
 

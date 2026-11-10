@@ -122,7 +122,7 @@ export function extractVideoMetaAndThumbnail(
 
 /**
  * Unggah berkas video ke Server Filebase Vault (/filebase_vault/video/...)
- * Mengembalikan URL permanen yang aman dan ringan untuk disimpan di Firestore & LocalStorage
+ * Mengembalikan URL permanen yang aman dan ringan untuk disimpan di Turso Database & LocalStorage
  */
 export async function uploadVideoToServerVault(
   file: File,
@@ -182,8 +182,36 @@ export function extractYouTubeVideoId(url: string | undefined | null): string | 
 }
 
 /**
- * Unggah berkas video ke Cloud Firestore (koleksi media) agar tersimpan 100% dan dapat diakses
- * dari semua komputer, laptop, maupun HP lain secara real-time.
+ * Penyimpanan utama video: Simpan ke IndexedDB lokal (0 delay) + Unggah ke Server Filebase Vault (/filebase_vault/...),
+ * agar referensi URL ringan dapat disimpan di Turso Database Utama tanpa terpengaruh kuota Firestore.
+ */
+export async function saveVideoToPrimaryStorage(
+  file: File,
+  newsId: string
+): Promise<string> {
+  const cleanId = `vid_${newsId || Date.now()}`;
+
+  // 1. Simpan ke IndexedDB lokal untuk pemutaran instan 0 delay
+  await saveVideoBlobToIndexedDb(cleanId, file);
+  if (newsId) {
+    await saveVideoBlobToIndexedDb(newsId, file);
+  }
+
+  // 2. Unggah ke Server Filebase Vault (/api/filebase/upload) sebagai penyimpanan utama media
+  const vaultRes = await uploadVideoToServerVault(file, cleanId);
+  const finalUrl = vaultRes.fileUrl;
+  await saveVideoBlobToIndexedDb(finalUrl, file);
+
+  // 3. Cadangan opsional non-blocking ke Firestore hanya untuk video kecil (< 650 KB)
+  if (file.size <= 650 * 1024) {
+    saveVideoToCloudFirestore(file, newsId).catch(() => {});
+  }
+
+  return finalUrl;
+}
+
+/**
+ * Cadangan / legacy helper: Unggah berkas video ke Cloud Firestore (koleksi media)
  */
 export async function saveVideoToCloudFirestore(
   file: File,

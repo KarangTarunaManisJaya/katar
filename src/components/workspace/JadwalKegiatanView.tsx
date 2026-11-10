@@ -35,6 +35,11 @@ import { AgendaDetailModal } from './agenda/AgendaDetailModal';
 import { AgendaFormModal } from './agenda/AgendaFormModal';
 import { AgendaStatsView } from './agenda/AgendaStatsView';
 import { UserAccount } from '../../types/auth';
+import {
+  fetchAgendaFromTurso,
+  saveAgendaToTurso,
+  deleteAgendaFromTurso,
+} from '../../services/tursoService';
 
 interface JadwalKegiatanViewProps {
   onToast: (msg: string) => void;
@@ -54,10 +59,10 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({
     currentUser.id !== 'guest' &&
     (currentUser.isSuperAdmin || (currentUser.allowedMenus && currentUser.allowedMenus.includes('jadwal')))
   );
-  // Persistence state
+  // Persistence state (selaraskan kt_agendas_v1 dan kt_agenda_v1)
   const [agendas, setAgendas] = useState<AgendaItem[]>(() => {
     try {
-      const saved = localStorage.getItem('kt_agendas_v1');
+      const saved = localStorage.getItem('kt_agendas_v1') || localStorage.getItem('kt_agenda_v1');
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error(e);
@@ -67,11 +72,48 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('kt_agendas_v1', JSON.stringify(agendas));
+      const serialized = JSON.stringify(agendas);
+      localStorage.setItem('kt_agendas_v1', serialized);
+      localStorage.setItem('kt_agenda_v1', serialized);
     } catch (e) {
       console.error(e);
     }
   }, [agendas]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchAgendaFromTurso()
+      .then((remoteAgendas) => {
+        if (!mounted || !Array.isArray(remoteAgendas) || remoteAgendas.length === 0) return;
+        setAgendas((prev) => {
+          const map = new Map<string, AgendaItem>();
+          prev.forEach((a) => map.set(String(a.id), a));
+          remoteAgendas.forEach((r: any) => {
+            if (r?.id) map.set(String(r.id), r as AgendaItem);
+          });
+          return Array.from(map.values());
+        });
+      })
+      .catch(() => {});
+
+    const handleRemoteRefresh = () => {
+      try {
+        const saved = localStorage.getItem('kt_agendas_v1') || localStorage.getItem('kt_agenda_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setAgendas(parsed);
+        }
+      } catch {}
+    };
+
+    window.addEventListener('kt_database_restored', handleRemoteRefresh);
+    window.addEventListener('kt_cloud_sync_update', handleRemoteRefresh);
+    return () => {
+      mounted = false;
+      window.removeEventListener('kt_database_restored', handleRemoteRefresh);
+      window.removeEventListener('kt_cloud_sync_update', handleRemoteRefresh);
+    };
+  }, []);
 
   // View state
   const [mainView, setMainView] = useState<'kalender' | 'tabel' | 'statistik'>('kalender');
@@ -136,12 +178,14 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({
     } else {
       setAgendas([item, ...agendas]);
     }
+    saveAgendaToTurso(item).catch(() => {});
   };
 
   // Delete
   const handleDeleteAgenda = (id: string) => {
     setAgendas(agendas.filter((a) => a.id !== id));
-    onToast('Agenda kegiatan berhasil dihapus.');
+    deleteAgendaFromTurso(id).catch(() => {});
+    onToast('Agenda kegiatan berhasil dihapus dari Turso.');
   };
 
   // Export to Excel / CSV simulation

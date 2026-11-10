@@ -315,7 +315,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     // Retrieve real agenda items
     const upcomingAgendas = (() => {
       try {
-        const saved = localStorage.getItem('kt_agendas_v1');
+        const saved = localStorage.getItem('kt_agendas_v1') || localStorage.getItem('kt_agenda_v1');
         if (saved) return JSON.parse(saved);
       } catch {}
       return [];

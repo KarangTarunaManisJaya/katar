@@ -45,9 +45,14 @@ import {
 import {
   saveAssetToFirestore,
   deleteAssetFromFirestore,
-  subscribeAssetsFromFirestore,
-  pushLocalDataToCloud,
+  pushBackupToFirestore,
 } from '../../services/firestoreSyncService';
+import {
+  fetchAssetsFromTurso,
+  saveAssetToTurso,
+  deleteAssetFromTurso,
+  pushFullStateToTurso,
+} from '../../services/tursoService';
 import { compressImage } from '../../utils/imageOptimizer';
 import { resolveAssetUrl } from '../../utils/assetUrl';
 import { OfficialKopSurat } from './surat/OfficialKopSurat';
@@ -125,42 +130,51 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
   const printAreaRef = useRef<HTMLDivElement>(null);
 
   // ---------------------------------------------------------------------------
-  // FIREBASE REAL-TIME SUBSCRIPTION
+  // TURSO PRIMARY DATABASE FETCH & CROSS-DEVICE SYNC
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    let mounted = true;
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Subscribe to Firestore /organizations/manisjaya/assets
-    const unsub = subscribeAssetsFromFirestore((remoteAssets) => {
-      if (remoteAssets && remoteAssets.length > 0) {
-        setAssets((prev) => {
-          // Merge remote with local to prevent clobbering unsaved edits
-          const idMap = new Map<string, AssetItem>();
-          prev.forEach((item) => idMap.set(item.id, item));
-          remoteAssets.forEach((item) => idMap.set(item.id, { ...idMap.get(item.id), ...item }));
-          const merged = Array.from(idMap.values());
+    // Ambil data aset dari Turso Database Utama
+    fetchAssetsFromTurso()
+      .then((tursoAssets) => {
+        if (!mounted) return;
+        if (Array.isArray(tursoAssets) && tursoAssets.length > 0) {
+          setAssets(tursoAssets);
           try {
-            localStorage.setItem('kt_assets_v1', JSON.stringify(merged));
+            localStorage.setItem('kt_assets_v1', JSON.stringify(tursoAssets));
           } catch {}
-          return merged;
-        });
-        setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
-      } else {
-        setAssets([]);
-        try {
-          localStorage.setItem('kt_assets_v1', '[]');
-        } catch {}
-        setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
-      }
-    });
+          setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
+        }
+      })
+      .catch(() => {});
+
+    const handleSyncRefresh = () => {
+      try {
+        const saved = localStorage.getItem('kt_assets_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setAssets(parsed);
+            setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('kt_cloud_sync_update', handleSyncRefresh);
+    window.addEventListener('kt_database_restored', handleSyncRefresh);
 
     return () => {
+      mounted = false;
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      unsub();
+      window.removeEventListener('kt_cloud_sync_update', handleSyncRefresh);
+      window.removeEventListener('kt_database_restored', handleSyncRefresh);
     };
   }, []);
 
@@ -297,14 +311,18 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
     setAssets(updatedList);
     setShowAddModal(false);
 
-    // Sync to Cloud Firebase in background
+    // 1. DATABASE UTAMA: Simpan ke Turso Database
     try {
-      await saveAssetToFirestore(finalItem);
-      await pushLocalDataToCloud(`Pencatatan aset: ${finalItem.namaAsset}`);
+      await saveAssetToTurso(finalItem);
+      pushFullStateToTurso(`Pencatatan aset: ${finalItem.namaAsset}`).catch(() => {});
       setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
     } catch (err) {
-      console.warn('Firebase sync delayed/offline:', err);
+      console.warn('Turso asset sync notice:', err);
     }
+
+    // 2. DATABASE CADANGAN (BACKUP): Firestore non-blocking
+    saveAssetToFirestore(finalItem).catch(() => {});
+    pushBackupToFirestore(`Pencatatan aset: ${finalItem.namaAsset}`).catch(() => {});
   };
 
   // ---------------------------------------------------------------------------
@@ -322,13 +340,13 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
 
     if (detailAsset?.id === item.id) setDetailAsset(null);
 
-    // Delete from Firebase
-    try {
-      await deleteAssetFromFirestore(item.id);
-      await pushLocalDataToCloud(`Hapus aset: ${item.namaAsset}`);
-    } catch (err) {
-      console.warn('Firebase delete delayed/offline:', err);
-    }
+    // 1. DATABASE UTAMA: Hapus di Turso
+    deleteAssetFromTurso(item.id).catch(() => {});
+    pushFullStateToTurso(`Hapus aset: ${item.namaAsset}`).catch(() => {});
+
+    // 2. DATABASE CADANGAN (BACKUP): Hapus di Firestore
+    deleteAssetFromFirestore(item.id).catch(() => {});
+    pushBackupToFirestore(`Hapus aset: ${item.namaAsset}`).catch(() => {});
   };
 
   // ---------------------------------------------------------------------------
@@ -340,10 +358,10 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
     setAssets(list);
     onToast(`Kondisi "${item.namaAsset}" diubah menjadi: ${newKondisi}`);
 
-    try {
-      await saveAssetToFirestore(updated);
-      await pushLocalDataToCloud(`Update kondisi ${item.namaAsset}: ${newKondisi}`);
-    } catch {}
+    saveAssetToTurso(updated).catch(() => {});
+    pushFullStateToTurso(`Update kondisi ${item.namaAsset}: ${newKondisi}`).catch(() => {});
+    saveAssetToFirestore(updated).catch(() => {});
+    pushBackupToFirestore(`Update kondisi ${item.namaAsset}: ${newKondisi}`).catch(() => {});
   };
 
   const handleQuickUpdateLokasi = async (item: AssetItem, newLokasi: LokasiAsset) => {
@@ -352,30 +370,35 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
     setAssets(list);
     onToast(`Lokasi "${item.namaAsset}" dipindahkan ke: ${newLokasi}`);
 
-    try {
-      await saveAssetToFirestore(updated);
-      await pushLocalDataToCloud(`Update lokasi ${item.namaAsset}: ${newLokasi}`);
-    } catch {}
+    saveAssetToTurso(updated).catch(() => {});
+    pushFullStateToTurso(`Update lokasi ${item.namaAsset}: ${newLokasi}`).catch(() => {});
+    saveAssetToFirestore(updated).catch(() => {});
+    pushBackupToFirestore(`Update lokasi ${item.namaAsset}: ${newLokasi}`).catch(() => {});
   };
 
   // ---------------------------------------------------------------------------
-  // MANUAL SYNC FIREBASE
+  // MANUAL SYNC TURSO UTAMA + BACKUP FIRESTORE
   // ---------------------------------------------------------------------------
   const handleManualSync = async () => {
     try {
       setIsFirebaseSyncing(true);
-      onToast('Menyinkronkan data inventaris aset ke Cloud Firebase...');
+      onToast('Menyinkronkan data inventaris aset ke Turso Database Utama...');
 
-      // Push all local assets
-      for (const item of assets.slice(0, 50)) {
-        await saveAssetToFirestore(item);
+      for (const item of assets.slice(0, 100)) {
+        await saveAssetToTurso(item);
       }
-      await pushLocalDataToCloud('Sinkronisasi manual seluruh aset inventaris');
+      await pushFullStateToTurso('Sinkronisasi manual seluruh aset inventaris');
+
+      // Cadangkan di latar belakang ke Firestore Backup
+      for (const item of assets.slice(0, 25)) {
+        saveAssetToFirestore(item).catch(() => {});
+      }
+      pushBackupToFirestore('Sinkronisasi manual seluruh aset inventaris').catch(() => {});
 
       setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
-      onToast('Seluruh inventaris aset berhasil tersinkron ke Firebase!');
+      onToast('Seluruh inventaris aset tersinkron ke Turso Database Utama!');
     } catch (err) {
-      onToast('Sinkronisasi tersimpan di cache offline IndexedDB.');
+      onToast('Sinkronisasi Turso tertunda, data tersimpan aman secara lokal.');
     } finally {
       setIsFirebaseSyncing(false);
     }
@@ -546,13 +569,13 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
             </h1>
             <p className="text-xs sm:text-sm text-blue-100/80 leading-relaxed">
               Pantau kondisi barang, lokasi penyimpanan fisik, peminjaman, serta status sinkronisasi
-              database secara real-time terhubung ke Google Firebase Firestore.
+              database secara real-time terhubung ke Turso Database Utama (dengan Firestore sebagai backup).
             </p>
           </div>
 
           {/* Right Action: Cloud Sync Badge & Tambah Aset Button */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-            {/* Status Cloud Firebase Pill */}
+            {/* Status Turso Utama Pill */}
             <div className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-xs text-white">
               {isOnline ? (
                 <Cloud className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -562,7 +585,7 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
               <div className="flex flex-col text-left">
                 <span className="font-bold flex items-center gap-1.5 leading-tight">
                   <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                  {isOnline ? 'Firebase Terhubung' : 'Mode Offline (IndexedDB)'}
+                  {isOnline ? 'Turso Utama Terhubung' : 'Mode Offline (Lokal)'}
                 </span>
                 <span className="text-[10px] text-blue-200/80">Sinkron: {lastSyncTime}</span>
               </div>
@@ -571,7 +594,7 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
                 onClick={handleManualSync}
                 disabled={isFirebaseSyncing}
                 className="ml-1 p-1 rounded-lg hover:bg-white/10 text-blue-200 hover:text-white transition-colors cursor-pointer"
-                title="Sinkronkan data aset ke Firebase"
+                title="Sinkronkan data aset ke Turso Database Utama"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isFirebaseSyncing ? 'animate-spin text-amber-300' : ''}`} />
               </button>
@@ -1131,7 +1154,7 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
                     {editingAsset ? 'Edit Data Aset Organisasi' : 'Catat Barang Aset Baru'}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Tersinkronisasi otomatis dengan Cloud Firestore Karang Taruna
+                    Tersinkronisasi otomatis ke Turso Database Utama (dengan backup cloud)
                   </p>
                 </div>
               </div>
@@ -1389,7 +1412,7 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
                       <span>{isUploadingPhoto ? 'Mengunggah...' : 'Pilih Foto dari Galeri / Kamera'}</span>
                     </button>
                     <p className="text-[10px] text-slate-500 leading-tight">
-                      Format JPG/PNG. Otomatis dikompresi agar hemat kuota dan cepat tersinkron ke Firebase.
+                      Format JPG/PNG. Otomatis dikompresi agar ringan dan cepat tersinkron ke Turso.
                     </p>
                   </div>
                 </div>

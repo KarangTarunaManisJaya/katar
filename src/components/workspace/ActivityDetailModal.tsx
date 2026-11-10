@@ -59,7 +59,7 @@ import {
   uploadVideoToServerVault,
   saveVideoBlobToIndexedDb,
   resolvePlayableVideoUrl,
-  saveVideoToCloudFirestore,
+  saveVideoToPrimaryStorage,
   extractYouTubeVideoId,
 } from '../../utils/videoManager';
 import { updatePageSeo, resetDefaultSeo } from '../../utils/seoHelper';
@@ -700,17 +700,17 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
         return;
       }
 
-      onToast('Menyimpan video ke Cloud Firestore Database...');
+      onToast('Menyimpan video ke Media Vault & menyinkronkan ke Turso...');
 
       try {
-        const cloudVideoUri = await saveVideoToCloudFirestore(file, activity.id);
+        const primaryVideoUrl = await saveVideoToPrimaryStorage(file, activity.id);
         setResolvedVideoUrl(objectUrl);
-        setInputVideoUrl(cloudVideoUri);
+        setInputVideoUrl(primaryVideoUrl);
         setMediaViewMode('both');
 
         const updated: ActivityItem = {
           ...activity,
-          videoUrl: cloudVideoUri,
+          videoUrl: primaryVideoUrl,
           videoDuration: durationSec,
           image: activity.image || thumbnail,
         };
@@ -720,9 +720,9 @@ export const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
         }
 
         setIsUploadingVideo(false);
-        onToast(`Video dokumentasi (${durationSec} detik) berhasil tersimpan di Cloud Database & sinkron ke seluruh perangkat!`);
+        onToast(`Video dokumentasi (${durationSec} detik) berhasil tersimpan di Media Vault & Turso!`);
       } catch (uploadErr) {
-        console.warn('Cloud video upload fallback:', uploadErr);
+        console.warn('Primary video upload fallback:', uploadErr);
         try {
           const vaultRes = await uploadVideoToServerVault(file);
           const finalUrl = vaultRes.fileUrl;

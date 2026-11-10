@@ -53,7 +53,7 @@ import {
   extractVideoMetaAndThumbnail,
   uploadVideoToServerVault,
   saveVideoBlobToIndexedDb,
-  saveVideoToCloudFirestore,
+  saveVideoToPrimaryStorage,
 } from '../../utils/videoManager';
 import { BERITA_TEMPLATES, BeritaTemplate } from './berita/TambahBeritaTemplates';
 import { RundownSection, RundownItem, VipGuest } from './berita/RundownSection';
@@ -446,18 +446,18 @@ export const TambahBeritaView: React.FC<TambahBeritaViewProps> = ({
         onToast('Frame video otomatis dijadikan foto sampul liputan!');
       }
 
-      // Unggah ke Cloud Firestore Database agar tersimpan di cloud & muncul di semua HP/komputer
+      // Simpan ke Server Filebase Vault & IndexedDB agar URL ringan tersimpan di Turso Database Utama
       setIsVideoUploading(true);
-      onToast('Menyimpan video ke Cloud Database & menyiapkan pratinjau...');
+      onToast('Menyimpan video ke Media Vault & menyinkronkan ke Turso...');
 
       try {
         const tempVideoId = `vid_${Date.now()}`;
-        const cloudVideoUri = await saveVideoToCloudFirestore(file, tempVideoId);
-        setVideoUrl(cloudVideoUri);
+        const primaryVideoUrl = await saveVideoToPrimaryStorage(file, tempVideoId);
+        setVideoUrl(primaryVideoUrl);
         setIsVideoUploading(false);
-        onToast(`Video dokumentasi (${durationSec} detik) berhasil tersimpan di Cloud Database & siap diterbitkan!`);
+        onToast(`Video dokumentasi (${durationSec} detik) berhasil tersimpan & siap disinkronkan ke Turso!`);
       } catch (uploadErr) {
-        console.warn('Gagal upload ke cloud, mencoba fallback:', uploadErr);
+        console.warn('Gagal upload ke media vault, mencoba fallback:', uploadErr);
         try {
           const vaultRes = await uploadVideoToServerVault(file);
           const finalUrl = vaultRes.fileUrl;

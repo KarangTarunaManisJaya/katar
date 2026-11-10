@@ -16,6 +16,7 @@ import {
 } from './emailVerificationService';
 import { db } from './firestoreSyncService';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { saveVerificationCodeToTurso } from './tursoService';
 
 export interface AIEmailParams {
   to: string;
@@ -301,7 +302,7 @@ export function openAIVerificationLetterInNewTab(content: AIEmailContent): void 
 }
 
 /**
- * Rekam riwayat pengiriman email ke Firestore database untuk audit log
+ * Rekam riwayat pengiriman email ke Turso Database Utama & Firestore Backup untuk audit log
  */
 export async function logAIEmailDispatch(params: {
   to: string;
@@ -311,10 +312,21 @@ export async function logAIEmailDispatch(params: {
   delivered: boolean;
   channel: string;
 }) {
+  await saveVerificationCodeToTurso({
+    email: params.to,
+    name: params.name,
+    username: params.username,
+    code: params.code,
+    status: params.delivered ? 'sent' : 'dispatched_ai',
+    channel: params.channel,
+    verified: false,
+    opened: false,
+  });
+
   try {
     const key = cleanEmailKey(params.to);
     const docRef = doc(db, 'verification_codes', key);
-    await setDoc(
+    setDoc(
       docRef,
       {
         email: params.to,
@@ -330,8 +342,6 @@ export async function logAIEmailDispatch(params: {
         sentAt: serverTimestamp(),
       },
       { merge: true }
-    );
-  } catch (err) {
-    console.warn('Firestore log notice:', err);
-  }
+    ).catch(() => {});
+  } catch {}
 }

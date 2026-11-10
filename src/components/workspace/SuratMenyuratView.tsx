@@ -41,6 +41,11 @@ import { DisposisiFormModal } from './surat/DisposisiFormModal';
 import { PenomoranSettingsModal } from './surat/PenomoranSettingsModal';
 import { CetakSuratModal } from './surat/CetakSuratModal';
 import { SuratDetailModal } from './surat/SuratDetailModal';
+import {
+  fetchLettersFromTurso,
+  saveLetterToTurso,
+  deleteLetterFromTurso,
+} from '../../services/tursoService';
 
 type SuratSubTab = 'dashboard' | 'masuk' | 'keluar' | 'disposisi' | 'arsip';
 
@@ -213,8 +218,23 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
     localStorage.setItem('kt_surat_numbering_cfg_v1', JSON.stringify(numberingConfig));
   }, [numberingConfig]);
 
-  // Listener for remote database restore
+  // Listener for remote database restore & Turso primary SQL hydration
   useEffect(() => {
+    let mounted = true;
+    fetchLettersFromTurso()
+      .then((remoteLetters) => {
+        if (!mounted || !Array.isArray(remoteLetters) || remoteLetters.length === 0) return;
+        setSuratKeluar((prev) => {
+          const map = new Map<string, SuratKeluarItem>();
+          prev.forEach((s) => map.set(String(s.id), s));
+          remoteLetters.forEach((r: any) => {
+            if (r?.id) map.set(String(r.id), sanitizeSuratKeluarItem(r));
+          });
+          return Array.from(map.values());
+        });
+      })
+      .catch(() => {});
+
     const handleRemoteRefresh = () => {
       try {
         const sm = localStorage.getItem('kt_surat_masuk_v1');
@@ -240,8 +260,11 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
       } catch {}
     };
     window.addEventListener('kt_database_restored', handleRemoteRefresh);
+    window.addEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     return () => {
+      mounted = false;
       window.removeEventListener('kt_database_restored', handleRemoteRefresh);
+      window.removeEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     };
   }, []);
 
@@ -325,7 +348,7 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
     const isEdit = suratKeluar.some((s) => s.id === item.id);
     if (isEdit) {
       setSuratKeluar(suratKeluar.map((s) => (s.id === item.id ? item : s)));
-      onToast(`Surat Keluar "${item.nomorSurat}" berhasil diperbarui.`);
+      onToast(`Surat Keluar "${item.nomorSurat}" berhasil diperbarui di Turso.`);
       addNotification({
         title: 'Surat Keluar Diperbarui',
         message: `${item.nomorSurat} untuk ${item.tujuan} (${item.perihal})`,
@@ -335,7 +358,7 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
       });
     } else {
       setSuratKeluar([item, ...suratKeluar]);
-      onToast(`Surat Keluar "${item.nomorSurat}" berhasil diterbitkan!`);
+      onToast(`Surat Keluar "${item.nomorSurat}" berhasil diterbitkan & disimpan ke Turso!`);
       addNotification({
         title: 'Surat Keluar Diterbitkan',
         message: `${item.nomorSurat} untuk ${item.tujuan} (${item.perihal})`,
@@ -344,20 +367,25 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
         actionLabel: 'Buka Surat',
       });
     }
+    saveLetterToTurso(item).catch(() => {});
   };
 
   const handleDeleteSuratKeluar = (id: string) => {
     const item = suratKeluar.find((s) => s.id === id);
     if (confirm(`Apakah Anda yakin ingin menghapus surat keluar "${item?.nomorSurat}"?`)) {
       setSuratKeluar(suratKeluar.filter((s) => s.id !== id));
-      onToast(`Surat keluar "${item?.nomorSurat}" berhasil dihapus.`);
+      deleteLetterFromTurso(id).catch(() => {});
+      onToast(`Surat keluar "${item?.nomorSurat}" berhasil dihapus dari Turso.`);
     }
   };
 
   const handleUpdateStatusSuratKeluar = (id: string, newStatus: StatusSuratKeluar) => {
-    setSuratKeluar(
-      suratKeluar.map((s) => (s.id === id ? { ...s, status: newStatus, updatedAt: new Date().toISOString() } : s))
+    const updatedList = suratKeluar.map((s) =>
+      s.id === id ? { ...s, status: newStatus, updatedAt: new Date().toISOString() } : s
     );
+    setSuratKeluar(updatedList);
+    const updatedItem = updatedList.find((s) => s.id === id);
+    if (updatedItem) saveLetterToTurso(updatedItem).catch(() => {});
     onToast(`Status surat keluar diperbarui ke "${newStatus}".`);
   };
 

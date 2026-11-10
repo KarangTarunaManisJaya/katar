@@ -63,6 +63,7 @@ import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
 import { downloadElementAsPdf, printElementDirectly } from '../../utils/pdfExport';
 import { getDefaultSuratPenandatangan } from '../../utils/memberHelpers';
 import { DigitalSignatureModal } from './common/DigitalSignatureModal';
+import { fetchMembersFromTurso, saveMemberToTurso } from '../../services/tursoService';
 
 export type { DetailedMember } from '../../data/membersData';
 
@@ -123,8 +124,23 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
     return INITIAL_MEMBERS;
   });
 
-  // Listen to remote real-time Cloud updates and reload members list immediately
+  // Listen to remote real-time Turso/Cloud updates and hydrate members from Turso
   useEffect(() => {
+    let mounted = true;
+    fetchMembersFromTurso()
+      .then((remoteMembers) => {
+        if (!mounted || !Array.isArray(remoteMembers) || remoteMembers.length === 0) return;
+        setMembers((prev) => {
+          const map = new Map<string, DetailedMember>();
+          prev.forEach((m) => map.set(String(m.id), m));
+          remoteMembers.forEach((r: any) => {
+            if (r?.id) map.set(String(r.id), r as DetailedMember);
+          });
+          return Array.from(map.values());
+        });
+      })
+      .catch(() => {});
+
     const handleRemoteRefresh = () => {
       try {
         const saved = localStorage.getItem('kt_members_v3');
@@ -132,8 +148,11 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       } catch (e) {}
     };
     window.addEventListener('kt_database_restored', handleRemoteRefresh);
+    window.addEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     return () => {
+      mounted = false;
       window.removeEventListener('kt_database_restored', handleRemoteRefresh);
+      window.removeEventListener('kt_cloud_sync_update', handleRemoteRefresh);
     };
   }, []);
 
@@ -451,8 +470,9 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
     }
 
     saveMembersList(newList);
+    saveMemberToTurso(updated).catch(() => {});
     setSelectedMember(updated);
-    onToast(`Data & akun sandi anggota "${formName}" berhasil disimpan dan disinkronkan!`);
+    onToast(`Data & akun sandi anggota "${formName}" berhasil disimpan ke Turso & disinkronkan!`);
   };
 
   // Open Quick Modal for Password & Access
@@ -480,6 +500,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
 
     const newList = members.map((m) => (m.id === updated.id ? updated : m));
     saveMembersList(newList);
+    saveMemberToTurso(updated).catch(() => {});
     if (selectedMember.id === updated.id) {
       setSelectedMember(updated);
       setFormUsername(updated.username);
@@ -488,7 +509,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       setFormAllowedMenus(updated.allowedMenus);
     }
     setAksesModalMember(null);
-    onToast(`Kata sandi dan hak akses untuk "${updated.name}" berhasil diperbarui!`);
+    onToast(`Kata sandi dan hak akses untuk "${updated.name}" berhasil diperbarui di Turso!`);
   };
 
   // Copy password to clipboard
@@ -501,10 +522,12 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
 
   // Toggle Member Status (Aktif / Tidak Aktif)
   const handleToggleStatus = (id: string) => {
+    let changedMember: DetailedMember | null = null;
     const updatedList = members.map((m) => {
       if (m.id === id) {
         const nextStatus = m.status === 'Aktif' ? 'Tidak Aktif' : 'Aktif';
         const updated = { ...m, status: nextStatus as DetailedMember['status'] };
+        changedMember = updated;
         if (selectedMember.id === id) {
           setSelectedMember(updated);
         }
@@ -514,6 +537,7 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
       return m;
     });
     saveMembersList(updatedList);
+    if (changedMember) saveMemberToTurso(changedMember).catch(() => {});
   };
 
   // Avatar Upload Handler

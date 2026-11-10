@@ -855,14 +855,17 @@ export const pushLocalDataToCloud = async (
   }
 
   // Do NOT push unverified local state to cloud before initial cloud sync has resolved,
-  // unless this is an explicit user mutation (e.g. adding or updating data).
+  // unless this is an explicit user mutation or background backup from Turso primary.
   const isExplicitUserMutation =
     reason.includes('Tambah') ||
     reason.includes('manual') ||
     reason.includes('Hapus') ||
     reason.includes('Ubah') ||
+    reason.includes('Update') ||
     reason.includes('Arsip') ||
     reason.includes('Pulihkan') ||
+    reason.includes('Backup') ||
+    reason.includes('Cadangan') ||
     reason.includes('Inisialisasi');
 
   if (!isInitialCloudSyncResolved && !isExplicitUserMutation) {
@@ -923,26 +926,41 @@ export const pushLocalDataToCloud = async (
 
     if (isQuota) {
       markQuotaExhausted(30 * 60 * 1000);
-      console.warn('Cloud Firestore quota reached. Switching seamlessly to offline local storage mode.');
+      console.warn('Cloud Firestore backup quota reached. Backup paused temporarily while Turso remains primary.');
     } else {
-      console.warn('Penyimpanan Cloud Firestore notice:', err?.message || err);
+      console.warn('Penyimpanan Backup Cloud Firestore notice:', err?.message || err);
     }
     addToOfflineQueue(reason);
   }
 };
 
 /**
- * Explicitly force synchronize all local data to Cloud Firestore immediately
+ * Mencadangkan state aplikasi saat ini ke Cloud Firestore sebagai Database Cadangan (Backup) secara non-blocking
+ */
+export const pushBackupToFirestore = async (
+  reason = 'Cadangan otomatis dari Turso Utama',
+  userName = 'Pengurus'
+): Promise<void> => {
+  if (isQuotaExhausted()) return;
+  try {
+    await pushLocalDataToCloud(`Backup: ${reason}`, userName);
+  } catch {
+    // Non-blocking backup
+  }
+};
+
+/**
+ * Explicitly force synchronize all local data to Cloud Firestore (Backup) immediately
  */
 export const forceSyncAllToCloud = async (userName = 'Pengurus'): Promise<{ success: boolean; message: string }> => {
   try {
     const rawLocalData = collectLocalSyncData();
     const localData = sanitizeForFirestore(rawLocalData);
-    await pushLocalDataToCloud('Sinkronisasi manual penuh semua data', userName);
+    await pushLocalDataToCloud('Sinkronisasi manual penuh semua data (Backup)', userName);
     await syncGranularCollections(localData);
-    return { success: true, message: 'Seluruh data berhasil disinkronkan ke Cloud Firestore!' };
+    return { success: true, message: 'Seluruh data berhasil dicadangkan ke Cloud Firestore (Backup)!' };
   } catch (err: any) {
-    return { success: false, message: `Gagal menyinkronkan data: ${err?.message || err}` };
+    return { success: false, message: `Gagal mencadangkan ke Firestore: ${err?.message || err}` };
   }
 };
 

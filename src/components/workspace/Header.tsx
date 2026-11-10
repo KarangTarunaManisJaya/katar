@@ -156,12 +156,20 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Cloud Sync Status, Notification with red badge 3 & Administrator profile pill */}
       <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-        {/* Real-time Cloud Firestore Sync Badge */}
+        {/* Turso Primary Sync Badge */}
         {syncStatus && (
           <div
             onClick={onOpenFirebaseConfig}
-            className="hidden"
-            title="Kelola Akun & Ganti Database Firebase (Klik untuk membuka)"
+            className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border cursor-pointer transition-all ${
+              syncStatus.state === 'connected'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                : syncStatus.state === 'syncing'
+                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                : syncStatus.state === 'offline'
+                ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+            }`}
+            title="Status Turso Database Utama & Kelola Database Backup (Klik untuk membuka)"
           >
             {syncStatus.state === 'offline' ? (
               <WifiOff className="w-3.5 h-3.5 text-amber-600 shrink-0" />
@@ -170,18 +178,22 @@ export const Header: React.FC<HeaderProps> = ({
                 className={`w-2 h-2 rounded-full shrink-0 ${
                   syncStatus.state === 'connected'
                     ? 'bg-emerald-500 animate-pulse'
-                    : 'bg-blue-500 animate-spin'
+                    : syncStatus.state === 'syncing'
+                    ? 'bg-blue-500 animate-ping'
+                    : 'bg-rose-500'
                 }`}
               />
             )}
             <span className="hidden md:inline">
               {syncStatus.state === 'connected'
-                ? 'Cloud Firestore Real-Time'
+                ? 'Turso Utama Aktif'
                 : syncStatus.state === 'syncing'
-                ? 'Menyimpan ke Cloud...'
+                ? 'Menyimpan ke Turso...'
                 : syncStatus.pendingOfflineCount > 0
                 ? `Offline (${syncStatus.pendingOfflineCount} perubahan)`
-                : 'Mode Offline Aktif'}
+                : syncStatus.state === 'offline'
+                ? 'Mode Offline'
+                : 'Turso Perlu Cek'}
             </span>
             {onManualSync && (
               <button
@@ -190,7 +202,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onManualSync();
                 }}
                 className="hover:text-emerald-950 p-0.5 rounded cursor-pointer ml-0.5"
-                title="Sinkronkan data ke Cloud Firestore sekarang"
+                title="Sinkronkan data ke Turso Database Utama sekarang"
               >
                 <RefreshCw className={`w-3 h-3 ${syncStatus.state === 'syncing' ? 'animate-spin' : ''}`} />
               </button>
