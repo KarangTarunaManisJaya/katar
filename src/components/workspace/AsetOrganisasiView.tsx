@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Package,
   Plus,
@@ -133,34 +133,23 @@ export const AsetOrganisasiView: React.FC<AsetOrganisasiViewProps> = ({ onToast,
     return INITIAL_DOKUMEN_ASSET;
   });
 
-  // Save to localStorage
+  // Save to localStorage (skip initial mount)
+  const isFirstAsetOrgRender = useRef(true);
   useEffect(() => {
-    localStorage.setItem('kt_assets_v1', JSON.stringify(assets));
-  }, [assets]);
-
-  useEffect(() => {
-    localStorage.setItem('kt_asset_peminjaman_v1', JSON.stringify(peminjamanList));
-  }, [peminjamanList]);
-
-  useEffect(() => {
-    localStorage.setItem('kt_asset_mutasi_v1', JSON.stringify(mutasiServisList));
-  }, [mutasiServisList]);
-
-  useEffect(() => {
-    localStorage.setItem('kt_asset_pengadaan_v1', JSON.stringify(pengadaanList));
-  }, [pengadaanList]);
-
-  useEffect(() => {
-    localStorage.setItem('kt_asset_penghapusan_v1', JSON.stringify(penghapusanList));
-  }, [penghapusanList]);
-
-  useEffect(() => {
-    localStorage.setItem('kt_asset_stock_opname_v1', JSON.stringify(stockOpnameList));
-  }, [stockOpnameList]);
-
-  useEffect(() => {
-    localStorage.setItem('kt_asset_dokumen_v1', JSON.stringify(dokumenList));
-  }, [dokumenList]);
+    if (isFirstAsetOrgRender.current) {
+      isFirstAsetOrgRender.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem('kt_assets_v1', JSON.stringify(assets));
+      localStorage.setItem('kt_asset_peminjaman_v1', JSON.stringify(peminjamanList));
+      localStorage.setItem('kt_asset_mutasi_v1', JSON.stringify(mutasiServisList));
+      localStorage.setItem('kt_asset_pengadaan_v1', JSON.stringify(pengadaanList));
+      localStorage.setItem('kt_asset_penghapusan_v1', JSON.stringify(penghapusanList));
+      localStorage.setItem('kt_asset_stock_opname_v1', JSON.stringify(stockOpnameList));
+      localStorage.setItem('kt_asset_dokumen_v1', JSON.stringify(dokumenList));
+    } catch {}
+  }, [assets, peminjamanList, mutasiServisList, pengadaanList, penghapusanList, stockOpnameList, dokumenList]);
 
   // Listen to remote real-time Cloud updates and reload data immediately
   useEffect(() => {

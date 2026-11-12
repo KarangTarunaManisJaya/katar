@@ -298,7 +298,8 @@ export async function sendOfficialVerificationEmail(
       }),
     });
 
-    if (response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.toLowerCase().includes('application/json')) {
       const data = await response.json();
       if (data.delivered) {
         // Tandai status 'sent' di Turso Utama & Firestore backup
@@ -340,28 +341,28 @@ export async function sendOfficialVerificationEmail(
         };
       }
     }
+
+    return {
+      success: false,
+      delivered: false,
+      reason: 'static_hosting',
+      message: `Portal berjalan di mode statis tanpa server SMTP. Silakan gunakan tombol "Kirim Sekarang via Gmail" atau hubungi pengurus untuk aktivasi.`,
+      channel: 'email_relay',
+      timestamp,
+    };
   } catch (apiErr: any) {
-    console.info('Server API send error:', apiErr);
+    console.info('Server API send notice:', apiErr);
     return {
       success: false,
       delivered: false,
       reason: 'network_error',
       error: apiErr?.message || String(apiErr),
-      message: 'Tidak dapat menghubungi server pengirim email.',
-      channel: 'server_smtp',
+      message: 'Tidak dapat menghubungi server pengirim email. Gunakan tombol "Kirim Sekarang via Gmail" di bawah.',
+      channel: 'email_relay',
       deliveryDetails: apiErr?.message || String(apiErr),
       timestamp,
     };
   }
-
-  return {
-    success: false,
-    delivered: false,
-    reason: 'unknown',
-    message: `Email otomatis belum terkirim ke ${to}.`,
-    channel: 'server_smtp',
-    timestamp,
-  };
 }
 
 /**

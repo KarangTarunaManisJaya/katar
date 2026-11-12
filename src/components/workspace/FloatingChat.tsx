@@ -316,7 +316,10 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     const upcomingAgendas = (() => {
       try {
         const saved = localStorage.getItem('kt_agendas_v1') || localStorage.getItem('kt_agenda_v1');
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
       } catch {}
       return [];
     })();

@@ -391,7 +391,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 const isBeritaGroup = item.id === 'berita';
                 const isActive = currentTab === item.id || (isBeritaGroup && currentTab === 'tambah_berita');
                 const canAddNews = Boolean(
-                  isLoggedIn && (currentUser?.isSuperAdmin || (allowedMenus && allowedMenus.includes('tambah_berita')))
+                  isLoggedIn &&
+                    (isOwnerAdminAccount(currentUser) ||
+                      (allowedMenus && (allowedMenus.includes('berita') || allowedMenus.includes('tambah_berita'))))
                 );
 
                 return (
@@ -685,14 +687,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
                       <span className="text-xs font-bold text-blue-200 flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Mode Pengunjung</span>
+                        <span>Pengunjung (Default)</span>
                       </span>
                       <span className="text-[10px] font-semibold bg-blue-500/30 text-blue-300 px-2 py-0.5 rounded-full">
-                        Tamu
+                        Belum Login
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-300 leading-snug">
-                      Akses publik: <strong>Berita</strong>, <strong>Jadwal</strong> &amp; <strong>Voling</strong>. Masuk untuk akses tambahan.
+                      Status sebelum daftar/login. Akses: <strong>Berita</strong>, <strong>Jadwal</strong> &amp; <strong>Voling</strong>.
                     </p>
                     <button
                       type="button"
@@ -700,14 +702,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                     >
                       <KeyRound className="w-3.5 h-3.5" />
-                      <span>Masuk / Login Pengurus</span>
+                      <span>Daftar / Masuk Akun</span>
                     </button>
                   </>
                 ) : (
                   <button
                     type="button"
                     onClick={onOpenLoginModal}
-                    title="Masuk / Login Pengurus"
+                    title="Daftar / Masuk Akun"
                     className="w-full py-2.5 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-md cursor-pointer"
                   >
                     <KeyRound className="w-4 h-4" />

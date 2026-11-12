@@ -52,6 +52,7 @@ import {
   saveAssetToTurso,
   deleteAssetFromTurso,
   pushFullStateToTurso,
+  withTursoSyncSuppressed,
 } from '../../services/tursoService';
 import { compressImage } from '../../utils/imageOptimizer';
 import { resolveAssetUrl } from '../../utils/assetUrl';
@@ -145,9 +146,11 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
         if (!mounted) return;
         if (Array.isArray(tursoAssets) && tursoAssets.length > 0) {
           setAssets(tursoAssets);
-          try {
-            localStorage.setItem('kt_assets_v1', JSON.stringify(tursoAssets));
-          } catch {}
+          withTursoSyncSuppressed(() => {
+            try {
+              localStorage.setItem('kt_assets_v1', JSON.stringify(tursoAssets));
+            } catch {}
+          });
           setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB');
         }
       })
@@ -178,8 +181,13 @@ export const InventarisAssetView: React.FC<InventarisAssetViewProps> = ({
     };
   }, []);
 
-  // Save to local storage whenever assets change
+  // Save to local storage whenever assets change (skip initial mount)
+  const isFirstAssetsRender = useRef(true);
   useEffect(() => {
+    if (isFirstAssetsRender.current) {
+      isFirstAssetsRender.current = false;
+      return;
+    }
     try {
       localStorage.setItem('kt_assets_v1', JSON.stringify(assets));
     } catch {}

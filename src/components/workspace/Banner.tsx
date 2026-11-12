@@ -8,6 +8,8 @@ interface BannerProps {
   membersCount?: number;
   activitiesCount?: number;
   lettersCount?: number;
+  isLoggedIn?: boolean;
+  canAddNews?: boolean;
 }
 
 export const Banner: React.FC<BannerProps> = ({
@@ -16,6 +18,8 @@ export const Banner: React.FC<BannerProps> = ({
   membersCount,
   activitiesCount,
   lettersCount,
+  isLoggedIn = false,
+  canAddNews = false,
 }) => {
   const [activeDot, setActiveDot] = useState(1);
 
@@ -26,7 +30,8 @@ export const Banner: React.FC<BannerProps> = ({
       : (() => {
           try {
             const saved = localStorage.getItem('kt_members_v3');
-            return saved ? JSON.parse(saved).length : 0;
+            const parsed = saved ? JSON.parse(saved) : null;
+            return Array.isArray(parsed) ? parsed.length : 0;
           } catch {
             return 0;
           }
@@ -38,7 +43,8 @@ export const Banner: React.FC<BannerProps> = ({
       : (() => {
           try {
             const saved = localStorage.getItem('kt_news_v1') || localStorage.getItem('kt_activities_v1');
-            return saved ? JSON.parse(saved).length : 0;
+            const parsed = saved ? JSON.parse(saved) : null;
+            return Array.isArray(parsed) ? parsed.length : 0;
           } catch {
             return 0;
           }
@@ -50,7 +56,8 @@ export const Banner: React.FC<BannerProps> = ({
       : (() => {
           try {
             const saved = localStorage.getItem('kt_surat_items_v2');
-            return saved ? JSON.parse(saved).length : 0;
+            const parsed = saved ? JSON.parse(saved) : null;
+            return Array.isArray(parsed) ? parsed.length : 0;
           } catch {
             return 0;
           }
@@ -163,15 +170,25 @@ export const Banner: React.FC<BannerProps> = ({
             </div>
           </div>
 
-          {/* Action Button: + Tambah Berita Pertama */}
+          {/* Action Button */}
           <div className="mt-6">
-            <button
-              onClick={onAddNewsClick}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-blue-600/25 transition-all transform active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Berita Pertama</span>
-            </button>
+            {canAddNews ? (
+              <button
+                onClick={onAddNewsClick}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-blue-600/25 transition-all transform active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Berita Kegiatan</span>
+              </button>
+            ) : (
+              <button
+                onClick={onExploreClick}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-xs sm:text-sm shadow-md shadow-blue-600/25 transition-all transform active:scale-95 cursor-pointer"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>{isLoggedIn ? 'Lihat Jadwal & Agenda' : 'Lihat Jadwal Pemuda'}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

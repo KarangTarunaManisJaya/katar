@@ -297,7 +297,13 @@ export const ApkDownloadModal: React.FC<ApkDownloadModalProps> = ({
     const text = encodeURIComponent(
       `Halo Rekan Karang Taruna Manis Jaya!\n\nUnduh aplikasi resmi Karang Taruna Kelurahan Manis Jaya (File APK Mentahan 35.0 MB Lengkap):\n${apkUrl}\n\nVersi 1.2.0 (Logo Resmi Karang Taruna Manis Jaya, Full Fitur: Surat Menyurat, Berita Kegiatan, Kas, Inventaris & Presensi).`
     );
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    const waLink = document.createElement('a');
+    waLink.href = `https://api.whatsapp.com/send?text=${text}`;
+    waLink.target = '_blank';
+    waLink.rel = 'noopener noreferrer';
+    document.body.appendChild(waLink);
+    waLink.click();
+    document.body.removeChild(waLink);
   };
 
   return (

@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   Trash2,
+  AlertCircle,
 } from 'lucide-react';
 import { getDatabaseMembers, saveMemberSignature } from '../../../utils/memberHelpers';
 import { DetailedMember } from '../../../data/membersData';
@@ -46,6 +47,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string>(initialSignatureUrl || '');
   const [saveToDatabase, setSaveToDatabase] = useState(true);
   const [availableMembersWithSig, setAvailableMembersWithSig] = useState<DetailedMember[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Load existing members who already have a signature
   useEffect(() => {
@@ -55,6 +57,7 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
       setAvailableMembersWithSig(withSig);
       setPreviewUrl(initialSignatureUrl || '');
       setHasDrawn(Boolean(initialSignatureUrl));
+      setValidationError(null);
     }
   }, [isOpen, initialSignatureUrl]);
 
@@ -249,9 +252,10 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
     }
 
     if (!finalUrl) {
-      alert('Silakan buat goresan tanda tangan atau unggah gambar terlebih dahulu.');
+      setValidationError('Silakan buat goresan tanda tangan atau unggah gambar terlebih dahulu.');
       return;
     }
+    setValidationError(null);
 
     // Save to database if requested
     if (saveToDatabase) {
@@ -338,6 +342,12 @@ export const DigitalSignatureModal: React.FC<DigitalSignatureModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
+          {validationError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-xs text-rose-700 font-semibold">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{validationError}</span>
+            </div>
+          )}
           {/* TAB 1: CANVAS DRAWING */}
           {activeTab === 'draw' && (
             <div className="space-y-3">

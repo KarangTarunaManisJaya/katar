@@ -677,15 +677,32 @@ export function openPrintInNewWindow(element: HTMLElement, docTitle: string = 'D
       styleTags.push(l.outerHTML);
     });
 
-    const printWindow = window.open('', '_blank', 'width=900,height=800,menubar=yes,toolbar=yes');
-    if (!printWindow) {
+    const existingFrame = document.getElementById('kt-hidden-print-frame') as HTMLIFrameElement | null;
+    if (existingFrame && existingFrame.parentNode) {
+      existingFrame.parentNode.removeChild(existingFrame);
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'kt-hidden-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
+
+    const frameDoc = iframe.contentWindow?.document;
+    if (!frameDoc || !iframe.contentWindow) {
       window.focus();
       window.print();
       return true;
     }
 
-    printWindow.document.open();
-    printWindow.document.write(`
+    frameDoc.open();
+    frameDoc.write(`
       <!DOCTYPE html>
       <html>
         <head>
@@ -699,7 +716,7 @@ export function openPrintInNewWindow(element: HTMLElement, docTitle: string = 'D
             }
             body {
               margin: 0 !important;
-              padding: 20px !important;
+              padding: 16px !important;
               background: #ffffff !important;
               color: #000000 !important;
               -webkit-print-color-adjust: exact !important;
@@ -708,54 +725,33 @@ export function openPrintInNewWindow(element: HTMLElement, docTitle: string = 'D
             .no-print {
               display: none !important;
             }
-            .print-bar {
-              position: fixed;
-              top: 0;
-              left: 0;
-              right: 0;
-              background: #0f172a;
-              color: white;
-              padding: 10px 16px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-              z-index: 1000;
-              font-family: sans-serif;
-            }
-            @media print {
-              .print-bar { display: none !important; }
-              body { padding: 0 !important; }
-            }
           </style>
         </head>
         <body>
-          <div class="print-bar">
-            <span style="font-size: 13px; font-weight: bold;">Dokumen Cetak Karang Taruna A4</span>
-            <div style="display: flex; gap: 8px;">
-              <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer;">
-                🖨️ Cetak ke Printer Sekarang
-              </button>
-              <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer;">
-                Tutup
-              </button>
-            </div>
-          </div>
-          <div style="margin-top: 50px;">
+          <div>
             ${element.innerHTML}
           </div>
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.focus();
-                window.print();
-              }, 400);
-            };
-          </script>
         </body>
       </html>
     `);
-    printWindow.document.close();
+    frameDoc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.focus();
+        window.print();
+      } finally {
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            iframe.parentNode.removeChild(iframe);
+          }
+        }, 2000);
+      }
+    }, 350);
+
     return true;
   } catch (e) {
     console.error('Window print error:', e);

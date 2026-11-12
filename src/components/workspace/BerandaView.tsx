@@ -76,7 +76,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   const membersCount = (() => {
     try {
       const saved = localStorage.getItem('kt_members_v3');
-      return saved ? JSON.parse(saved).length : 0;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed.length : 0;
     } catch {
       return 0;
     }
@@ -85,7 +86,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   const lettersCount = (() => {
     try {
       const saved = localStorage.getItem('kt_surat_items_v2');
-      return saved ? JSON.parse(saved).length : 0;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed.length : 0;
     } catch {
       return 0;
     }
@@ -94,7 +96,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   const proposalsCount = (() => {
     try {
       const saved = localStorage.getItem('kt_proposals_v2');
-      return saved ? JSON.parse(saved).length : 0;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed.length : 0;
     } catch {
       return 0;
     }
@@ -103,7 +106,8 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
   const assetsCount = (() => {
     try {
       const saved = localStorage.getItem('kt_assets_v1');
-      return saved ? JSON.parse(saved).length : 0;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed.length : 0;
     } catch {
       return 0;
     }
@@ -291,14 +295,14 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] font-black bg-amber-400/20 text-amber-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-amber-400/30">
-                  Mode Pengunjung (Tamu)
+                  Pengunjung Default (Sebelum Daftar / Login)
                 </span>
                 <span className="text-xs font-semibold text-slate-300">
-                  Akses Terbuka: Berita Kegiatan, Jadwal Pemuda & Voling Anggota
+                  Akses Terbuka: Berita Kegiatan, Jadwal Pemuda &amp; Voling Anggota
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
-                Anda sedang membuka portal publik Karang Taruna Kelurahan Manis Jaya. Anda dapat membaca berita kegiatan, melihat jadwal & agenda pemuda, dan berpartisipasi dalam voling/aspirasi. Untuk membuka surat menyurat, berkas proposal, database anggota, dan menambah jadwal kegiatan, silakan masuk dengan akun pengurus.
+                Anda masuk sebagai pengunjung default sebelum daftar atau login. Anda dapat membaca berita kegiatan, melihat jadwal &amp; agenda pemuda, dan berpartisipasi dalam voling/aspirasi. Silakan daftar atau masuk akun untuk membuka fitur pengurus sesuai izin akses.
               </p>
             </div>
           </div>
@@ -309,7 +313,7 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
               className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer transform active:scale-95"
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>Masuk / Login Pengurus</span>
+              <span>Daftar / Masuk Akun</span>
             </button>
           </div>
         </div>
@@ -329,6 +333,12 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
         membersCount={membersCount}
         activitiesCount={activities.length}
         lettersCount={lettersCount}
+        isLoggedIn={userLoggedIn}
+        canAddNews={Boolean(
+          userLoggedIn &&
+            (isOwnerAdmin ||
+              (allowedMenus && (allowedMenus.includes('berita') || allowedMenus.includes('tambah_berita'))))
+        )}
       />
 
       {/* 2. SEMUA BERITA & DOKUMENTASI KEGIATAN (PERSIS DI BAWAH BERITA KEGIATAN) */}
@@ -348,20 +358,22 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {userLoggedIn && (currentUser?.isSuperAdmin || (allowedMenus && allowedMenus.includes('tambah_berita'))) && (
-              <button
-                onClick={onAddNews}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Tambah Berita</span>
-              </button>
-            )}
+            {userLoggedIn &&
+              (isOwnerAdmin ||
+                (allowedMenus && (allowedMenus.includes('berita') || allowedMenus.includes('tambah_berita')))) && (
+                <button
+                  onClick={onAddNews}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Tambah Berita</span>
+                </button>
+              )}
             <button
               onClick={() => onNavigate('berita')}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1"
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
             >
-              <span>Arsip Berita</span>
+              <span>Semua Berita & Arsip</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -482,13 +494,18 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                 <span className="text-[10px] text-slate-300">Agenda Kegiatan</span>
               </div>
               <div className="bg-slate-900/40 p-2.5 rounded-xl border border-white/5">
-                <span className="text-xl font-black text-cyan-300 block">100%</span>
-                <span className="text-[10px] text-slate-300">LPJ Tuntas</span>
+                <span className="text-xl font-black text-cyan-300 block">
+                  {activities.filter((a) => !a.isArchived).length}
+                </span>
+                <span className="text-[10px] text-slate-300">Berita Terbit</span>
               </div>
             </div>
 
             <button
-              onClick={() => onToast('Mencetak rekapitulasi status organisasi...')}
+              onClick={() => {
+                onToast('Menyiapkan cetakan ringkasan eksekutif organisasi...');
+                window.print();
+              }}
               className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -654,15 +671,17 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
               <span>+ Tambah Anggota</span>
             </button>
           )}
-          {userLoggedIn && (currentUser?.isSuperAdmin || (allowedMenus && allowedMenus.includes('tambah_berita'))) && (
-            <button
-              onClick={onAddNews}
-              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-            >
-              <Megaphone className="w-3.5 h-3.5" />
-              <span>+ Buat Berita</span>
-            </button>
-          )}
+          {userLoggedIn &&
+            (isOwnerAdmin ||
+              (allowedMenus && (allowedMenus.includes('berita') || allowedMenus.includes('tambah_berita')))) && (
+              <button
+                onClick={onAddNews}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Megaphone className="w-3.5 h-3.5" />
+                <span>+ Buat Berita</span>
+              </button>
+            )}
           {isMenuAllowedOnBeranda('jadwal') && (
             <button
               onClick={() => onNavigate('jadwal')}
@@ -725,13 +744,23 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                 <Calendar className="w-8 h-8 mx-auto text-slate-300" />
                 <p className="text-xs font-bold text-slate-600">Belum Ada Agenda Terdekat</p>
                 <p className="text-[11px] text-slate-400">Jadwal kegiatan pemuda yang dibuat akan otomatis tampil di sini.</p>
-                <button
-                  onClick={() => onNavigate('jadwal')}
-                  className="mt-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Tambah Agenda</span>
-                </button>
+                {userLoggedIn && isMenuAllowedOnBeranda('jadwal') ? (
+                  <button
+                    onClick={() => onNavigate('jadwal')}
+                    className="mt-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Tambah Agenda</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onNavigate('jadwal')}
+                    className="mt-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Lihat Jadwal Kegiatan</span>
+                  </button>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-slate-100 mt-2 space-y-1">
@@ -785,10 +814,10 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => onNavigate('ringkasan')}
+                onClick={() => onNavigate(isMenuAllowedOnBeranda('ringkasan') ? 'ringkasan' : 'berita')}
                 className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
               >
-                Ke Menu Kegiatan <ArrowRight className="w-3 h-3" />
+                {isMenuAllowedOnBeranda('ringkasan') ? 'Ke Menu Kegiatan' : 'Semua Berita'} <ArrowRight className="w-3 h-3" />
               </button>
             </div>
 
@@ -797,13 +826,17 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
                 <Briefcase className="w-8 h-8 mx-auto text-slate-300" />
                 <p className="text-xs font-bold text-slate-600">Belum Ada Kegiatan Terbit</p>
                 <p className="text-[11px] text-slate-400">Dokumentasi kegiatan yang diterbitkan akan tampil di sini.</p>
-                <button
-                  onClick={onAddNews}
-                  className="mt-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Buat Berita Pertama</span>
-                </button>
+                {userLoggedIn &&
+                (isOwnerAdmin ||
+                  (allowedMenus && (allowedMenus.includes('berita') || allowedMenus.includes('tambah_berita')))) ? (
+                  <button
+                    onClick={onAddNews}
+                    className="mt-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Buat Berita Pertama</span>
+                  </button>
+                ) : null}
               </div>
             ) : (
               <div className="divide-y divide-slate-100 mt-2 space-y-1">
@@ -834,10 +867,14 @@ export const BerandaView: React.FC<BerandaViewProps> = ({
 
           <div className="mt-4 pt-3 border-t border-slate-100">
             <button
-              onClick={() => onNavigate('ringkasan')}
-              className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+              onClick={() => onNavigate(isMenuAllowedOnBeranda('ringkasan') ? 'ringkasan' : 'berita')}
+              className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
             >
-              <span>Buka Visualisasi & Semua Kegiatan</span>
+              <span>
+                {isMenuAllowedOnBeranda('ringkasan')
+                  ? 'Buka Visualisasi & Semua Kegiatan'
+                  : 'Buka Semua Berita & Dokumentasi'}
+              </span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>

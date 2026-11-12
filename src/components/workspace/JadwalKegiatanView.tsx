@@ -70,7 +70,12 @@ export const JadwalKegiatanView: React.FC<JadwalKegiatanViewProps> = ({
     return INITIAL_AGENDA_DATA;
   });
 
+  const isFirstAgendaRender = React.useRef(true);
   useEffect(() => {
+    if (isFirstAgendaRender.current) {
+      isFirstAgendaRender.current = false;
+      return;
+    }
     try {
       const serialized = JSON.stringify(agendas);
       localStorage.setItem('kt_agendas_v1', serialized);

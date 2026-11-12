@@ -31,6 +31,8 @@ import { OfficialKopSurat } from './surat/OfficialKopSurat';
 import { OfficialSignatureBlock } from './surat/OfficialSignatureBlock';
 import { getDefaultSuratPenandatangan } from '../../utils/memberHelpers';
 import { downloadElementAsPdf, printElementDirectly, openPrintInNewWindow } from '../../utils/pdfExport';
+import { pushFullStateToTurso } from '../../services/tursoService';
+import { pushBackupToFirestore } from '../../services/firestoreSyncService';
 
 export interface LaporanKegiatanItem {
   id: string;
@@ -103,8 +105,15 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
     }));
   });
 
+  const isFirstLaporanRender = useRef(true);
   useEffect(() => {
-    localStorage.setItem('kt_laporan_kegiatan_v1', JSON.stringify(laporanList));
+    if (isFirstLaporanRender.current) {
+      isFirstLaporanRender.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem('kt_laporan_kegiatan_v1', JSON.stringify(laporanList));
+    } catch {}
   }, [laporanList]);
 
   useEffect(() => {
@@ -165,9 +174,16 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
     onToast('Filter laporan kegiatan berhasil di-reset ke tahun berjalan.');
   };
 
-  // Filtered List based on dynamic live state
+  // Filtered List based on dynamic live state & date range
   const filteredList = useMemo(() => {
     return laporanList.filter((item) => {
+      // Date range filter (YYYY-MM-DD)
+      if (startDate && item.rawDate && item.rawDate < startDate) {
+        return false;
+      }
+      if (endDate && item.rawDate && item.rawDate > endDate) {
+        return false;
+      }
       // Category filter
       if (selectedKategori !== 'Semua Kategori' && item.kategori !== selectedKategori) {
         return false;
@@ -194,13 +210,15 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
       }
       return true;
     });
-  }, [selectedKategori, selectedJenis, selectedStatus, selectedLokasi, searchQuery]);
+  }, [laporanList, startDate, endDate, selectedKategori, selectedJenis, selectedStatus, selectedLokasi, searchQuery]);
 
-  // Metrics Calculations (Matches screenshot metrics: 12 total, 7 berjalan, 5 selesai, 6 lokasi berbeda)
-  const totalKegiatan = INITIAL_LAPORAN_DATA.length;
-  const kegiatanBerjalan = INITIAL_LAPORAN_DATA.filter((d) => d.kegiatanStatus === 'Berjalan').length;
-  const kegiatanSelesai = INITIAL_LAPORAN_DATA.filter((d) => d.kegiatanStatus === 'Selesai').length;
-  const distinctLocations = new Set(INITIAL_LAPORAN_DATA.map((d) => d.lokasi)).size;
+  // Metrics Calculations computed dynamically from live filteredList
+  const totalKegiatan = filteredList.length;
+  const kegiatanBerjalan = filteredList.filter((d) => d.kegiatanStatus === 'Berjalan').length;
+  const kegiatanSelesai = filteredList.filter((d) => d.kegiatanStatus === 'Selesai').length;
+  const distinctLocations = new Set(filteredList.map((d) => d.lokasi).filter(Boolean)).size;
+  const berjalanPct = totalKegiatan > 0 ? Math.round((kegiatanBerjalan / totalKegiatan) * 100) : 0;
+  const selesaiPct = totalKegiatan > 0 ? Math.round((kegiatanSelesai / totalKegiatan) * 100) : 0;
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredList.length / rowsPerPage) || 1;
@@ -271,6 +289,11 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
         : item
     );
     setLaporanList(updated);
+    try {
+      localStorage.setItem('kt_laporan_kegiatan_v1', JSON.stringify(updated));
+    } catch {}
+    pushFullStateToTurso(`Update Laporan Kegiatan: ${editTitle}`).catch(() => {});
+    pushBackupToFirestore(`Update Laporan Kegiatan: ${editTitle}`).catch(() => {});
     if (selectedItem.id === editingItem.id) {
       setSelectedItem({
         ...selectedItem,
@@ -511,7 +534,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
               {kegiatanBerjalan}
             </span>
             <span className="text-[11px] text-slate-400 font-medium">
-              {Math.round((kegiatanBerjalan / totalKegiatan) * 100)}% dari total
+              {berjalanPct}% dari total
             </span>
           </div>
         </div>
@@ -529,7 +552,7 @@ export const LaporanKegiatanView: React.FC<LaporanKegiatanViewProps> = ({
               {kegiatanSelesai}
             </span>
             <span className="text-[11px] text-slate-400 font-medium">
-              {Math.round((kegiatanSelesai / totalKegiatan) * 100)}% dari total
+              {selesaiPct}% dari total
             </span>
           </div>
         </div>

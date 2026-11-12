@@ -88,7 +88,13 @@ export const AgendaDetailModal: React.FC<AgendaDetailModalProps> = ({
       agenda.penanggungJawab
     )}%0A%0AMohon kehadiran tepat waktu bagi seluruh panitia & peserta yang telah terdaftar. Terima kasih! 🇮🇩`;
 
-    window.open(`https://api.whatsapp.com/send?text=${message}`, '_blank');
+    const waLink = document.createElement('a');
+    waLink.href = `https://api.whatsapp.com/send?text=${message}`;
+    waLink.target = '_blank';
+    waLink.rel = 'noopener noreferrer';
+    document.body.appendChild(waLink);
+    waLink.click();
+    document.body.removeChild(waLink);
     onToast('Membuka WhatsApp untuk mengirim pesan pengingat kegiatan...');
   };
 

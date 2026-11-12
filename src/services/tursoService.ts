@@ -13,6 +13,11 @@
  */
 
 import { createClient, Client } from '@libsql/client';
+import { reconcileUsersAndMembersList, DetailedMember } from '../data/membersData';
+import { DEFAULT_USERS, UserAccount } from '../types/auth';
+
+const isJsonResponse = (res: Response): boolean =>
+  (res.headers.get('content-type') || '').toLowerCase().includes('application/json');
 
 export interface TursoConfig {
   url: string;
@@ -98,6 +103,9 @@ export const getTursoClient = (customConfig?: Partial<TursoConfig>): TursoExecut
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        if (res.status === 404 || res.status === 405 || !isJsonResponse(res)) {
+          throw new Error('TURSO_PROXY_UNAVAILABLE: Endpoint server /api/turso/execute tidak tersedia di hosting statis.');
+        }
         const data = await res.json();
         if (!res.ok || !data.success) {
           throw new Error(data.message || 'Gagal mengeksekusi query Turso lewat server');
@@ -115,6 +123,9 @@ export const getTursoClient = (customConfig?: Partial<TursoConfig>): TursoExecut
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ statements: normalized }),
         });
+        if (res.status === 404 || res.status === 405 || !isJsonResponse(res)) {
+          throw new Error('TURSO_PROXY_UNAVAILABLE: Endpoint server /api/turso/execute tidak tersedia di hosting statis.');
+        }
         const data = await res.json();
         if (!res.ok || !data.success) {
           throw new Error(data.message || 'Gagal mengeksekusi batch query Turso lewat server');
@@ -320,8 +331,17 @@ export const initTursoSchema = async (client?: TursoExecutor | Client, force = f
  */
 export const testTursoConnection = async (
   config?: TursoConfig
-): Promise<{ success: boolean; message: string; tableCount?: number; url?: string; tables?: string[] }> => {
+): Promise<{
+  success: boolean;
+  message: string;
+  tableCount?: number;
+  url?: string;
+  tables?: string[];
+  proxyUnavailable?: boolean;
+}> => {
   const hasCustom = Boolean(config?.url?.trim());
+  const stored = getStoredTursoConfig();
+  const hasAnyDirectUrl = hasCustom || Boolean(stored.url?.trim());
 
   // Jika di browser, uji melalui /api/turso/test agar bisa memakai TURSO_DATABASE_URL dari server
   if (typeof window !== 'undefined' && typeof fetch !== 'undefined') {
@@ -334,45 +354,64 @@ export const testTursoConnection = async (
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        const c = getTursoClient(hasCustom ? config : undefined);
-        if (c && (!data.tableCount || data.tableCount === 0)) {
-          await initTursoSchema(c);
-          const tablesRes = await c.execute(`
-            SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';
-          `);
-          const updatedTables = tablesRes.rows.map((r: any) => String(r.name));
+
+      if (res.status === 404 || res.status === 405 || !isJsonResponse(res)) {
+        if (!hasAnyDirectUrl) {
+          return {
+            success: false,
+            proxyUnavailable: true,
+            message: 'Portal berjalan pada mode statis tanpa server proxy Turso. Menggunakan Cloud Backup (Firestore).',
+          };
+        }
+      } else {
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const c = getTursoClient(hasCustom ? config : undefined);
+          if (c && (!data.tableCount || data.tableCount === 0)) {
+            await initTursoSchema(c);
+            const tablesRes = await c.execute(`
+              SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';
+            `);
+            const updatedTables = tablesRes.rows.map((r: any) => String(r.name));
+            return {
+              success: true,
+              url: data.url,
+              tableCount: updatedTables.length,
+              tables: updatedTables,
+              message: `Berhasil terhubung ke Turso Database (${data.url || 'Server Cloud'})! (${updatedTables.length} tabel aktif)`,
+            };
+          }
           return {
             success: true,
             url: data.url,
-            tableCount: updatedTables.length,
-            tables: updatedTables,
-            message: `Berhasil terhubung ke Turso Database (${data.url || 'Server Cloud'})! (${updatedTables.length} tabel aktif)`,
+            tableCount: data.tableCount,
+            tables: data.tables,
+            message: data.message || `Berhasil terhubung ke Turso Database! (${data.tableCount ?? 0} tabel aktif)`,
           };
         }
         return {
-          success: true,
-          url: data.url,
-          tableCount: data.tableCount,
-          tables: data.tables,
-          message: data.message || `Berhasil terhubung ke Turso Database! (${data.tableCount ?? 0} tabel aktif)`,
+          success: false,
+          message: data.message || 'Konfigurasi URL database Turso belum diisi.',
         };
       }
-      return {
-        success: false,
-        message: data.message || 'Konfigurasi URL database Turso belum diisi.',
-      };
     } catch (err: any) {
       // Fallback ke client langsung jika endpoint tidak tersedia
       console.warn('Proxy /api/turso/test fallback:', err?.message);
+      if (!hasAnyDirectUrl) {
+        return {
+          success: false,
+          proxyUnavailable: true,
+          message: 'Server API Turso tidak dapat dijangkau. Menggunakan Cloud Backup (Firestore).',
+        };
+      }
     }
   }
 
   const c = getTursoClient(config);
-  if (!c) {
+  if (!c || (c.isProxy && !hasAnyDirectUrl)) {
     return {
       success: false,
+      proxyUnavailable: true,
       message: 'Konfigurasi URL database Turso belum diisi.',
     };
   }
@@ -567,9 +606,10 @@ export const syncAllLocalDataToTurso = async (
     if (Array.isArray(assetsList) && assetsList.length > 0) {
       for (const a of assetsList) {
         if (a?.id) {
+          const raw = JSON.stringify(a);
           await client.execute({
-            sql: `INSERT INTO assets (id, name, code, category, condition, quantity, location, raw_data, updated_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            sql: `INSERT INTO assets (id, name, code, category, condition, quantity, location, data, raw_data, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   ON CONFLICT(id) DO UPDATE SET
                     name = excluded.name,
                     code = excluded.code,
@@ -577,17 +617,19 @@ export const syncAllLocalDataToTurso = async (
                     condition = excluded.condition,
                     quantity = excluded.quantity,
                     location = excluded.location,
+                    data = excluded.data,
                     raw_data = excluded.raw_data,
                     updated_at = excluded.updated_at;`,
             args: [
               String(a.id),
-              a.namaAsset || a.name || 'Aset Organisasi',
-              a.kodeAsset || a.code || '',
+              a.namaAsset || a.namaBarang || a.name || 'Aset Organisasi',
+              a.kodeAsset || a.kodeBarang || a.code || '',
               a.kategori || a.category || 'Peralatan',
               a.kondisi || a.condition || 'Baik',
               Number(a.quantity || a.jumlah || 1),
               a.lokasi || a.location || 'Sekretariat',
-              JSON.stringify(a),
+              raw,
+              raw,
               nowISO,
             ],
           });
@@ -597,7 +639,7 @@ export const syncAllLocalDataToTurso = async (
 
     // 5. Simpan Agenda
     if (onProgress) onProgress('Menyinkronkan kalender & agenda kegiatan...', 82);
-    let rawAgenda = localStorage.getItem('kt_agenda_v1') || localStorage.getItem('kt_agendas_v1');
+    let rawAgenda = localStorage.getItem('kt_agendas_v1') || localStorage.getItem('kt_agenda_v1');
     let agendaList: any[] = [];
     if (rawAgenda) {
       try {
@@ -615,25 +657,28 @@ export const syncAllLocalDataToTurso = async (
     if (Array.isArray(agendaList) && agendaList.length > 0) {
       for (const ag of agendaList) {
         if (ag?.id) {
+          const raw = JSON.stringify(ag);
           await client.execute({
-            sql: `INSERT INTO agenda (id, title, date, time, location, status, raw_data, updated_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            sql: `INSERT INTO agenda (id, title, date, time, location, status, data, raw_data, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                   ON CONFLICT(id) DO UPDATE SET
                     title = excluded.title,
                     date = excluded.date,
                     time = excluded.time,
                     location = excluded.location,
                     status = excluded.status,
+                    data = excluded.data,
                     raw_data = excluded.raw_data,
                     updated_at = excluded.updated_at;`,
             args: [
               String(ag.id),
-              ag.title || ag.judul || 'Agenda Kegiatan',
-              ag.date || ag.tanggal || '',
-              ag.time || ag.waktu || '',
-              ag.location || ag.lokasi || 'Kelurahan Manis Jaya',
-              ag.status || 'Terjadwal',
-              JSON.stringify(ag),
+              ag.namaKegiatan || ag.title || ag.judul || 'Agenda Kegiatan',
+              ag.tanggalMulai || ag.date || ag.tanggal || '',
+              ag.jamMulai ? `${ag.jamMulai} - ${ag.jamSelesai || ''}` : (ag.time || ag.waktu || ''),
+              ag.lokasi || ag.location || 'Kelurahan Manis Jaya',
+              ag.statusKegiatan || ag.status || 'Terjadwal',
+              raw,
+              raw,
               nowISO,
             ],
           });
@@ -661,25 +706,28 @@ export const syncAllLocalDataToTurso = async (
     if (Array.isArray(lettersList) && lettersList.length > 0) {
       for (const l of lettersList) {
         if (l?.id) {
+          const raw = JSON.stringify(l);
           await client.execute({
-            sql: `INSERT INTO letters (id, number, type, title, date, status, raw_data, updated_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            sql: `INSERT INTO letters (id, number, type, title, date, status, data, raw_data, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                   ON CONFLICT(id) DO UPDATE SET
                     number = excluded.number,
                     type = excluded.type,
                     title = excluded.title,
                     date = excluded.date,
                     status = excluded.status,
+                    data = excluded.data,
                     raw_data = excluded.raw_data,
                     updated_at = excluded.updated_at;`,
             args: [
               String(l.id),
-              l.letterNumber || l.number || l.nomorSurat || '',
-              l.type || l.jenisSurat || 'Surat Keluar',
+              l.letterNumber || l.number || l.nomorSurat || l.autoNumber || '',
+              l.type || l.jenisSurat || l.category || 'Surat Keluar',
               l.subject || l.title || l.perihal || 'Surat Karang Taruna',
-              l.date || l.tanggalSurat || '',
+              l.date || l.tanggalSurat || l.createdDate || '',
               l.status || 'Terkirim',
-              JSON.stringify(l),
+              raw,
+              raw,
               nowISO,
             ],
           });
@@ -707,25 +755,28 @@ export const syncAllLocalDataToTurso = async (
     if (Array.isArray(kasList) && kasList.length > 0) {
       for (const k of kasList) {
         if (k?.id) {
+          const raw = JSON.stringify(k);
           await client.execute({
-            sql: `INSERT INTO kas (id, type, amount, description, date, category, raw_data, updated_at)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            sql: `INSERT INTO kas (id, type, amount, description, date, category, data, raw_data, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                   ON CONFLICT(id) DO UPDATE SET
                     type = excluded.type,
                     amount = excluded.amount,
                     description = excluded.description,
                     date = excluded.date,
                     category = excluded.category,
+                    data = excluded.data,
                     raw_data = excluded.raw_data,
                     updated_at = excluded.updated_at;`,
             args: [
               String(k.id),
-              k.type || 'Pemasukan',
+              k.type || k.jenis || 'Pemasukan',
               Number(k.amount || k.nominal || 0),
               k.description || k.keterangan || '',
               k.date || k.tanggal || '',
               k.category || k.kategori || 'Kas',
-              JSON.stringify(k),
+              raw,
+              raw,
               nowISO,
             ],
           });
@@ -753,19 +804,22 @@ export const syncAllLocalDataToTurso = async (
     if (Array.isArray(votingsList) && votingsList.length > 0) {
       for (const v of votingsList) {
         if (v?.id) {
+          const raw = JSON.stringify(v);
           await client.execute({
-            sql: `INSERT INTO votings (id, title, status, raw_data, updated_at)
-                  VALUES (?, ?, ?, ?, ?)
+            sql: `INSERT INTO votings (id, title, status, data, raw_data, updated_at)
+                  VALUES (?, ?, ?, ?, ?, ?)
                   ON CONFLICT(id) DO UPDATE SET
                     title = excluded.title,
                     status = excluded.status,
+                    data = excluded.data,
                     raw_data = excluded.raw_data,
                     updated_at = excluded.updated_at;`,
             args: [
               String(v.id),
               v.title || v.judul || 'Musyawarah Pemuda',
               v.status || 'Aktif',
-              JSON.stringify(v),
+              raw,
+              raw,
               nowISO,
             ],
           });
@@ -845,6 +899,65 @@ export const fetchNewsFromTurso = async (): Promise<any[]> => {
   } catch (err) {
     console.warn('fetchNewsFromTurso notice:', err);
     return [];
+  }
+};
+
+export const fetchNewsFromTursoWithStatus = async (): Promise<{ available: boolean; news: any[] }> => {
+  const client = getTursoClient();
+  if (!client) return { available: false, news: [] };
+
+  try {
+    await initTursoSchema(client);
+    const res = await client.execute('SELECT * FROM news ORDER BY updated_at DESC;');
+    const safeJsonArray = (val: any, fallback: any[] = []): any[] => {
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string' && val.trim()) {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : fallback;
+        } catch {
+          return fallback;
+        }
+      }
+      return fallback;
+    };
+
+    const news = res.rows.map((row: any) => {
+      let rawObj: any = {};
+      const rawJson = row.raw_data || row.data;
+      if (rawJson) {
+        try {
+          rawObj = JSON.parse(rawJson as string);
+        } catch {}
+      }
+      return {
+        ...rawObj,
+        id: row.id,
+        title: row.title || rawObj.title || '',
+        badge: row.badge || rawObj.badge || 'Kegiatan',
+        badgeColor: row.badge_color || rawObj.badgeColor || 'dark',
+        category: row.category || rawObj.category || 'Sosial',
+        date: row.date || rawObj.date || '',
+        description: row.description || rawObj.description || '',
+        location: row.location || rawObj.location || 'Kelurahan Manis Jaya',
+        author: row.author || rawObj.author || 'Admin',
+        image: row.image || rawObj.image || '',
+        photos: safeJsonArray(row.photos, Array.isArray(rawObj.photos) ? rawObj.photos : []),
+        videoUrl: row.video_url || rawObj.videoUrl,
+        videoDuration: row.video_duration || rawObj.videoDuration,
+        summary: row.summary || rawObj.summary,
+        content: row.content || rawObj.content,
+        status: row.status || rawObj.status,
+        slug: row.slug || rawObj.slug,
+        ratings: safeJsonArray(row.ratings, Array.isArray(rawObj.ratings) ? rawObj.ratings : []),
+        comments: safeJsonArray(row.comments, Array.isArray(rawObj.comments) ? rawObj.comments : []),
+        updatedAt: row.updated_at,
+      };
+    });
+    return { available: true, news };
+  } catch (err) {
+    console.warn('fetchNewsFromTursoWithStatus notice:', err);
+    return { available: false, news: [] };
   }
 };
 
@@ -2005,11 +2118,11 @@ export const pullFullStateFromTurso = async (): Promise<{
         if (remoteData && typeof remoteData === 'object') {
           Object.entries(remoteData).forEach(([key, val]) => {
             if (val === undefined || val === null) return;
-            // Jangan menimpa data berita/aset/anggota non-kosong dengan array kosong secara tidak sengaja
+            // Jangan menimpa data aset/anggota non-kosong dengan array kosong secara tidak sengaja
             if (
               Array.isArray(val) &&
               val.length === 0 &&
-              (key === 'kt_news_v1' || key === 'kt_activities_v1' || key === 'kt_members_v3' || key === 'kt_assets_v1')
+              (key === 'kt_members_v3' || key === 'kt_assets_v1')
             ) {
               const localExisting = localStorage.getItem(key);
               if (localExisting && localExisting !== '[]') return;
@@ -2023,14 +2136,13 @@ export const pullFullStateFromTurso = async (): Promise<{
         }
       }
 
-      if (tursoNews.length > 0) {
-        const newsStr = JSON.stringify(tursoNews);
-        if (localStorage.getItem('kt_news_v1') !== newsStr) {
-          localStorage.setItem('kt_news_v1', newsStr);
-          localStorage.setItem('kt_activities_v1', newsStr);
-          if (!modifiedKeys.includes('kt_news_v1')) modifiedKeys.push('kt_news_v1');
-          if (!modifiedKeys.includes('kt_activities_v1')) modifiedKeys.push('kt_activities_v1');
-        }
+      // Sinkronkan berita secara otoritatif dari tabel news Turso (termasuk jika 0 berita)
+      const newsStr = JSON.stringify(tursoNews);
+      if (localStorage.getItem('kt_news_v1') !== newsStr || localStorage.getItem('kt_activities_v1') !== newsStr) {
+        localStorage.setItem('kt_news_v1', newsStr);
+        localStorage.setItem('kt_activities_v1', newsStr);
+        if (!modifiedKeys.includes('kt_news_v1')) modifiedKeys.push('kt_news_v1');
+        if (!modifiedKeys.includes('kt_activities_v1')) modifiedKeys.push('kt_activities_v1');
       }
 
       if (tursoMembers.length > 0) {
@@ -2040,6 +2152,26 @@ export const pullFullStateFromTurso = async (): Promise<{
           if (!modifiedKeys.includes('kt_members_v3')) modifiedKeys.push('kt_members_v3');
         }
       }
+
+      // Selalu rekonsiliasi kt_members_v3 ke kt_users_list_v3 agar seluruh anggota bisa login tanpa tertinggal
+      try {
+        const rawMembers = localStorage.getItem('kt_members_v3');
+        const rawUsers = localStorage.getItem('kt_users_list_v3');
+        const parsedMembers: DetailedMember[] = rawMembers ? JSON.parse(rawMembers) : [];
+        const parsedUsers: UserAccount[] = rawUsers ? JSON.parse(rawUsers) : [];
+        if (Array.isArray(parsedMembers) && parsedMembers.length > 0) {
+          const nonAdminUsers = reconcileUsersAndMembersList(
+            Array.isArray(parsedUsers) ? parsedUsers : [],
+            parsedMembers
+          );
+          const mergedUsers = [DEFAULT_USERS[0], ...nonAdminUsers];
+          const mergedUsersStr = JSON.stringify(mergedUsers);
+          if (localStorage.getItem('kt_users_list_v3') !== mergedUsersStr) {
+            localStorage.setItem('kt_users_list_v3', mergedUsersStr);
+            if (!modifiedKeys.includes('kt_users_list_v3')) modifiedKeys.push('kt_users_list_v3');
+          }
+        }
+      } catch {}
 
       if (tursoAssets.length > 0) {
         const assetsStr = JSON.stringify(tursoAssets);
@@ -2091,7 +2223,7 @@ export const pullFullStateFromTurso = async (): Promise<{
       if (modifiedKeys.length > 0) {
         window.dispatchEvent(new Event('kt_database_restored'));
         window.dispatchEvent(new CustomEvent('kt_cloud_sync_update', { detail: { modifiedKeys, source: 'turso' } }));
-        if (modifiedKeys.includes('kt_news_v1') && tursoNews.length > 0) {
+        if (modifiedKeys.includes('kt_news_v1')) {
           window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: tursoNews } }));
         }
       }
@@ -2399,9 +2531,11 @@ export const pushFullStateToTurso = async (
 export const startTursoPrimarySync = (
   onStatusChange?: (status: TursoSyncStatus) => void,
   onRemoteUpdateReceived?: (updatedKeys: string[]) => void,
-  pollIntervalMs = 8000
+  pollIntervalMs = 8000,
+  onProxyUnavailable?: () => void
 ): (() => void) => {
   let isMounted = true;
+  let proxyUnavailableFlag = false;
   tursoPrimarySyncActive = true;
 
   const emitStatus = (
@@ -2437,6 +2571,12 @@ export const startTursoPrimarySync = (
       if (!isMounted) return;
 
       if (!conn.success) {
+        if (conn.proxyUnavailable) {
+          proxyUnavailableFlag = true;
+          clearInterval(pollTimer);
+          onProxyUnavailable?.();
+          return;
+        }
         emitStatus('error', conn.message || 'Tidak dapat terhubung ke Turso Database.');
         return;
       }
@@ -2472,11 +2612,9 @@ export const startTursoPrimarySync = (
     }
   };
 
-  bootstrap();
-
   // Polling ringan ke Turso org_live_state untuk sinkronisasi antar perangkat
   const pollTimer = setInterval(async () => {
-    if (!isMounted) return;
+    if (!isMounted || proxyUnavailableFlag) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
 
     const client = getTursoClient();
@@ -2510,10 +2648,16 @@ export const startTursoPrimarySync = (
           onRemoteUpdateReceived?.(pulled.modifiedKeys);
         }
       }
-    } catch {
-      // Abaikan gangguan polling sesaat
+    } catch (err: any) {
+      if (String(err?.message || '').includes('TURSO_PROXY_UNAVAILABLE')) {
+        proxyUnavailableFlag = true;
+        clearInterval(pollTimer);
+        onProxyUnavailable?.();
+      }
     }
   }, pollIntervalMs);
+
+  bootstrap();
 
   const handleOnline = () => {
     emitStatus('syncing', 'Internet aktif. Mengirim antrean lokal ke Turso Database Utama...');

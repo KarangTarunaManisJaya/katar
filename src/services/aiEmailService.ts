@@ -89,7 +89,8 @@ export async function generateAIEmailContent(params: AIEmailParams): Promise<AIE
       body: JSON.stringify({ name, username, code }),
     });
 
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.toLowerCase().includes('application/json')) {
       const data = await res.json();
       if (data.welcomeMessage) welcomeMessage = data.welcomeMessage;
       if (data.motivationQuote) motivationQuote = data.motivationQuote;
@@ -285,17 +286,13 @@ export function openAIVerificationLetterInNewTab(content: AIEmailContent): void 
   try {
     const blob = new Blob([content.htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    if (!win) {
-      // Fallback jika diblokir popup
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   } catch (err) {
     console.warn('Gagal membuka surat di tab baru:', err);
   }

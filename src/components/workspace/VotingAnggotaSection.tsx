@@ -238,8 +238,12 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
     }, 250);
   };
 
-  // Close or Reopen voting
+  // Close or Reopen voting (Owner Admin only)
   const handleToggleVotingStatus = (votingId: string) => {
+    if (!isSuperAdminOrAdmin) {
+      onToast('Hanya Administrator Utama yang dapat menutup atau membuka kembali sesi voting.');
+      return;
+    }
     const targetVoting = votings.find((v) => v.id === votingId);
     if (!targetVoting) return;
 
@@ -271,8 +275,12 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
     );
   };
 
-  // Reset votes (for simulation / re-testing)
+  // Reset votes (Owner Admin only)
   const handleResetVotes = (votingId: string) => {
+    if (!isSuperAdminOrAdmin) {
+      onToast('Hanya Administrator Utama yang dapat mereset suara voting.');
+      return;
+    }
     const targetVoting = votings.find((v) => v.id === votingId);
     if (!targetVoting) return;
 
@@ -293,8 +301,12 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
     onToast(`Suara pada "${targetVoting.title}" berhasil direset.`);
   };
 
-  // Delete voting
+  // Delete voting (Owner Admin only)
   const handleDeleteVoting = (votingId: string) => {
+    if (!isSuperAdminOrAdmin) {
+      onToast('Hanya Administrator Utama yang dapat menghapus sesi voting.');
+      return;
+    }
     const targetVoting = votings.find((v) => v.id === votingId);
     if (!targetVoting) return;
 
@@ -305,8 +317,12 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
     onToast('Sesi voting berhasil dihapus.');
   };
 
-  // Create new voting
+  // Create new voting (Logged-in members only)
   const handleCreateVoting = (newVoting: VotingItem) => {
+    if (isGuestUser) {
+      onToast('Wajib masuk / login pengurus untuk membuat sesi voting.');
+      return;
+    }
     const nextVotings = [newVoting, ...votings];
     persistVotings(nextVotings, `Voting baru dibuat: ${newVoting.title}`, newVoting);
     onToast('🎉 Sesi voting baru berhasil dibuat & dipublikasikan secara real-time!');
@@ -546,13 +562,15 @@ export const VotingAnggotaSection: React.FC<VotingAnggotaSectionProps> = ({
                 ? 'Coba ganti filter atau kata kunci pencarian Anda.'
                 : 'Belum ada agenda pemungutan suara aktif. Buat sesi baru sekarang.'}
             </p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Mulai Sesi Voting Baru</span>
-            </button>
+            {!isGuestUser && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Mulai Sesi Voting Baru</span>
+              </button>
+            )}
           </div>
         ) : (
           filteredVotings.map((voting) => {

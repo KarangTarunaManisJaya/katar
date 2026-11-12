@@ -20,7 +20,9 @@ import {
   saveKasToTurso,
   saveAgendaToTurso,
   saveLetterToTurso,
+  pushFullStateToTurso,
 } from '../../services/tursoService';
+import { pushBackupToFirestore } from '../../services/firestoreSyncService';
 
 interface ProposalsViewProps {
   onToast: (msg: string) => void;
@@ -45,9 +47,16 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({ onToast, onBackToH
   const [editingProposal, setEditingProposal] = useState<ProposalItem | null>(null);
   const [printProposal, setPrintProposal] = useState<ProposalItem | null>(null);
 
-  // Sync to localStorage
+  // Sync to localStorage (skip initial mount to avoid spurious auto-push)
+  const isFirstProposalsRender = React.useRef(true);
   useEffect(() => {
-    localStorage.setItem('kt_proposals_v2', JSON.stringify(proposals));
+    if (isFirstProposalsRender.current) {
+      isFirstProposalsRender.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem('kt_proposals_v2', JSON.stringify(proposals));
+    } catch {}
   }, [proposals]);
 
   // Sync across tabs/devices
@@ -78,6 +87,11 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({ onToast, onBackToH
       onToast(`Proposal baru "${proposal.judul}" berhasil diterbitkan!`);
     }
     setProposals(updated);
+    try {
+      localStorage.setItem('kt_proposals_v2', JSON.stringify(updated));
+    } catch {}
+    pushFullStateToTurso(`Simpan Proposal: ${proposal.judul}`).catch(() => {});
+    pushBackupToFirestore(`Simpan Proposal: ${proposal.judul}`).catch(() => {});
     setFormOpen(false);
     setEditingProposal(null);
     if (detailProposal && detailProposal.id === proposal.id) {
@@ -88,7 +102,13 @@ export const ProposalsView: React.FC<ProposalsViewProps> = ({ onToast, onBackToH
   // Delete
   const handleDeleteProposal = (id: string, title: string) => {
     if (window.confirm(`Apakah Anda yakin ingin menghapus proposal "${title}"?`)) {
-      setProposals(proposals.filter((p) => p.id !== id));
+      const next = proposals.filter((p) => p.id !== id);
+      setProposals(next);
+      try {
+        localStorage.setItem('kt_proposals_v2', JSON.stringify(next));
+      } catch {}
+      pushFullStateToTurso(`Hapus Proposal: ${title}`).catch(() => {});
+      pushBackupToFirestore(`Hapus Proposal: ${title}`).catch(() => {});
       if (detailProposal?.id === id) setDetailProposal(null);
       onToast(`Proposal "${title}" telah dihapus.`);
     }

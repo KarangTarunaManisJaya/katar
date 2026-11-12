@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manisjaya-cache-v6';
+const CACHE_NAME = 'manisjaya-cache-v8';
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -45,8 +45,9 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Bypass all dev server requests, Vite internals, and non-GET requests immediately
+  // Bypass all API, dev server requests, Vite internals, and non-GET requests immediately
   if (
+    url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/@') ||
     url.pathname.startsWith('/src/') ||
     url.pathname.startsWith('/node_modules/') ||

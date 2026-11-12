@@ -119,7 +119,8 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
     try {
       const saved = localStorage.getItem('kt_members_v3');
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {}
     return INITIAL_MEMBERS;
@@ -145,7 +146,10 @@ export const AnggotaView: React.FC<AnggotaViewProps> = ({
     const handleRemoteRefresh = () => {
       try {
         const saved = localStorage.getItem('kt_members_v3');
-        if (saved) setMembers(JSON.parse(saved));
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setMembers(parsed);
+        }
       } catch (e) {}
     };
     window.addEventListener('kt_database_restored', handleRemoteRefresh);

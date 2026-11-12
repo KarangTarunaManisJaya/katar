@@ -291,14 +291,70 @@ export function sanitizeForFirestore<T = any>(obj: T): T {
   return clean as T;
 }
 
-// Test Connection safely without throwing unhandled quota exceptions
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: Array<{
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }>;
+  };
+}
+
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null
+): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo:
+        auth.currentUser?.providerData.map((provider) => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL,
+        })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.error('Firestore Error:', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Test Connection safely using getDocFromServer without throwing unhandled quota exceptions
 export async function testConnection(): Promise<boolean> {
   if (Date.now() < quotaExhaustedUntil) {
     return false;
   }
   try {
     const docRef = doc(db, 'organizations', 'manisjaya', 'live', 'state');
-    const testDoc = await getDocFromServer(docRef).catch(() => getDoc(docRef));
+    const testDoc = await getDocFromServer(docRef);
     if (!testDoc.exists()) {
       await setDoc(
         docRef,
@@ -315,8 +371,15 @@ export async function testConnection(): Promise<boolean> {
     if (error?.code === 'resource-exhausted' || error?.message?.includes('Quota exceeded')) {
       quotaExhaustedUntil = Date.now() + 10 * 60 * 1000;
       console.warn('Firebase client: Quota tercapai. Mode offline diaktifkan.');
+    } else if (error?.code === 'permission-denied') {
+      try {
+        handleFirestoreError(error, OperationType.GET, 'organizations/manisjaya/live/state');
+      } catch (handledErr) {
+        console.warn((handledErr as Error).message);
+      }
+    } else {
+      console.warn('testConnection notice:', error?.message || error);
     }
-    console.warn('testConnection notice:', error?.message || error);
     return false;
   }
 }
@@ -882,8 +945,12 @@ export const pushLocalDataToCloud = async (
     const rawLocalData = collectLocalSyncData();
     const localData = sanitizeForFirestore(rawLocalData);
 
-    // Safeguard: Never overwrite cloud news with empty array on fresh devices unless explicit deletion
-    if ((!localData.kt_news_v1 || localData.kt_news_v1.length === 0) && !reason.includes('Hapus')) {
+    // Only skip news field on uninitialized fresh device when kt_news_v1 does not exist locally
+    if (
+      localStorage.getItem('kt_news_v1') === null &&
+      (!localData.kt_news_v1 || localData.kt_news_v1.length === 0) &&
+      !reason.includes('Hapus')
+    ) {
       delete localData.kt_news_v1;
       delete localData.kt_activities_v1;
     }

@@ -40,6 +40,9 @@ interface SemuaBeritaViewProps {
   onToast: (msg: string) => void;
   onDeleteActivity?: (id: string) => void;
   onToggleArchive?: (activity: ActivityItem) => void;
+  canManageNews?: boolean;
+  isLoggedIn?: boolean;
+  onOpenLoginModal?: () => void;
 }
 
 export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
@@ -49,6 +52,9 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
   onToast,
   onDeleteActivity,
   onToggleArchive,
+  canManageNews = false,
+  isLoggedIn = false,
+  onOpenLoginModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
@@ -163,13 +169,23 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
           </div>
 
           <div className="shrink-0 flex flex-col sm:flex-row gap-2.5">
-            <button
-              onClick={onAddNews}
-              className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold shadow-lg shadow-blue-600/40 flex items-center justify-center gap-2 transition-all transform active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Tambah Berita Baru</span>
-            </button>
+            {canManageNews ? (
+              <button
+                onClick={onAddNews}
+                className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-bold shadow-lg shadow-blue-600/40 flex items-center justify-center gap-2 transition-all transform active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Tambah Berita Baru</span>
+              </button>
+            ) : !isLoggedIn && onOpenLoginModal ? (
+              <button
+                onClick={onOpenLoginModal}
+                className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white border border-white/25 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <User className="w-4 h-4" />
+                <span>Login Pengurus</span>
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -262,23 +278,43 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
       {filteredActivities.length === 0 && (
         <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200 space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-            <Search className="w-8 h-8" />
+            {activities.length === 0 ? <Newspaper className="w-8 h-8" /> : <Search className="w-8 h-8" />}
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Tidak Ada Berita Ditemukan</h3>
+            <h3 className="text-base font-bold text-slate-900">
+              {activities.length === 0 ? 'Belum Ada Berita & Dokumentasi' : 'Tidak Ada Berita Ditemukan'}
+            </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Tidak ada berita atau dokumentasi yang cocok dengan kata kunci "<strong>{searchQuery}</strong>" pada kategori {selectedCategory}.
+              {activities.length === 0
+                ? 'Saat ini belum ada berita atau dokumentasi kegiatan yang diterbitkan di portal.'
+                : (
+                  <>
+                    Tidak ada berita atau dokumentasi yang cocok dengan kata kunci "<strong>{searchQuery}</strong>" pada kategori {selectedCategory}.
+                  </>
+                )}
             </p>
           </div>
-          <button
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedCategory('Semua');
-            }}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
-          >
-            Reset Pencarian
-          </button>
+          {activities.length === 0 ? (
+            canManageNews && (
+              <button
+                onClick={onAddNews}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Tambah Berita Pertama</span>
+              </button>
+            )
+          ) : (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCategory('Semua');
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+            >
+              Reset Pencarian
+            </button>
+          )}
         </div>
       )}
 
@@ -507,7 +543,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                     >
                       <Share2 className="w-3.5 h-3.5" />
                     </button>
-                    {onToggleArchive && (
+                    {canManageNews && onToggleArchive && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -532,7 +568,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                         )}
                       </button>
                     )}
-                    {onDeleteActivity && (
+                    {canManageNews && onDeleteActivity && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -541,7 +577,7 @@ export const SemuaBeritaView: React.FC<SemuaBeritaViewProps> = ({
                             onDeleteActivity(act.id);
                           }
                         }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-colors cursor-pointer"
                         title="Hapus Berita"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

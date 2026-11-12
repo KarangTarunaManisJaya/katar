@@ -803,7 +803,13 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
       downloadJsonFile(fileName, bundle);
 
       // Open user's Google Drive folder tab so they can immediately drag/drop or verify
-      window.open(targetDriveUrl, '_blank');
+      const driveLink = document.createElement('a');
+      driveLink.href = targetDriveUrl;
+      driveLink.target = '_blank';
+      driveLink.rel = 'noopener noreferrer';
+      document.body.appendChild(driveLink);
+      driveLink.click();
+      document.body.removeChild(driveLink);
 
       // 4. Save to persistent local backup records
       const record: LocalBackupRecord = {

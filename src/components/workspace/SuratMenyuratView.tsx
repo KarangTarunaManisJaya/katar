@@ -201,20 +201,40 @@ export const SuratMenyuratView: React.FC<SuratMenyuratViewProps> = ({ onToast })
     return defaultNumberingConfig;
   });
 
-  // LocalStorage sync effects
+  // LocalStorage sync effects (skip initial mount)
+  const isFirstSuratRender = React.useRef(true);
   useEffect(() => {
+    if (isFirstSuratRender.current) {
+      isFirstSuratRender.current = false;
+      return;
+    }
     localStorage.setItem('kt_surat_masuk_v1', JSON.stringify(suratMasuk));
   }, [suratMasuk]);
 
+  const isFirstSuratKeluarRender = React.useRef(true);
   useEffect(() => {
+    if (isFirstSuratKeluarRender.current) {
+      isFirstSuratKeluarRender.current = false;
+      return;
+    }
     localStorage.setItem('kt_surat_items_v2', JSON.stringify(suratKeluar));
   }, [suratKeluar]);
 
+  const isFirstDisposisiRender = React.useRef(true);
   useEffect(() => {
+    if (isFirstDisposisiRender.current) {
+      isFirstDisposisiRender.current = false;
+      return;
+    }
     localStorage.setItem('kt_surat_disposisi_v1', JSON.stringify(disposisi));
   }, [disposisi]);
 
+  const isFirstNumberingRender = React.useRef(true);
   useEffect(() => {
+    if (isFirstNumberingRender.current) {
+      isFirstNumberingRender.current = false;
+      return;
+    }
     localStorage.setItem('kt_surat_numbering_cfg_v1', JSON.stringify(numberingConfig));
   }, [numberingConfig]);
 

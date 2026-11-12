@@ -30,8 +30,9 @@ import {
   Check,
   X,
 } from 'lucide-react';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { UserAccount, DEFAULT_USERS, OWNER_ADMIN_EMAIL } from '../../types/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { UserAccount, DEFAULT_USERS, OWNER_ADMIN_EMAIL, verifyAdminPasswordClientSide } from '../../types/auth';
+import { DetailedMember, reconcileUsersAndMembersList } from '../../data/membersData';
 import { BrandLogo } from '../workspace/BrandLogo';
 import { addNotification } from '../../services/notificationService';
 import { auth, logoutGoogle } from '../../services/firestoreSyncService';
@@ -80,6 +81,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [infoMsg, setInfoMsg] = useState<string | null>(null);
 
   // Register Form States
   const [regName, setRegName] = useState('');
@@ -193,6 +195,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setUsername('');
       setPassword('');
       setErrorMsg(null);
+      setInfoMsg(null);
       setShowPassword(false);
       setMode('login');
       setOtpDigits(['', '', '', '', '', '']);
@@ -249,16 +252,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Handle Owner Google Sign-In for exclusive Administrator access
+  // Handle Owner Google Sign-In for exclusive Administrator access (Popup + Redirect fallback)
   const handleOwnerGoogleLogin = async () => {
     setErrorMsg(null);
+    setInfoMsg(null);
     setIsGoogleLoading(true);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account',
+      login_hint: OWNER_ADMIN_EMAIL,
+    });
+
     try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        login_hint: OWNER_ADMIN_EMAIL,
-      });
       const result = await signInWithPopup(auth, provider);
       const email = (result.user.email || '').trim().toLowerCase();
 
@@ -278,8 +283,26 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         lastLogin: new Date().toISOString(),
       });
     } catch (err: any) {
-      if (err?.code === 'auth/popup-closed-by-user') {
+      const code = err?.code || '';
+      if (
+        code === 'auth/popup-blocked' ||
+        code === 'auth/cancelled-popup-request' ||
+        code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        try {
+          setInfoMsg('Jendela popup diblokir browser. Mengalihkan ke halaman masuk Google...');
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr: any) {
+          setErrorMsg(redirectErr?.message || 'Gagal mengalihkan ke autentikasi Google.');
+        }
+      } else if (code === 'auth/popup-closed-by-user') {
         setErrorMsg('Login Google dibatalkan sebelum selesai.');
+      } else if (code === 'auth/unauthorized-domain') {
+        const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'domain ini';
+        setErrorMsg(
+          `Domain "${currentHost}" belum terdaftar pada Authorized Domains Firebase Auth. Anda tetap dapat masuk sebagai Administrator menggunakan Username "Administrator" atau "${OWNER_ADMIN_EMAIL}" dan Kata Sandi Pemilik di formulir atas.`
+        );
       } else {
         setErrorMsg(err?.message || 'Gagal memverifikasi akun Google pemilik.');
       }
@@ -292,10 +315,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setInfoMsg(null);
 
     const trimmedInput = username.trim();
     if (!trimmedInput) {
-      setErrorMsg('Silakan masukkan Username atau NIK Anda.');
+      setErrorMsg('Silakan masukkan Username, NIK, atau Email Anda.');
       return;
     }
 
@@ -311,34 +335,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       lowerInput === 'usr-administrator' ||
       lowerInput === OWNER_ADMIN_EMAIL;
 
-    // Eksklusif Pemilik: Verifikasi kredensial Administrator dilakukan secara aman di server
+    // Eksklusif Pemilik: Verifikasi via server jika tersedia, atau verifikasi SHA-256 aman pada hosting statis
     if (isAdminAttempt) {
       setIsVerifyingAdmin(true);
       try {
-        const resp = await fetch('/api/auth/verify-admin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            identifier: trimmedInput,
-            password: password.trim(),
-          }),
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok || !data?.verified) {
+        let serverHandled = false;
+        let serverVerified = false;
+        let serverMsg = '';
+
+        try {
+          const resp = await fetch('/api/auth/verify-admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              identifier: trimmedInput,
+              password: password.trim(),
+            }),
+          });
+          const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+          if (resp.status !== 404 && resp.status !== 405 && contentType.includes('application/json')) {
+            const data = await resp.json().catch(() => ({}));
+            serverHandled = true;
+            serverVerified = Boolean(resp.ok && data?.verified);
+            serverMsg = data?.message || '';
+          }
+        } catch {
+          // Server endpoint tidak terjangkau (mode statis / offline) -> lanjut ke verifikasi hash lokal
+        }
+
+        const verified = serverHandled
+          ? serverVerified
+          : await verifyAdminPasswordClientSide(password.trim());
+
+        if (!verified) {
           setErrorMsg(
-            data?.message ||
-              'Akses Administrator ditolak! Kredensial ini hanya berlaku untuk pemilik pribadi situs.'
+            serverMsg ||
+              'Akses Administrator ditolak! Kata sandi pemilik tidak valid. Pastikan Anda menggunakan kata sandi Administrator atau masuk dengan Google Pemilik di bawah.'
           );
           return;
         }
+
         onLogin({
           ...DEFAULT_USERS[0],
           password: '',
           email: OWNER_ADMIN_EMAIL,
           lastLogin: new Date().toISOString(),
         });
-      } catch {
-        setErrorMsg('Gagal menghubungi layanan verifikasi keamanan server.');
       } finally {
         setIsVerifyingAdmin(false);
       }
@@ -347,8 +389,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
     const cleanDigits = trimmedInput.replace(/\D/g, '');
 
-    const foundUser = usersList.find((u) => {
-      if (u.id === 'usr-administrator' || u.isSuperAdmin) return false;
+    // Gabungkan usersList dengan data anggota kt_members_v3 agar anggota baru tetap dapat masuk meski cache akun tertunda
+    let combinedUsers: UserAccount[] = Array.isArray(usersList) ? usersList : [];
+    try {
+      const rawMembers = localStorage.getItem('kt_members_v3');
+      if (rawMembers) {
+        const parsedMembers: DetailedMember[] = JSON.parse(rawMembers);
+        if (Array.isArray(parsedMembers) && parsedMembers.length > 0) {
+          combinedUsers = reconcileUsersAndMembersList(combinedUsers, parsedMembers);
+        }
+      }
+    } catch {}
+
+    const foundUser = combinedUsers.find((u) => {
+      if (!u || u.id === 'usr-administrator' || u.isSuperAdmin) return false;
       if (u.username && u.username.toLowerCase() === lowerInput) return true;
       if (u.nik) {
         const uNikDigits = u.nik.replace(/\D/g, '');
@@ -361,7 +415,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     });
 
     if (!foundUser) {
-      setErrorMsg('Akun atau NIK tidak terdaftar. Setiap user baru wajib daftar user terlebih dahulu melalui menu pendaftaran.');
+      setErrorMsg('Akun, NIK, atau email tidak terdaftar. Silakan periksa kembali atau daftar user baru melalui tab pendaftaran.');
+      return;
+    }
+
+    if (foundUser.status === 'Tidak Aktif') {
+      setErrorMsg('Akun Anda sedang berstatus Tidak Aktif. Silakan hubungi pengurus Karang Taruna Manis Jaya untuk mengaktifkan kembali.');
       return;
     }
 
@@ -768,6 +827,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
           )}
 
+          {infoMsg && (
+            <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-blue-800 text-xs flex items-start gap-2.5 animate-fadeIn">
+              <HelpCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <div className="leading-snug">
+                <span className="font-bold block">Informasi Bantuan:</span>
+                {infoMsg}
+              </div>
+            </div>
+          )}
+
           {/* ============================================================== */}
           {/* 1. TAMPILAN LOGIN                                              */}
           {/* ============================================================== */}
@@ -775,7 +844,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                  Username / NIK Anggota
+                  Username / NIK / Email
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -786,7 +855,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Masukkan username atau NIK terdaftar"
+                    placeholder="Masukkan username, NIK, atau email"
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                   />
                 </div>
@@ -797,16 +866,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <label className="block text-xs font-bold text-slate-800">
                     Kata Sandi (Password)
                   </label>
-                  <span
+                  <button
+                    type="button"
                     className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline"
-                    onClick={() =>
-                      setErrorMsg(
-                        'Silakan hubungi Pengurus Karang Taruna RW setempat jika Anda lupa kata sandi.'
-                      )
-                    }
+                    onClick={() => {
+                      setErrorMsg(null);
+                      setInfoMsg(
+                        `Anggota: Hubungi Pengurus Karang Taruna RW setempat atau Administrator (${OWNER_ADMIN_EMAIL}) untuk mereset kata sandi akun Anda. Pemilik Situs dapat langsung menekan tombol "Masuk Administrator dengan Akun Google Pemilik" di bawah.`
+                      );
+                    }}
                   >
                     Lupa Password?
-                  </span>
+                  </button>
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

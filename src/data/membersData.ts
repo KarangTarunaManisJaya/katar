@@ -107,3 +107,76 @@ export function memberToUserAccount(m: DetailedMember): UserAccount {
     job: m.job,
   };
 }
+
+export function reconcileUsersAndMembersList(
+  existingUsers: UserAccount[],
+  membersList: DetailedMember[]
+): UserAccount[] {
+  const safeUsers = Array.isArray(existingUsers) ? existingUsers : [];
+  const safeMembers = Array.isArray(membersList) ? membersList : [];
+
+  const memberMapById = new Map<string, DetailedMember>();
+  const memberMapByUsername = new Map<string, DetailedMember>();
+  for (const m of safeMembers) {
+    if (!m || typeof m !== 'object') continue;
+    if (m.id) memberMapById.set(String(m.id), m);
+    if (m.username) memberMapByUsername.set(String(m.username).trim().toLowerCase(), m);
+  }
+
+  const nonAdminUsers: UserAccount[] = [];
+  const seenIds = new Set<string>();
+  const seenUsernames = new Set<string>();
+
+  for (const u of safeUsers) {
+    if (!u || typeof u !== 'object') continue;
+    const unameLower = String(u.username || '').trim().toLowerCase();
+    if (u.id === 'usr-administrator' || unameLower === 'administrator' || u.id === 'guest') {
+      continue;
+    }
+    const matchedMember =
+      (u.id ? memberMapById.get(String(u.id)) : undefined) ||
+      (unameLower ? memberMapByUsername.get(unameLower) : undefined);
+
+    const mergedUser: UserAccount = {
+      ...u,
+      isSuperAdmin: false,
+      allowedMenus: (
+        Array.isArray(u.allowedMenus)
+          ? u.allowedMenus
+          : (['beranda', 'ringkasan', 'jadwal', 'berita'] as WorkspaceTab[])
+      ).filter(
+        (menu) => menu !== 'akses' && menu !== 'database' && menu !== 'pengaturan'
+      ),
+      nik: u.nik || matchedMember?.nik,
+      noAnggota: u.noAnggota || matchedMember?.noAnggota,
+      email: u.email || matchedMember?.email,
+      phone: u.phone || matchedMember?.phone,
+      status: u.status || matchedMember?.status || 'Aktif',
+      avatar: u.avatar || matchedMember?.avatar,
+      divisi: u.divisi || matchedMember?.divisi,
+      job: u.job || matchedMember?.job,
+      password: u.password || matchedMember?.password || 'karangtaruna',
+    };
+
+    if (mergedUser.id) seenIds.add(String(mergedUser.id));
+    if (unameLower) seenUsernames.add(unameLower);
+    nonAdminUsers.push(mergedUser);
+  }
+
+  // Tambahkan anggota dari kt_members_v3 yang belum terdaftar di kt_users_list_v3
+  for (const m of safeMembers) {
+    if (!m || typeof m !== 'object') continue;
+    const converted = memberToUserAccount(m);
+    const unameLower = String(converted.username || '').trim().toLowerCase();
+    if (converted.id === 'usr-administrator' || unameLower === 'administrator') continue;
+    if ((converted.id && seenIds.has(String(converted.id))) || (unameLower && seenUsernames.has(unameLower))) {
+      continue;
+    }
+    if (converted.id) seenIds.add(String(converted.id));
+    if (unameLower) seenUsernames.add(unameLower);
+    nonAdminUsers.push(converted);
+  }
+
+  return nonAdminUsers;
+}
+

@@ -141,6 +141,24 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["newsId", "contentType"]
+    },
+    "Voting": {
+      "title": "Voting",
+      "description": "Musyawarah dan pemilihan ketua/kegiatan real-time Karang Taruna Manis Jaya",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string" },
+        "options": { "type": "array" },
+        "totalVotes": { "type": "number" },
+        "voterHistory": { "type": "array" },
+        "createdBy": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "status"]
     }
   },
   "firestore": {
@@ -179,6 +197,10 @@
     "/organizations/manisjaya/settings/{settingId}": {
       "schema": "Setting",
       "description": "Pengaturan sistem Karang Taruna Manis Jaya"
+    },
+    "/organizations/manisjaya/votings/{votingId}": {
+      "schema": "Voting",
+      "description": "Musyawarah dan polling real-time Karang Taruna Manis Jaya"
     }
   }
 }

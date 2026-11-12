@@ -194,14 +194,18 @@ export const Header: React.FC<HeaderProps> = ({
             )}
             <span className="hidden md:inline">
               {syncStatus.state === 'connected'
-                ? 'Turso Utama Aktif'
+                ? syncStatus.message?.includes('Backup') || syncStatus.message?.includes('Firestore')
+                  ? 'Cloud Backup Aktif'
+                  : 'Turso Utama Aktif'
                 : syncStatus.state === 'syncing'
-                ? 'Menyimpan ke Turso...'
+                ? syncStatus.message?.includes('Firestore')
+                  ? 'Menyinkronkan Cloud...'
+                  : 'Menyimpan ke Turso...'
                 : syncStatus.pendingOfflineCount > 0
                 ? `Offline (${syncStatus.pendingOfflineCount} perubahan)`
                 : syncStatus.state === 'offline'
                 ? 'Mode Offline'
-                : 'Turso Perlu Cek'}
+                : 'Sinkronisasi Perlu Cek'}
             </span>
             {onManualSync && (
               <button
@@ -548,10 +552,10 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onOpenLoginModal}
             className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-600/25 transition-all cursor-pointer transform active:scale-95"
-            title="Masuk dengan akun pengurus untuk membuka seluruh akses menu"
+            title="Daftar anggota baru atau masuk ke akun Anda"
           >
             <KeyRound className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Masuk / Login</span>
+            <span className="hidden sm:inline">Daftar / Masuk</span>
             <span className="sm:hidden">Masuk</span>
           </button>
         )}
