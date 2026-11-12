@@ -66,7 +66,7 @@ import {
   withTursoSyncSuppressed,
 } from './services/tursoService';
 import { getRedirectResult } from 'firebase/auth';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, getDocsFromServer } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
 import { updatePageSeo, DEFAULT_SEO } from './utils/seoHelper';
 
@@ -194,10 +194,15 @@ function AppContent() {
         console.debug('Filebase backup fetch notice:', fbErr);
       }
 
-      // 3. BACKUP FALLBACK 2: Ambil dari Cloud Firestore Backup jika Turso tidak tersedia & Filebase kosong
+      // 3. BACKUP FALLBACK 2: Ambil dari Cloud Firestore Backup (utamakan server agar cache lokal lama tidak memunculkan berita terhapus)
       try {
         const colRef = collection(db, 'organizations', 'manisjaya', 'news');
-        const snap = await getDocs(colRef);
+        let snap;
+        try {
+          snap = await getDocsFromServer(colRef);
+        } catch {
+          snap = await getDocs(colRef);
+        }
         if (isMounted) {
           const list: ActivityItem[] = [];
           snap.forEach((d) => {

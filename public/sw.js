@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manisjaya-cache-v8';
+const CACHE_NAME = 'manisjaya-cache-v9';
 const PRECACHE_ASSETS = [
   './',
   './index.html',

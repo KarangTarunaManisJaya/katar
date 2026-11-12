@@ -1190,6 +1190,28 @@ export const startRealtimeSync = (
     newsColRef,
     (snapshot) => {
       if (snapshot.empty) {
+        if (!snapshot.metadata.fromCache) {
+          isInitialCloudSyncResolved = true;
+          const currentStr = localStorage.getItem('kt_news_v1');
+          if (currentStr !== '[]') {
+            isApplyingRemoteChange = true;
+            try {
+              localStorage.setItem('kt_news_v1', '[]');
+              localStorage.setItem('kt_activities_v1', '[]');
+            } finally {
+              setTimeout(() => {
+                isApplyingRemoteChange = false;
+              }, 400);
+            }
+            window.dispatchEvent(new CustomEvent('kt_news_updated', { detail: { news: [] } }));
+            window.dispatchEvent(
+              new CustomEvent('kt_cloud_sync_update', {
+                detail: { modifiedKeys: ['kt_news_v1', 'kt_activities_v1'] },
+              })
+            );
+            onRemoteUpdateReceived?.(['kt_news_v1', 'kt_activities_v1']);
+          }
+        }
         return;
       }
 
