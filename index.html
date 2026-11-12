@@ -132,7 +132,7 @@
     </script>
 
     <script>
-      // Clean up stale service workers in development or iframe preview
+      // Clean up stale service workers & old caches so latest build always loads immediately
       if ('serviceWorker' in navigator) {
         const isProdSite = window.location.hostname.includes('github.io') || window.location.hostname.includes('karangtarunamanisjaya.my.id');
         if (!isProdSite) {
@@ -142,8 +142,38 @@
             }
           });
         } else {
+          if ('caches' in window) {
+            caches.keys().then((keys) => {
+              keys.filter((k) => k !== 'manisjaya-cache-v9').forEach((k) => caches.delete(k));
+            }).catch(() => {});
+          }
+
+          let swReloadTriggered = false;
+          const triggerSafeReload = () => {
+            if (swReloadTriggered) return;
+            try {
+              if (sessionStorage.getItem('kt_sw_reloaded_v9')) return;
+              sessionStorage.setItem('kt_sw_reloaded_v9', '1');
+            } catch {}
+            swReloadTriggered = true;
+            window.location.reload();
+          };
+
+          navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'SW_FORCE_RELOAD') {
+              triggerSafeReload();
+            }
+          });
+
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            triggerSafeReload();
+          });
+
           window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').catch(() => {});
+            navigator.serviceWorker
+              .register('./sw.js?v=9', { updateViaCache: 'none' })
+              .then((reg) => reg.update().catch(() => {}))
+              .catch(() => {});
           });
         }
       }

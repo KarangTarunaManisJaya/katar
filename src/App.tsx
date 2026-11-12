@@ -121,16 +121,24 @@ export function normalizeNewsItem(item: any): ActivityItem {
 }
 
 const SESSION_AUTH_MARKER = 'kt_session_authenticated_v1';
+const CLEAN_SYNC_EPOCH = 'kt_clean_sync_2026_11_12_v1';
 
 function AppContent() {
   const { theme } = useTheme();
   const [currentTab, setCurrentTab] = useState<WorkspaceTab>('beranda');
+  const [, setSyncRevision] = useState(0);
 
   // Pastikan setiap pengunjung yang baru membuka website selalu berada pada status default sebelum daftar/login (Tamu)
+  // serta bersihkan cache berita lama satu kali agar selalu sinkron real-time 0 berita dari database utama/cloud
   if (typeof window !== 'undefined') {
     try {
       if (!sessionStorage.getItem(SESSION_AUTH_MARKER)) {
         localStorage.removeItem('kt_auth_user_v3');
+      }
+      if (!localStorage.getItem(CLEAN_SYNC_EPOCH)) {
+        localStorage.setItem('kt_news_v1', '[]');
+        localStorage.setItem('kt_activities_v1', '[]');
+        localStorage.setItem(CLEAN_SYNC_EPOCH, '1');
       }
     } catch {}
   }
@@ -774,17 +782,25 @@ function AppContent() {
     showToast(`${count} kegiatan lampau berhasil dipindahkan ke Arsip Kegiatan!`);
   };
 
-  // Listen for news updates pushed from Turso Primary Sync (tidak ditimpa oleh Backup Firestore/Filebase)
+  // Listen for news & live database updates pushed in real time
   useEffect(() => {
     const handleNewsUpdate = (e: any) => {
       if (e.detail?.news && Array.isArray(e.detail.news)) {
         setActivities(e.detail.news.map(normalizeNewsItem));
+        setSyncRevision((v) => v + 1);
       }
     };
+    const handleCloudBump = () => {
+      setSyncRevision((v) => v + 1);
+    };
     window.addEventListener('kt_news_updated', handleNewsUpdate);
+    window.addEventListener('kt_cloud_sync_update', handleCloudBump);
+    window.addEventListener('kt_database_restored', handleCloudBump);
 
     return () => {
       window.removeEventListener('kt_news_updated', handleNewsUpdate);
+      window.removeEventListener('kt_cloud_sync_update', handleCloudBump);
+      window.removeEventListener('kt_database_restored', handleCloudBump);
     };
   }, []);
 
@@ -868,6 +884,8 @@ function AppContent() {
           }
         } catch {}
       }
+
+      setSyncRevision((v) => v + 1);
     };
 
     enableTursoAutoSync(
@@ -912,7 +930,7 @@ function AppContent() {
       (updatedKeys) => {
         reconcileAndRefreshStateFromStorage(updatedKeys, false);
       },
-      8000,
+      3000,
       activateFirestoreBackupFallback
     );
 

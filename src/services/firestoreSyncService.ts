@@ -1108,6 +1108,11 @@ export const startRealtimeSync = (
         }
       }
 
+      // Ignore stale IndexedDB cache snapshots while online; wait for authoritative live server data
+      if (isFromCache && isOnline) {
+        return;
+      }
+
       // Ignore echoes from this same device tab to prevent re-rendering loops
       if (cloudPayload.deviceId === DEVICE_ID) {
         if (!hasPendingWrites && isOnline) {
@@ -1189,6 +1194,10 @@ export const startRealtimeSync = (
   const unsubscribeNews = onSnapshot(
     newsColRef,
     (snapshot) => {
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (snapshot.metadata.fromCache && isOnline) {
+        return;
+      }
       if (snapshot.empty) {
         if (!snapshot.metadata.fromCache) {
           isInitialCloudSyncResolved = true;

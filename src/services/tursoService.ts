@@ -2531,11 +2531,12 @@ export const pushFullStateToTurso = async (
 export const startTursoPrimarySync = (
   onStatusChange?: (status: TursoSyncStatus) => void,
   onRemoteUpdateReceived?: (updatedKeys: string[]) => void,
-  pollIntervalMs = 8000,
+  pollIntervalMs = 3000,
   onProxyUnavailable?: () => void
 ): (() => void) => {
   let isMounted = true;
   let proxyUnavailableFlag = false;
+  let lastObservedNewsSig = '';
   tursoPrimarySyncActive = true;
 
   const emitStatus = (
@@ -2565,6 +2566,25 @@ export const startTursoPrimarySync = (
       : 'Mode Offline: Perubahan disimpan lokal & otomatis dikirim ke Turso saat online.'
   );
 
+  const readRemoteSignature = async (client: TursoExecutor) => {
+    const checkRes = await client.execute({
+      sql: `SELECT
+              (SELECT updated_at FROM org_live_state WHERE id = 'manisjaya_live' LIMIT 1) AS updated_at,
+              (SELECT device_id FROM org_live_state WHERE id = 'manisjaya_live' LIMIT 1) AS device_id,
+              (SELECT updated_by FROM org_live_state WHERE id = 'manisjaya_live' LIMIT 1) AS updated_by,
+              (SELECT COUNT(*) FROM news) AS news_count,
+              (SELECT COALESCE(MAX(updated_at), '') FROM news) AS news_max_updated_at;`,
+    });
+    const row = (checkRes.rows[0] || {}) as any;
+    const newsSig = `${Number(row.news_count || 0)}:${String(row.news_max_updated_at || '')}`;
+    return {
+      updatedAt: String(row.updated_at || ''),
+      deviceId: String(row.device_id || ''),
+      updatedBy: String(row.updated_by || ''),
+      newsSig,
+    };
+  };
+
   const bootstrap = async () => {
     try {
       const conn = await testTursoConnection();
@@ -2583,6 +2603,14 @@ export const startTursoPrimarySync = (
 
       const pulled = await pullFullStateFromTurso();
       if (!isMounted) return;
+
+      const client = getTursoClient();
+      if (client) {
+        try {
+          const sig = await readRemoteSignature(client);
+          lastObservedNewsSig = sig.newsSig;
+        } catch {}
+      }
 
       if (!pulled.exists) {
         // Jika Turso masih kosong, inisialisasi dari state lokal
@@ -2612,7 +2640,7 @@ export const startTursoPrimarySync = (
     }
   };
 
-  // Polling ringan ke Turso org_live_state untuk sinkronisasi antar perangkat
+  // Polling real-time ke Turso org_live_state dan tabel news untuk sinkronisasi antar perangkat
   const pollTimer = setInterval(async () => {
     if (!isMounted || proxyUnavailableFlag) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
@@ -2621,32 +2649,29 @@ export const startTursoPrimarySync = (
     if (!client) return;
 
     try {
-      const checkRes = await client.execute({
-        sql: 'SELECT updated_at, device_id, updated_by FROM org_live_state WHERE id = ? LIMIT 1;',
-        args: ['manisjaya_live'],
-      });
-      const row = checkRes.rows[0] as any;
-      if (!row) return;
+      const sig = await readRemoteSignature(client);
+      const stateChangedFromOtherDevice =
+        Boolean(sig.updatedAt) &&
+        sig.updatedAt !== lastObservedTursoUpdatedAt &&
+        sig.deviceId !== TURSO_DEVICE_ID;
+      const newsTableChanged =
+        Boolean(lastObservedNewsSig) && sig.newsSig !== lastObservedNewsSig;
 
-      const remoteUpdatedAt = String(row.updated_at || '');
-      const remoteDeviceId = String(row.device_id || '');
-
-      if (
-        remoteUpdatedAt &&
-        remoteUpdatedAt !== lastObservedTursoUpdatedAt &&
-        remoteDeviceId !== TURSO_DEVICE_ID
-      ) {
+      if (stateChangedFromOtherDevice || newsTableChanged) {
+        lastObservedNewsSig = sig.newsSig;
         const pulled = await pullFullStateFromTurso();
         if (!isMounted) return;
         emitStatus(
           'connected',
-          `Sinkronisasi Turso Utama diperbarui (${row.updated_by || 'perangkat lain'})`,
-          remoteUpdatedAt,
-          remoteDeviceId
+          `Sinkronisasi Turso Utama diperbarui (${sig.updatedBy || 'perangkat lain'})`,
+          sig.updatedAt || new Date().toISOString(),
+          sig.deviceId
         );
         if (pulled.updated && pulled.modifiedKeys.length > 0) {
           onRemoteUpdateReceived?.(pulled.modifiedKeys);
         }
+      } else if (!lastObservedNewsSig) {
+        lastObservedNewsSig = sig.newsSig;
       }
     } catch (err: any) {
       if (String(err?.message || '').includes('TURSO_PROXY_UNAVAILABLE')) {

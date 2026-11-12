@@ -1,39 +1,25 @@
 const CACHE_NAME = 'manisjaya-cache-v9';
-const PRECACHE_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './manifest.json?v=2',
-  './logo.svg',
-  './logo.svg?v=2',
-  './logo.png',
-  './logo.png?v=2',
-  './icon-192.png',
-  './icon-192.png?v=2',
-  './icon-512.png',
-  './icon-512.png?v=2',
-  './favicon.ico',
-  './favicon.ico?v=2'
-];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS).catch(() => {});
-    })
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      );
-    })
+    (async () => {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      } catch {}
+      await self.clients.claim();
+      try {
+        const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        for (const client of windowClients) {
+          client.postMessage({ type: 'SW_FORCE_RELOAD', cacheVersion: CACHE_NAME });
+        }
+      } catch {}
+    })()
   );
-  self.clients.claim();
 });
 
 self.addEventListener('message', (event) => {
@@ -41,74 +27,49 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Bypass all API, dev server requests, Vite internals, and non-GET requests immediately
+  // Bypass dev, API, and dynamic endpoints completely
   if (
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/@') ||
     url.pathname.startsWith('/src/') ||
     url.pathname.startsWith('/node_modules/') ||
     url.pathname.includes('.vite') ||
-    url.search.includes('?v=') ||
-    url.search.includes('?t=') ||
     url.hostname === 'localhost' ||
     url.hostname === '127.0.0.1' ||
     url.hostname.includes('.run.app') ||
     url.hostname.includes('.ai.studio')
   ) {
-    // If running in dev environment, self-unregister and don't touch network
-    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname.includes('.run.app') || url.hostname.includes('.ai.studio')) {
+    if (
+      url.hostname === 'localhost' ||
+      url.hostname === '127.0.0.1' ||
+      url.hostname.includes('.run.app') ||
+      url.hostname.includes('.ai.studio')
+    ) {
       self.registration.unregister().catch(() => {});
     }
     return;
   }
 
-  // Never intercept APK installers or ZIP downloads so browser natively downloads full binary files without size cutoff
+  // Never intercept APK installers or ZIP downloads
   if (
     url.pathname.endsWith('.apk') ||
     url.pathname.endsWith('.zip') ||
     url.pathname.includes('ManisJaya_') ||
-    url.pathname.includes('.apk') ||
     url.search.includes('.apk')
   ) {
-    return; // Pass through natively to network
-  }
-
-  // Network-First for navigation / HTML documents so phones always receive the latest deployed version
-  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          return caches.match(event.request, { ignoreSearch: true }).then((cached) => cached || caches.match('./index.html') || caches.match('/'));
-        })
-    );
     return;
   }
 
-  // Stale-While-Revalidate for other assets
-  event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
-  );
+  // Always network-only (no-store) for HTML navigation so GitHub Pages updates appear immediately
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request, { cache: 'no-store' }).catch(() => fetch(event.request))
+    );
+    return;
+  }
 });
