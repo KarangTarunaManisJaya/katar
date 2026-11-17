@@ -65,6 +65,7 @@ import {
   pushFullStateToTurso,
   withTursoSyncSuppressed,
 } from './services/tursoService';
+import { pushBackupToCloudflare } from './services/cloudflareBackupService';
 import { getRedirectResult } from 'firebase/auth';
 import { collection, getDocs, getDocsFromServer } from 'firebase/firestore';
 import { addNotification } from './services/notificationService';
@@ -633,10 +634,11 @@ function AppContent() {
     });
     pushFullStateToTurso(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
 
-    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase berjalan non-blocking di latar belakang
+    // 2. DATABASE CADANGAN (BACKUP): Cloudflare, Firestore & Filebase berjalan non-blocking di latar belakang
     saveNewsToFirestore(newAct).catch(() => {});
     saveNewsToFilebase(newAct, 'upsert').catch(() => {});
     pushBackupToFirestore(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
+    pushBackupToCloudflare(`Tambah berita: ${newAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
 
     addNotification({
@@ -660,7 +662,7 @@ function AppContent() {
     await deleteNewsFromTurso(id).catch(() => {});
     pushFullStateToTurso('Hapus berita kegiatan', currentUser.name).catch(() => {});
 
-    // 2. DATABASE CADANGAN (BACKUP): Hapus di Firestore & Filebase di latar belakang
+    // 2. DATABASE CADANGAN (BACKUP): Hapus di Cloudflare, Firestore & Filebase di latar belakang
     deleteNewsFromFirestore(id).catch(() => {});
     if (updated.length === 0) {
       saveNewsToFilebase([], 'replace_all').catch(() => {});
@@ -668,6 +670,7 @@ function AppContent() {
       saveNewsToFilebase({ id }, 'delete').catch(() => {});
     }
     pushBackupToFirestore('Hapus berita kegiatan', currentUser.name).catch(() => {});
+    pushBackupToCloudflare('Hapus berita kegiatan', currentUser.name).catch(() => {});
     notifyLocalDataChanged('Hapus Berita Kegiatan');
     setSelectedActivity(null);
     showToast('Berita kegiatan berhasil dihapus.');
@@ -710,10 +713,11 @@ function AppContent() {
     await saveNewsToTurso(updatedAct).catch(() => {});
     pushFullStateToTurso(actionReason, currentUser.name).catch(() => {});
 
-    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase
+    // 2. DATABASE CADANGAN (BACKUP): Cloudflare, Firestore & Filebase
     saveNewsToFirestore(updatedAct).catch(() => {});
     saveNewsToFilebase(updatedAct, 'upsert').catch(() => {});
     pushBackupToFirestore(actionReason, currentUser.name).catch(() => {});
+    pushBackupToCloudflare(actionReason, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Arsip Kegiatan');
 
     if (isNowArchived) {
@@ -775,9 +779,10 @@ function AppContent() {
     }
     pushFullStateToTurso(`Arsipkan ${count} kegiatan lampau`, currentUser.name).catch(() => {});
 
-    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase
+    // 2. DATABASE CADANGAN (BACKUP): Cloudflare, Firestore & Filebase
     saveNewsToFilebase(updated, 'replace_all').catch(() => {});
     pushBackupToFirestore(`Arsipkan ${count} kegiatan lampau`, currentUser.name).catch(() => {});
+    pushBackupToCloudflare(`Arsipkan ${count} kegiatan lampau`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Arsip Kegiatan');
     showToast(`${count} kegiatan lampau berhasil dipindahkan ke Arsip Kegiatan!`);
   };
@@ -892,6 +897,7 @@ function AppContent() {
       () => currentUserRef.current.name,
       (reason) => {
         pushBackupToFirestore(reason, currentUserRef.current.name).catch(() => {});
+        pushBackupToCloudflare(reason, currentUserRef.current.name).catch(() => {});
       },
       () =>
         Boolean(
@@ -946,8 +952,9 @@ function AppContent() {
     try {
       showToast('Menyinkronkan data ke Turso Database Utama...');
       const res = await pushFullStateToTurso('Sinkronisasi manual pengguna ke Turso Utama', currentUser.name);
-      // Cadangkan secara non-blocking ke Firestore & Filebase Backup
+      // Cadangkan secara non-blocking ke Cloudflare, Firestore & Filebase Backup
       pushBackupToFirestore('Cadangan sinkronisasi manual', currentUser.name).catch(() => {});
+      pushBackupToCloudflare('Cadangan sinkronisasi manual', currentUser.name).catch(() => {});
       saveNewsToFilebase(activities, 'replace_all').catch(() => {});
 
       if (res.success) {
@@ -988,10 +995,11 @@ function AppContent() {
     await saveNewsToTurso(updatedAct).catch(() => {});
     pushFullStateToTurso(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
 
-    // 2. DATABASE CADANGAN (BACKUP): Firestore & Filebase
+    // 2. DATABASE CADANGAN (BACKUP): Cloudflare, Firestore & Filebase
     saveNewsToFirestore(updatedAct).catch(() => {});
     saveNewsToFilebase(updatedAct, 'upsert').catch(() => {});
     pushBackupToFirestore(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
+    pushBackupToCloudflare(`Update warta: ${updatedAct.title}`, currentUser.name).catch(() => {});
     notifyLocalDataChanged('Pembaruan Berita Kegiatan');
     if (customToastMessage) {
       showToast(customToastMessage);

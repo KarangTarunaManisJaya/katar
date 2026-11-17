@@ -101,6 +101,15 @@ import {
   getCurrentFirebaseUser,
   onFirebaseAuthChange,
 } from '../../services/firestoreSyncService';
+import {
+  getCloudflareBackupConfig,
+  saveCloudflareBackupConfig,
+  testCloudflareBackupConnection,
+  pushBackupToCloudflare,
+  pullBackupFromCloudflare,
+  CLOUDFLARE_WORKER_SCRIPT,
+  CloudflareBackupConfig,
+} from '../../services/cloudflareBackupService';
 import { FirebaseConfigModal } from './FirebaseConfigModal';
 import { doc, getDoc } from 'firebase/firestore';
 import { User } from 'firebase/auth';
@@ -225,6 +234,13 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
   const [tursoStats, setTursoStats] = useState<TursoTableStats | null>(null);
   const [isLoadingTursoStats, setIsLoadingTursoStats] = useState(false);
   const [isBackingUpAll, setIsBackingUpAll] = useState(false);
+
+  // Cloudflare Backup State (dash.cloudflare.com)
+  const [cfConfig, setCfConfig] = useState<CloudflareBackupConfig>(() => getCloudflareBackupConfig());
+  const [isTestingCf, setIsTestingCf] = useState(false);
+  const [isSyncingCf, setIsSyncingCf] = useState(false);
+  const [cfTestResult, setCfTestResult] = useState<{ success: boolean; message: string; mode?: string } | null>(null);
+  const [showCfWorkerModal, setShowCfWorkerModal] = useState(false);
 
   const refreshTursoStats = useCallback(async () => {
     setIsLoadingTursoStats(true);
@@ -355,24 +371,91 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
     }
   };
 
-  // Cadangkan data dari Turso Utama ke seluruh lapisan backup (Firestore & Filebase)
+  const handleSaveCloudflareConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    saveCloudflareBackupConfig(cfConfig);
+    onToast('Konfigurasi Backup Cloudflare (dash.cloudflare.com) berhasil disimpan!');
+  };
+
+  const handleTestCloudflare = async () => {
+    setIsTestingCf(true);
+    setCfTestResult(null);
+    try {
+      saveCloudflareBackupConfig(cfConfig);
+      const res = await testCloudflareBackupConnection(cfConfig);
+      setCfTestResult(res);
+      onToast(res.message);
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal menguji koneksi Cloudflare Backup.';
+      setCfTestResult({ success: false, message: msg });
+      onToast(msg);
+    } finally {
+      setIsTestingCf(false);
+    }
+  };
+
+  const handlePushCloudflareBackup = async () => {
+    setIsSyncingCf(true);
+    try {
+      saveCloudflareBackupConfig(cfConfig);
+      await pushFullStateToTurso('Sinkronisasi sebelum backup Cloudflare');
+      const res = await pushBackupToCloudflare('Cadangan manual dari Turso Utama ke Cloudflare');
+      setCfConfig(getCloudflareBackupConfig());
+      setCfTestResult({ success: res.success, message: res.message });
+      onToast(res.message);
+    } catch (err: any) {
+      onToast(`Gagal backup ke Cloudflare: ${err?.message || err}`);
+    } finally {
+      setIsSyncingCf(false);
+    }
+  };
+
+  const handlePullCloudflareBackup = async () => {
+    setIsSyncingCf(true);
+    try {
+      const res = await pullBackupFromCloudflare();
+      if (res.success) {
+        refreshLocalSummary();
+        refreshBackupArchives();
+        await pushFullStateToTurso('Pemulihan cadangan dari Cloudflare ke Turso Utama');
+        await refreshTursoStats();
+      }
+      onToast(res.message);
+    } catch (err: any) {
+      onToast(`Gagal memulihkan dari Cloudflare: ${err?.message || err}`);
+    } finally {
+      setIsSyncingCf(false);
+    }
+  };
+
+  // Cadangkan data dari Turso Utama ke seluruh lapisan backup (Cloudflare, Firestore & Filebase)
   const handleBackupToAllSecondary = async () => {
     setIsBackingUpAll(true);
     try {
       await pushFullStateToTurso('Sinkronisasi sebelum pencadangan ke semua backup');
-      const [fireRes, filebaseRes] = await Promise.all([
+      const [cfRes, fireRes, filebaseRes] = await Promise.all([
+        pushBackupToCloudflare('Cadangan penuh manual dari Turso Utama').catch((err: any) => ({
+          success: false,
+          skipped: false,
+          message: err?.message,
+        })),
         forceSyncAllToCloud().catch((err: any) => ({ success: false, message: err?.message })),
         syncAllToFilebase().catch((err: any) => ({ success: false, message: err?.message })),
       ]);
+      setCfConfig(getCloudflareBackupConfig());
       refreshFilebaseCatalog();
       await refreshTursoStats();
-      const okCount = (fireRes.success ? 1 : 0) + (filebaseRes.success ? 1 : 0);
-      if (okCount === 2) {
-        onToast('Cadangan penuh berhasil dikirim ke Cloud Firestore dan Filebase.com!');
-      } else if (okCount === 1) {
-        onToast('Sebagian backup berhasil diperbarui (cek Firestore/Filebase). Data utama Turso tetap aman.');
+
+      const results = [
+        cfRes.success ? 'Cloudflare' : null,
+        fireRes.success ? 'Firestore' : null,
+        filebaseRes.success ? 'Filebase' : null,
+      ].filter(Boolean);
+
+      if (results.length > 0) {
+        onToast(`Cadangan dari Turso Utama berhasil dikirim ke: ${results.join(', ')}!`);
       } else {
-        onToast('Backup sekunder gagal sebagian (kemungkinan kuota Firestore), namun data utama Turso 100% aman.');
+        onToast('Lapisan backup belum merespons (cek pengaturan Cloudflare/Firestore/Filebase), namun data utama Turso 100% aman.');
       }
     } catch (err: any) {
       onToast(`Gagal mencadangkan ke lapisan backup: ${err?.message || err}`);
@@ -1004,7 +1087,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-3 py-1 bg-teal-500/30 border border-teal-400/50 rounded-full text-xs font-extrabold text-teal-200 tracking-wide uppercase flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5" />
-                Database Utama: Turso (libSQL) · Backup: Firestore, Filebase &amp; Drive
+                Database Utama: Turso (libSQL) · Backup: Cloudflare, Firestore, Filebase &amp; Drive
               </span>
               {googleUser ? (
                 <span className="px-3 py-1 bg-emerald-500/30 border border-emerald-400/40 rounded-full text-xs font-bold text-emerald-200 flex items-center gap-1.5">
@@ -1022,7 +1105,7 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
               Pusat Database Utama &amp; Cadangan
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              <strong>Turso Database (libSQL Cloud)</strong> beroperasi sebagai <strong>Database Utama</strong> aplikasi Karang Taruna Kelurahan Manis Jaya. Cloud Firestore, Filebase.com, Google Drive, dan penyimpanan browser berfungsi otomatis sebagai <strong>lapisan cadangan (backup)</strong>.
+              <strong>Turso Database (libSQL Cloud)</strong> beroperasi sebagai <strong>Database Utama</strong> aplikasi Karang Taruna Kelurahan Manis Jaya. <strong>Cloudflare (dash.cloudflare.com)</strong>, Cloud Firestore, Filebase.com, Google Drive, dan penyimpanan lokal berfungsi otomatis sebagai <strong>lapisan cadangan (backup)</strong>.
             </p>
           </div>
 
@@ -1448,6 +1531,150 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
             </button>
           </div>
         </div>
+      </div>
+
+      {/* BACKUP 2: CLOUDFLARE (dash.cloudflare.com — Workers / KV / D1 / R2) */}
+      <div className="bg-gradient-to-r from-orange-950 via-slate-900 to-amber-950 rounded-3xl p-5 sm:p-6 text-white shadow-lg border border-orange-500/40 relative overflow-hidden space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-400/40 text-orange-300 flex items-center justify-center shrink-0 shadow-inner">
+              <Globe className="w-6 h-6 text-orange-400" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-white">
+                  Cloudflare Backup (dash.cloudflare.com)
+                </h3>
+                <span className="px-2.5 py-0.5 bg-amber-400/20 border border-amber-400/50 rounded-full text-[10px] font-extrabold text-amber-200 tracking-wide uppercase">
+                  DATABASE CADANGAN (BACKUP)
+                </span>
+                {cfConfig.workerUrl ? (
+                  <span className="px-2.5 py-0.5 bg-emerald-500/30 border border-emerald-400/40 rounded-full text-[10px] font-extrabold text-emerald-200 tracking-wide uppercase flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    Endpoint Siap
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 bg-orange-500/20 border border-orange-400/40 rounded-full text-[10px] font-extrabold text-orange-200 tracking-wide uppercase">
+                    Workers / KV / D1 / R2
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-orange-100/90 leading-relaxed max-w-2xl">
+                Cadangkan seluruh snapshot dari <strong>Turso Database Utama</strong> ke akun <strong>Cloudflare (`dash.cloudflare.com`)</strong> melalui <strong>Cloudflare Workers (KV / R2 / D1)</strong>. Aman berjalan di AI Studio maupun GitHub Pages statis.
+              </p>
+              {cfConfig.lastBackupAt && (
+                <p className="text-[11px] text-emerald-300 font-medium">
+                  Cadangan terakhir ke Cloudflare: {new Date(cfConfig.lastBackupAt).toLocaleString('id-ID')} ({cfConfig.lastStatus || 'Tersimpan'})
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <a
+              href="https://dash.cloudflare.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5 transition-all"
+            >
+              <span>dash.cloudflare.com</span>
+              <ExternalLink className="w-3 h-3 text-orange-300" />
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowCfWorkerModal(true)}
+              className="px-3 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-200 font-bold text-xs rounded-xl border border-orange-400/40 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Code className="w-3.5 h-3.5" />
+              <span>Skrip Worker</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePushCloudflareBackup}
+              disabled={isSyncingCf}
+              className="px-3.5 py-2 bg-orange-500 hover:bg-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <CloudUpload className={`w-3.5 h-3.5 ${isSyncingCf ? 'animate-spin' : ''}`} />
+              <span>{isSyncingCf ? 'Mengirim...' : 'Cadangkan ke Cloudflare'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePullCloudflareBackup}
+              disabled={isSyncingCf}
+              className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <CloudDownload className="w-3.5 h-3.5 text-orange-300" />
+              <span>Pulihkan Backup</span>
+            </button>
+          </div>
+        </div>
+
+        {cfTestResult && (
+          <div
+            className={`p-3 rounded-2xl border text-xs flex items-center justify-between gap-2 ${
+              cfTestResult.success
+                ? 'bg-emerald-950/70 border-emerald-400/40 text-emerald-200'
+                : 'bg-rose-950/70 border-rose-400/40 text-rose-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {cfTestResult.success ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              )}
+              <span>{cfTestResult.message}</span>
+            </div>
+            <button onClick={() => setCfTestResult(null)} className="text-white/60 hover:text-white cursor-pointer">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSaveCloudflareConfig} className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
+          <div className="md:col-span-6">
+            <label className="block text-[11px] font-bold text-orange-200 mb-1">
+              URL Endpoint Cloudflare Worker Backup
+            </label>
+            <input
+              type="url"
+              value={cfConfig.workerUrl}
+              onChange={(e) => setCfConfig({ ...cfConfig, workerUrl: e.target.value })}
+              placeholder="https://kt-backup.akun-anda.workers.dev"
+              className="w-full px-3 py-2 bg-slate-900/90 border border-orange-500/30 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-400 font-mono"
+            />
+          </div>
+          <div className="md:col-span-3">
+            <label className="block text-[11px] font-bold text-orange-200 mb-1">
+              Secret Bearer Token (Opsional)
+            </label>
+            <input
+              type="password"
+              value={cfConfig.apiSecret}
+              onChange={(e) => setCfConfig({ ...cfConfig, apiSecret: e.target.value })}
+              placeholder="Opsional (BACKUP_SECRET)"
+              className="w-full px-3 py-2 bg-slate-900/90 border border-orange-500/30 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-400 font-mono"
+            />
+          </div>
+          <div className="md:col-span-3 flex items-end gap-2">
+            <button
+              type="button"
+              onClick={handleTestCloudflare}
+              disabled={isTestingCf}
+              className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-orange-200 border border-orange-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isTestingCf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Activity className="w-3.5 h-3.5" />}
+              <span>Uji Koneksi</span>
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-3 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Simpan</span>
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* 1b. FILEBASE.COM AUTOMATED INTEGRATION & STORAGE CENTER */}
@@ -2614,6 +2841,81 @@ export const DatabaseGoogleDriveView: React.FC<DatabaseGoogleDriveViewProps> = (
           </div>
         </div>
       )}
+      {/* Modal: Panduan Skrip Cloudflare Worker Backup (dash.cloudflare.com) */}
+      {showCfWorkerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5 text-orange-600" />
+                <h3 className="text-base font-black text-slate-900">
+                  Panduan Pasang Cloudflare Backup di dash.cloudflare.com
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCfWorkerModal(false)}
+                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-600">
+              <ol className="list-decimal list-inside space-y-1.5 pl-1 text-[11px]">
+                <li>
+                  Buka{' '}
+                  <a
+                    href="https://dash.cloudflare.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-orange-600 underline font-bold"
+                  >
+                    dash.cloudflare.com
+                  </a>{' '}
+                  → menu <strong>Workers &amp; Pages</strong> → klik <strong>Create Worker</strong>.
+                </li>
+                <li>
+                  Tempelkan skrip di bawah ini ke editor Worker, lalu klik <strong>Deploy</strong>.
+                </li>
+                <li>
+                  Masuk ke tab <strong>Settings → Bindings</strong> pada Worker Anda, lalu tambahkan salah satu penyimpanan gratis Cloudflare: <strong>KV Namespace</strong> dengan nama variabel <code className="px-1 py-0.5 bg-slate-100 rounded font-mono">BACKUP_KV</code> (atau R2 <code className="px-1 py-0.5 bg-slate-100 rounded font-mono">BACKUP_R2</code> / D1 <code className="px-1 py-0.5 bg-slate-100 rounded font-mono">BACKUP_D1</code>).
+                </li>
+                <li>
+                  Salin URL Worker (<code className="px-1 py-0.5 bg-slate-100 rounded font-mono">https://...workers.dev</code>) ke kolom <strong>URL Endpoint Cloudflare Worker Backup</strong> di halaman ini.
+                </li>
+              </ol>
+
+              <div className="relative">
+                <pre className="p-3.5 bg-slate-900 text-slate-100 rounded-2xl text-[11px] font-mono overflow-x-auto leading-relaxed border border-slate-800 max-h-72">
+                  {CLOUDFLARE_WORKER_SCRIPT}
+                </pre>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(CLOUDFLARE_WORKER_SCRIPT);
+                    onToast('Skrip Cloudflare Worker Backup berhasil disalin!');
+                  }}
+                  className="absolute top-2.5 right-2.5 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Salin Skrip</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowCfWorkerModal(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Tutup Panduan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Firebase Account & Custom Database Modal */}
       <FirebaseConfigModal
         isOpen={showFirebaseModal}

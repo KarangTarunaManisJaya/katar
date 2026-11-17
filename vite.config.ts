@@ -968,6 +968,194 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
       return;
     }
 
+    // Server-side Cloudflare Backup Proxy (Workers / KV via dash.cloudflare.com)
+    if (req.url && req.url.startsWith('/api/cloudflare/test') && req.method === 'GET') {
+      const workerUrl = (process.env.CLOUDFLARE_BACKUP_WORKER_URL || '').trim().replace(/\/+$/, '');
+      const workerSecret = (process.env.CLOUDFLARE_BACKUP_SECRET || '').trim();
+      const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+      const kvNamespaceId = (process.env.CLOUDFLARE_KV_NAMESPACE_ID || '').trim();
+      const apiToken = (process.env.CLOUDFLARE_API_TOKEN || '').trim();
+
+      (async () => {
+        try {
+          if (workerUrl) {
+            const headers: Record<string, string> = {};
+            if (workerSecret) headers['Authorization'] = `Bearer ${workerSecret}`;
+            const r = await fetch(`${workerUrl}?action=health`, { headers });
+            const j: any = await r.json().catch(() => ({}));
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: r.ok && j.success !== false,
+              configured: true,
+              mode: j.storage || 'Cloudflare Worker',
+              message: j.message || 'Cloudflare Worker Backup siap!',
+            }));
+            return;
+          }
+
+          if (accountId && kvNamespaceId && apiToken) {
+            const r = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces/${kvNamespaceId}/keys?limit=1`,
+              { headers: { Authorization: `Bearer ${apiToken}` } }
+            );
+            const j: any = await r.json().catch(() => ({}));
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: r.ok && j.success !== false,
+              configured: true,
+              mode: 'Cloudflare KV REST API',
+              message: r.ok
+                ? 'Terhubung ke Cloudflare KV Storage (dash.cloudflare.com) via Server Secrets!'
+                : j?.errors?.[0]?.message || 'Gagal memverifikasi Cloudflare KV API.',
+            }));
+            return;
+          }
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: false,
+            configured: false,
+            message: 'Cloudflare Backup belum dikonfigurasi di Server Secrets. Anda dapat mengisi URL Cloudflare Worker langsung pada kartu Backup Cloudflare.',
+          }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, configured: true, message: err?.message || 'Error koneksi Cloudflare' }));
+        }
+      })();
+      return;
+    }
+
+    if (req.url && req.url.startsWith('/api/cloudflare/backup') && req.method === 'POST') {
+      let body = '';
+      req.on('data', (chunk: any) => { body += chunk; });
+      req.on('end', async () => {
+        try {
+          const parsed = JSON.parse(body || '{}');
+          const workerUrl = (process.env.CLOUDFLARE_BACKUP_WORKER_URL || '').trim().replace(/\/+$/, '');
+          const workerSecret = (process.env.CLOUDFLARE_BACKUP_SECRET || '').trim();
+          const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+          const kvNamespaceId = (process.env.CLOUDFLARE_KV_NAMESPACE_ID || '').trim();
+          const apiToken = (process.env.CLOUDFLARE_API_TOKEN || '').trim();
+
+          if (workerUrl) {
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (workerSecret) headers['Authorization'] = `Bearer ${workerSecret}`;
+            const r = await fetch(workerUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                action: 'backup',
+                reason: parsed.reason,
+                updatedBy: parsed.updatedBy,
+                payload: parsed.payload,
+              }),
+            });
+            const j: any = await r.json().catch(() => ({}));
+            res.statusCode = r.ok ? 200 : 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: r.ok && j.success !== false,
+              mode: j.storage || 'Cloudflare Worker',
+              message: j.message || 'Cadangan tersimpan ke Cloudflare Worker!',
+            }));
+            return;
+          }
+
+          if (accountId && kvNamespaceId && apiToken) {
+            const r = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces/${kvNamespaceId}/values/kt_manisjaya_latest_backup.json`,
+              {
+                method: 'PUT',
+                headers: {
+                  Authorization: `Bearer ${apiToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(parsed.payload || {}),
+              }
+            );
+            const j: any = await r.json().catch(() => ({}));
+            res.statusCode = r.ok ? 200 : 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+              success: r.ok && j.success !== false,
+              mode: 'Cloudflare KV REST API',
+              message: r.ok
+                ? 'Cadangan berhasil disimpan ke Cloudflare KV (dash.cloudflare.com)!'
+                : j?.errors?.[0]?.message || 'Gagal menulis backup ke Cloudflare KV.',
+            }));
+            return;
+          }
+
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: false,
+            configured: false,
+            message: 'Cloudflare Backup belum dikonfigurasi di server.',
+          }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, message: err?.message || 'Gagal backup ke Cloudflare' }));
+        }
+      });
+      return;
+    }
+
+    if (req.url && req.url.startsWith('/api/cloudflare/restore') && req.method === 'GET') {
+      const workerUrl = (process.env.CLOUDFLARE_BACKUP_WORKER_URL || '').trim().replace(/\/+$/, '');
+      const workerSecret = (process.env.CLOUDFLARE_BACKUP_SECRET || '').trim();
+      const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+      const kvNamespaceId = (process.env.CLOUDFLARE_KV_NAMESPACE_ID || '').trim();
+      const apiToken = (process.env.CLOUDFLARE_API_TOKEN || '').trim();
+
+      (async () => {
+        try {
+          if (workerUrl) {
+            const headers: Record<string, string> = {};
+            if (workerSecret) headers['Authorization'] = `Bearer ${workerSecret}`;
+            const r = await fetch(`${workerUrl}?action=restore`, { headers });
+            const j: any = await r.json().catch(() => ({}));
+            res.statusCode = r.ok ? 200 : 404;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(j));
+            return;
+          }
+
+          if (accountId && kvNamespaceId && apiToken) {
+            const r = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${accountId}/storage/kv/namespaces/${kvNamespaceId}/values/kt_manisjaya_latest_backup.json`,
+              { headers: { Authorization: `Bearer ${apiToken}` } }
+            );
+            if (!r.ok) {
+              res.statusCode = 404;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, message: 'Belum ada cadangan tersimpan di Cloudflare KV.' }));
+              return;
+            }
+            const payload = await r.json();
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: true, payload }));
+            return;
+          }
+
+          res.statusCode = 404;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, configured: false, message: 'Cloudflare Backup belum dikonfigurasi.' }));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, message: err?.message || 'Gagal memulihkan dari Cloudflare' }));
+        }
+      })();
+      return;
+    }
+
     next();
   };
 }
