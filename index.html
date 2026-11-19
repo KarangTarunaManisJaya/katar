@@ -134,7 +134,10 @@
     <script>
       // Clean up stale service workers & old caches so latest build always loads immediately
       if ('serviceWorker' in navigator) {
-        const isProdSite = window.location.hostname.includes('github.io') || window.location.hostname.includes('karangtarunamanisjaya.my.id');
+        const isProdSite =
+          window.location.hostname.includes('github.io') ||
+          window.location.hostname.includes('pages.dev') ||
+          window.location.hostname.includes('karangtarunamanisjaya.my.id');
         if (!isProdSite) {
           navigator.serviceWorker.getRegistrations().then((registrations) => {
             for (const registration of registrations) {
@@ -184,7 +187,7 @@
     <div id="root">
       <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-sans">
         <header class="max-w-2xl mx-auto space-y-3">
-          <img src="/logo.png" alt="Logo Karang Taruna Manis Jaya Tangerang" class="w-20 h-20 mx-auto" width="80" height="80" />
+          <img src="./logo.png" alt="Logo Karang Taruna Manis Jaya Tangerang" class="w-20 h-20 mx-auto" width="80" height="80" />
           <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Karang Taruna Manis Jaya | Organisasi Pemuda Tangerang</h1>
           <p class="text-sm text-slate-600 leading-relaxed">
             Portal resmi Karang Taruna Kelurahan Manis Jaya, Kecamatan Jatiuwung, Kota Tangerang, Banten, Indonesia.

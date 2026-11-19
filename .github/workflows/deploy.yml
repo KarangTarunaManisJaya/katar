@@ -44,10 +44,9 @@ jobs:
           GITHUB_PAGES: 'true'
           VITE_BASE: './'
 
-      - name: Ensure .nojekyll and CNAME exist
+      - name: Ensure .nojekyll exists
         run: |
           touch dist/.nojekyll
-          echo "karangtarunamanisjaya.my.id" > dist/CNAME
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
