@@ -73,6 +73,12 @@ const buildAuthHeaders = (apiSecret?: string): Record<string, string> => {
 const isJsonContent = (res: Response): boolean =>
   (res.headers.get('content-type') || '').toLowerCase().includes('application/json');
 
+const normalizeWorkerUrl = (raw: string): string => {
+  const cleaned = (raw || '').trim().replace(/\/+$/, '');
+  if (!cleaned) return '';
+  return /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
+};
+
 export const testCloudflareBackupConnection = async (
   customConfig?: Partial<CloudflareBackupConfig>
 ): Promise<{
@@ -82,23 +88,24 @@ export const testCloudflareBackupConnection = async (
   configured?: boolean;
 }> => {
   const stored = getCloudflareBackupConfig();
-  const workerUrl = (customConfig?.workerUrl !== undefined ? customConfig.workerUrl : stored.workerUrl).trim();
+  const workerUrl = normalizeWorkerUrl(customConfig?.workerUrl !== undefined ? customConfig.workerUrl : stored.workerUrl);
   const apiSecret = (customConfig?.apiSecret !== undefined ? customConfig.apiSecret : stored.apiSecret).trim();
 
   // 1. Jika URL Worker diisi langsung, uji langsung endpoint Cloudflare Worker (berfungsi di AI Studio & GitHub Pages statis)
   if (workerUrl) {
     try {
-      const cleanUrl = workerUrl.replace(/\/+$/, '');
-      const res = await fetch(`${cleanUrl}?action=health`, {
+      const res = await fetch(`${workerUrl}?action=health`, {
         method: 'GET',
         headers: buildAuthHeaders(apiSecret),
       });
       const data = isJsonContent(res) ? await res.json().catch(() => ({})) : {};
-      if (!res.ok || data.success === false) {
+      if (!res.ok || data.success !== true) {
         return {
           success: false,
           configured: true,
-          message: data.message || `Cloudflare Worker merespons HTTP ${res.status}. Pastikan URL & Token sesuai.`,
+          message:
+            data.message ||
+            `Worker ${workerUrl} merespons HTTP ${res.status}, namun belum menjalankan Skrip Backup Worker JSON.`,
         };
       }
       return {
@@ -107,7 +114,7 @@ export const testCloudflareBackupConnection = async (
         mode: data.storage || 'cloudflare-worker',
         message:
           data.message ||
-          `Terhubung ke Cloudflare Backup (${data.storage || 'Workers/KV/D1/R2'}) di ${cleanUrl}!`,
+          `Terhubung ke Cloudflare Backup (${data.storage || 'Workers/KV/D1/R2'}) di ${workerUrl}!`,
       };
     } catch (err: any) {
       return {
@@ -194,10 +201,10 @@ export const pushBackupToCloudflare = async (
   }
 
   // Jalur 1: Cloudflare Worker URL langsung (berfungsi di AI Studio & GitHub Pages)
-  if (cfg.workerUrl) {
+  const normalizedWorkerUrl = normalizeWorkerUrl(cfg.workerUrl);
+  if (normalizedWorkerUrl) {
     try {
-      const cleanUrl = cfg.workerUrl.replace(/\/+$/, '');
-      const res = await fetch(cleanUrl, {
+      const res = await fetch(normalizedWorkerUrl, {
         method: 'POST',
         headers: buildAuthHeaders(cfg.apiSecret),
         body: JSON.stringify({
@@ -208,16 +215,17 @@ export const pushBackupToCloudflare = async (
         }),
       });
       const data = isJsonContent(res) ? await res.json().catch(() => ({})) : {};
-      if (!res.ok || data.success === false) {
+      if (!res.ok || data.success !== true) {
         return {
           success: false,
-          message: data.message || `Gagal menyimpan backup ke Cloudflare Worker (HTTP ${res.status}).`,
+          message: data.message || `Gagal menyimpan backup ke Cloudflare Worker (HTTP ${res.status}). Pastikan Skrip Backup sudah di-deploy.`,
         };
       }
       lastPushedCloudflareHash = hash;
       const nowISO = new Date().toISOString();
       saveCloudflareBackupConfig({
         ...cfg,
+        workerUrl: normalizedWorkerUrl,
         lastBackupAt: nowISO,
         lastStatus: `Tersinkron (${data.storage || 'Cloudflare'})`,
       });
@@ -306,10 +314,10 @@ export const pullBackupFromCloudflare = async (): Promise<{
 }> => {
   const cfg = getCloudflareBackupConfig();
 
-  if (cfg.workerUrl) {
+  const normalizedWorkerUrl = normalizeWorkerUrl(cfg.workerUrl);
+  if (normalizedWorkerUrl) {
     try {
-      const cleanUrl = cfg.workerUrl.replace(/\/+$/, '');
-      const res = await fetch(`${cleanUrl}?action=restore`, {
+      const res = await fetch(`${normalizedWorkerUrl}?action=restore`, {
         method: 'GET',
         headers: buildAuthHeaders(cfg.apiSecret),
       });

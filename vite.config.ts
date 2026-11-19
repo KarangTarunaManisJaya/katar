@@ -969,8 +969,14 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
     }
 
     // Server-side Cloudflare Backup Proxy (Workers / KV via dash.cloudflare.com)
+    const normalizeWorkerUrl = (raw: string) => {
+      const cleaned = (raw || '').trim().replace(/\/+$/, '');
+      if (!cleaned) return '';
+      return /^https?:\/\//i.test(cleaned) ? cleaned : `https://${cleaned}`;
+    };
+
     if (req.url && req.url.startsWith('/api/cloudflare/test') && req.method === 'GET') {
-      const workerUrl = (process.env.CLOUDFLARE_BACKUP_WORKER_URL || '').trim().replace(/\/+$/, '');
+      const workerUrl = normalizeWorkerUrl(process.env.CLOUDFLARE_BACKUP_WORKER_URL || '');
       const workerSecret = (process.env.CLOUDFLARE_BACKUP_SECRET || '').trim();
       const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
       const kvNamespaceId = (process.env.CLOUDFLARE_KV_NAMESPACE_ID || '').trim();
@@ -982,11 +988,31 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
             const headers: Record<string, string> = {};
             if (workerSecret) headers['Authorization'] = `Bearer ${workerSecret}`;
             const r = await fetch(`${workerUrl}?action=health`, { headers });
-            const j: any = await r.json().catch(() => ({}));
+            const rawText = await r.text();
+            let j: any = null;
+            try {
+              j = JSON.parse(rawText);
+            } catch {}
+
+            if (!j || typeof j !== 'object' || j.success !== true) {
+              const isDefaultHello = rawText.trim().toLowerCase().includes('hello world');
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                success: false,
+                configured: true,
+                mode: 'Cloudflare Worker (Belum Deploy Skrip Backup)',
+                message: isDefaultHello
+                  ? `Worker ${workerUrl} sudah online, tetapi isinya masih "Hello World!". Paste & Deploy Skrip Backup Worker dari modal panduan di Cloudflare.`
+                  : `Worker ${workerUrl} merespons HTTP ${r.status}, namun belum menjalankan Skrip Backup JSON.`,
+              }));
+              return;
+            }
+
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({
-              success: r.ok && j.success !== false,
+              success: r.ok && j.success === true,
               configured: true,
               mode: j.storage || 'Cloudflare Worker',
               message: j.message || 'Cloudflare Worker Backup siap!',
@@ -1035,7 +1061,7 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
       req.on('end', async () => {
         try {
           const parsed = JSON.parse(body || '{}');
-          const workerUrl = (process.env.CLOUDFLARE_BACKUP_WORKER_URL || '').trim().replace(/\/+$/, '');
+          const workerUrl = normalizeWorkerUrl(process.env.CLOUDFLARE_BACKUP_WORKER_URL || '');
           const workerSecret = (process.env.CLOUDFLARE_BACKUP_SECRET || '').trim();
           const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
           const kvNamespaceId = (process.env.CLOUDFLARE_KV_NAMESPACE_ID || '').trim();
@@ -1054,11 +1080,26 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
                 payload: parsed.payload,
               }),
             });
-            const j: any = await r.json().catch(() => ({}));
+            const rawText = await r.text();
+            let j: any = null;
+            try {
+              j = JSON.parse(rawText);
+            } catch {}
+            if (!j || j.success !== true) {
+              res.statusCode = 502;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({
+                success: false,
+                message: rawText.toLowerCase().includes('hello world')
+                  ? 'Worker Cloudflare masih berisi kode default "Hello World!". Paste Skrip Backup Worker terlebih dahulu.'
+                  : j?.message || `Worker ${workerUrl} gagal menyimpan backup (HTTP ${r.status}).`,
+              }));
+              return;
+            }
             res.statusCode = r.ok ? 200 : 500;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify({
-              success: r.ok && j.success !== false,
+              success: true,
               mode: j.storage || 'Cloudflare Worker',
               message: j.message || 'Cadangan tersimpan ke Cloudflare Worker!',
             }));
@@ -1107,7 +1148,7 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
     }
 
     if (req.url && req.url.startsWith('/api/cloudflare/restore') && req.method === 'GET') {
-      const workerUrl = (process.env.CLOUDFLARE_BACKUP_WORKER_URL || '').trim().replace(/\/+$/, '');
+      const workerUrl = normalizeWorkerUrl(process.env.CLOUDFLARE_BACKUP_WORKER_URL || '');
       const workerSecret = (process.env.CLOUDFLARE_BACKUP_SECRET || '').trim();
       const accountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
       const kvNamespaceId = (process.env.CLOUDFLARE_KV_NAMESPACE_ID || '').trim();
@@ -1119,8 +1160,8 @@ ATURAN UTAMA GAYA CHAT MANUSIA (SINGKAT, PADAT, NATURAL):
             const headers: Record<string, string> = {};
             if (workerSecret) headers['Authorization'] = `Bearer ${workerSecret}`;
             const r = await fetch(`${workerUrl}?action=restore`, { headers });
-            const j: any = await r.json().catch(() => ({}));
-            res.statusCode = r.ok ? 200 : 404;
+            const j: any = await r.json().catch(() => ({ success: false, message: 'Worker Cloudflare belum menjalankan skrip Backup JSON.' }));
+            res.statusCode = r.ok && j.success ? 200 : 404;
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(j));
             return;
